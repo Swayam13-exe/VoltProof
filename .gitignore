@@ -5,3 +5,6 @@ CLAUDE.md
 .cache/
 runs/
 data/raw/
+__pycache__/
+.pytest_cache/
+.coverage
