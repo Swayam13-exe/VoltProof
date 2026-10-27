@@ -1,0 +1,7 @@
+SPEC.md
+CLAUDE.md
+.env
+.venv/
+.cache/
+runs/
+data/raw/
