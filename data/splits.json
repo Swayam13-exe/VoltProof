@@ -1,0 +1,201 @@
+{
+  "seed": 2026,
+  "weather_model": "icon_global",
+  "period": [
+    "2024-01-20",
+    "2025-12-31"
+  ],
+  "dev_period": [
+    "2024-01-20",
+    "2024-12-31"
+  ],
+  "test_period": [
+    "2025-01-01",
+    "2025-12-31"
+  ],
+  "rules": {
+    "clear": "sampled from days with clear-sky index >= the 80% quantile",
+    "cloudy": "sampled from days with clear-sky index <= the 20% quantile",
+    "large_error": "largest |daily PV forecast - actual| among remaining days",
+    "held_out_sites": "test split only"
+  },
+  "thresholds": {
+    "ahmedabad_cold_store": {
+      "test": {
+        "clear_csi_min": 1.0069,
+        "cloudy_csi_max": 0.5786
+      },
+      "dev": {
+        "clear_csi_min": 0.991,
+        "cloudy_csi_max": 0.5898
+      }
+    },
+    "munich_home": {
+      "test": {
+        "clear_csi_min": 0.8913,
+        "cloudy_csi_max": 0.3612
+      }
+    },
+    "nairobi_clinic": {
+      "test": {
+        "clear_csi_min": 0.8949,
+        "cloudy_csi_max": 0.6181
+      },
+      "dev": {
+        "clear_csi_min": 0.871,
+        "cloudy_csi_max": 0.591
+      }
+    }
+  },
+  "dev": [
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2024-12-08",
+      "category": "clear",
+      "clear_sky_index_actual": 1.0375,
+      "pv_abs_error_kwh": 1.993
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2024-09-10",
+      "category": "cloudy",
+      "clear_sky_index_actual": 0.4903,
+      "pv_abs_error_kwh": 38.58
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2024-06-24",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.6543,
+      "pv_abs_error_kwh": 76.087
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2024-01-28",
+      "category": "clear",
+      "clear_sky_index_actual": 0.8806,
+      "pv_abs_error_kwh": 0.056
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2024-07-06",
+      "category": "cloudy",
+      "clear_sky_index_actual": 0.5091,
+      "pv_abs_error_kwh": 4.834
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2024-04-28",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.2194,
+      "pv_abs_error_kwh": 32.394
+    }
+  ],
+  "test": [
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2025-01-12",
+      "category": "clear",
+      "clear_sky_index_actual": 1.053,
+      "pv_abs_error_kwh": 0.885
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2025-12-17",
+      "category": "clear",
+      "clear_sky_index_actual": 1.0267,
+      "pv_abs_error_kwh": 0.487
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2025-08-30",
+      "category": "cloudy",
+      "clear_sky_index_actual": 0.2552,
+      "pv_abs_error_kwh": 15.637
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2025-11-01",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.5974,
+      "pv_abs_error_kwh": 61.519
+    },
+    {
+      "site_id": "ahmedabad_cold_store",
+      "date": "2025-06-08",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.856,
+      "pv_abs_error_kwh": 48.542
+    },
+    {
+      "site_id": "munich_home",
+      "date": "2025-02-19",
+      "category": "clear",
+      "clear_sky_index_actual": 0.941,
+      "pv_abs_error_kwh": 0.198
+    },
+    {
+      "site_id": "munich_home",
+      "date": "2025-11-12",
+      "category": "clear",
+      "clear_sky_index_actual": 0.8966,
+      "pv_abs_error_kwh": 0.729
+    },
+    {
+      "site_id": "munich_home",
+      "date": "2025-03-15",
+      "category": "cloudy",
+      "clear_sky_index_actual": 0.2896,
+      "pv_abs_error_kwh": 0.088
+    },
+    {
+      "site_id": "munich_home",
+      "date": "2025-07-06",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.4598,
+      "pv_abs_error_kwh": 10.498
+    },
+    {
+      "site_id": "munich_home",
+      "date": "2025-08-30",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.5707,
+      "pv_abs_error_kwh": 10.361
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2025-02-17",
+      "category": "clear",
+      "clear_sky_index_actual": 0.9933,
+      "pv_abs_error_kwh": 1.448
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2025-12-25",
+      "category": "clear",
+      "clear_sky_index_actual": 0.9294,
+      "pv_abs_error_kwh": 2.867
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2025-06-19",
+      "category": "cloudy",
+      "clear_sky_index_actual": 0.6134,
+      "pv_abs_error_kwh": 0.859
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2025-03-28",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.2581,
+      "pv_abs_error_kwh": 27.132
+    },
+    {
+      "site_id": "nairobi_clinic",
+      "date": "2025-11-09",
+      "category": "large_error",
+      "clear_sky_index_actual": 0.2288,
+      "pv_abs_error_kwh": 25.141
+    }
+  ]
+}
