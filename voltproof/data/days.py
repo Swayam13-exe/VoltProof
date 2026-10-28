@@ -207,6 +207,18 @@ def split_dates(splits: Mapping[str, Any], split: str, site_id: str) -> list[dat
     return sorted(date.fromisoformat(entry["date"]) for entry in splits[split] if entry["site_id"] == site_id)
 
 
+def dev_days(splits: Mapping[str, Any], sites: Sequence[Site]) -> list[tuple[Site, date]]:
+    """(site, date) for every dev-split day; refuses held-out sites (they must never appear in dev)."""
+    by_id = {site.site_id: site for site in sites}
+    out = []
+    for entry in splits["dev"]:
+        site = by_id[entry["site_id"]]
+        if site.held_out:
+            raise ValueError(f"held-out site {site.site_id} found in the dev split")
+        out.append((site, date.fromisoformat(entry["date"])))
+    return sorted(out, key=lambda pair: (pair[0].site_id, pair[1]))
+
+
 def _in_period(stats: pd.DataFrame, period: tuple[date, date]) -> pd.DataFrame:
     start, end = period
     return stats[[start <= day <= end for day in stats.index]]

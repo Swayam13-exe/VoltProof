@@ -286,6 +286,191 @@ class WeatherSummary(_Model):
     pv_hourly_bias_kw: float  # mean(forecast − actual)
 
 
+Pct = Annotated[float, Field(ge=0, le=100, allow_inf_nan=False)]
+RuleCode = Literal[
+    "LENGTH",
+    "NOT_FINITE",
+    "CHARGE_LIMIT",
+    "DISCHARGE_LIMIT",
+    "SOC_MIN",
+    "SOC_MAX",
+    "IMPORT_LIMIT",
+    "UNSERVED_LOAD",
+    "OUTAGE_DEFICIT",
+    "RESERVE",
+    "SOC_TARGET",
+    "ALL_DAY_MIN",
+    "END_SOC",
+    "IMPORT_CAP",
+    "NO_EXPORT",
+    "DISCHARGE_WINDOW",
+    "THROUGHPUT",
+]
+
+
+class ReserveWindow(HourWindow):
+    """Keep SOC ≥ min_soc_pct of capacity during [start_hour, end_hour) (SPEC §3 window semantics)."""
+
+    min_soc_pct: Pct
+
+
+class SocTarget(_Model):
+    """SOC ≥ min_soc_pct of capacity by hour `by_hour`, i.e. at the end of hour by_hour − 1."""
+
+    by_hour: int = Field(ge=1, le=24)
+    min_soc_pct: Pct
+
+
+class ImportCap(HourWindow):
+    max_kw: float = Field(ge=0, allow_inf_nan=False)
+
+
+class IntentSpec(_Model):
+    """The language-independent goal: what the optimizer must respect (SPEC §6.3)."""
+
+    objective: Literal["min_cost"] = "min_cost"
+    grid_outages: list[HourWindow] = Field(default_factory=list)
+    reserve_windows: list[ReserveWindow] = Field(default_factory=list)
+    soc_targets: list[SocTarget] = Field(default_factory=list)
+    min_soc_pct_all_day: Pct | None = None
+    end_of_day_min_soc_pct: Pct | None = None
+    import_caps: list[ImportCap] = Field(default_factory=list)
+    no_export_windows: list[HourWindow] = Field(default_factory=list)
+    discharge_only_windows: list[HourWindow] | None = None
+    max_throughput_kwh: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    assumptions: list[str] = Field(default_factory=list)
+
+
+class Shortfall(_Model):
+    """A soft goal the plan cannot fully meet; `amount` is the largest per-hour shortfall."""
+
+    path: str  # e.g. "reserve_windows[0]"
+    rule: RuleCode
+    hours: list[int]  # −1 = the initial state of charge
+    amount: float = Field(ge=0)
+    unit: Literal["kWh", "kW"]
+    message: str
+
+
+class Flows(_Model):
+    """Hourly energy flows (kW over a 1 h step, so also kWh)."""
+
+    charge_kw: Array24
+    discharge_kw: Array24
+    grid_import_kw: Array24
+    grid_export_kw: Array24
+    curtail_kw: Array24
+    unserved_noncritical_kw: Array24
+    unserved_critical_kw: Array24
+
+
+class Plan(_Model):
+    site_id: str
+    date: Date
+    use: Literal["forecast", "actual"]
+    spec: IntentSpec
+    battery_kw: Array24  # > 0 charges, < 0 discharges
+    export_limit_kw: Array24  # inverter export limit per hour (0 in no-export windows and outages)
+    flows: Flows
+    soc_kwh: Array24  # at the END of each hour
+    initial_soc_kwh: float
+    # SOC the executor may keep by importing (goal protection, SPEC §6.6); None: no SOC goals, no top-up
+    protected_soc_kwh: Array24 | None = None
+    energy_cost: float  # grid + degradation, site currency
+    penalty_cost: float  # unserved load, curtailment and goal penalties
+    terminal_value_per_kwh: float  # V = mean import price · η_d
+    terminal_value: float  # V · SOC at the end of hour 23
+    objective: float  # energy_cost + penalty_cost − terminal_value
+    shortfalls: list[Shortfall]
+    status: str
+    solve_time_s: float = Field(ge=0)
+    simultaneous_hours: list[int] = Field(default_factory=list)
+
+    @property
+    def unserved_critical_kwh(self) -> float:
+        return float(sum(self.flows.unserved_critical_kw))
+
+    @property
+    def unserved_noncritical_kwh(self) -> float:
+        return float(sum(self.flows.unserved_noncritical_kw))
+
+
+class Violation(_Model):
+    hour: int | None  # None: not tied to an hour; −1: the initial state of charge
+    rule: RuleCode
+    value: float
+    limit: float
+    message: str
+
+
+class VerifyResult(_Model):
+    valid: bool
+    use: Literal["forecast", "actual"]
+    physics_only: bool
+    violations: list[Violation]  # at most 20
+    total_violations: int = Field(ge=0)
+    soc_kwh: Array24 | None = None
+    initial_soc_kwh: float
+    flows: Flows | None = None
+    grid_cost: float | None = None
+    degradation_cost: float | None = None
+    energy_cost: float | None = None
+    unserved_noncritical_kwh: float | None = None
+    unserved_critical_kwh: float | None = None
+
+
+class ExecutionResult(_Model):
+    battery_kw: Array24  # setpoints actually applied after clipping and overrides
+    export_limit_kw: Array24
+    flows: Flows
+    soc_kwh: Array24
+    initial_soc_kwh: float
+    realized_cost: float  # grid + degradation, site currency
+    grid_cost: float
+    degradation_cost: float
+    unserved_noncritical_kwh: float = Field(ge=0)
+    unserved_critical_kwh: float = Field(ge=0)
+    overrides: int = Field(ge=0)  # outage safety overrides + import-limit overrides
+    override_hours: list[int]
+    clipped_hours: list[int]  # setpoint clipped to power / SOC limits
+    grid_charge_limited_hours: list[int]  # planned charging the plan expected from PV, not taken from the grid
+    goal_topup_hours: list[int]  # extra grid charging to keep realized SOC at the plan's protected level
+    solar_absorbed_hours: list[int]  # PV surplus charged instead of curtailed
+    outage_hours: list[int]
+
+
+class EpisodeResult(_Model):
+    """One arm on one site-day-goal. Money in site currency; percentages are currency-free."""
+
+    site_id: str
+    date: Date
+    arm: str
+    spec_name: str
+    currency: Currency
+    realized_cost: float
+    realized_total_cost: float
+    savings_vs_rule_pct: float | None
+    gap_to_oracle_pct: float | None
+    plan_physics_valid: bool
+    gold_satisfied: bool
+    gold_violations: list[RuleCode]
+    unserved_critical_kwh: float
+    critical_served_pct: float
+    overrides: int
+    solve_time_s: float | None = None
+    spec_precision: float | None = None
+    spec_recall: float | None = None
+    language: str | None = None
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    tokens_cached: int | None = None
+    cost_usd: float | None = None
+    latency_s: float | None = None
+    tool_calls: int | None = None
+    repair_turns: int | None = None
+    fallback_used: bool = False
+
+
 class DayData(_Model):
     site_id: str
     date: Date
