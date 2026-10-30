@@ -1,0 +1,1260 @@
+{
+ "run_id": "test-20261030-181315",
+ "bound_check": {
+  "checked": 260,
+  "skipped_gap_none": 0,
+  "mismatches": [],
+  "below_bound": [],
+  "passed": true
+ },
+ "regression_passed": true,
+ "figures": [
+  "figures\\bench_goal_satisfaction.png",
+  "figures\\bench_outage_safety.png",
+  "figures\\bench_error_decomposition.png",
+  "figures\\bench_spec_accuracy_language.png",
+  "figures\\bench_cost_vs_goal.png"
+ ],
+ "tables": {
+  "run_summary": [
+   {
+    "arm": "A0",
+    "name": "rule-based",
+    "results": 260,
+    "plan_source": "baseline 260",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A1",
+    "name": "optimizer, cost only",
+    "results": 260,
+    "plan_source": "baseline 260",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A2",
+    "name": "LLM writes schedule",
+    "results": 260,
+    "plan_source": "fallback 4, finalized 256",
+    "fallbacks": 4,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A3",
+    "name": "LLM + simulator",
+    "results": 260,
+    "plan_source": "finalized 257, log_physics_valid 3",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A4",
+    "name": "VoltProof",
+    "results": 260,
+    "plan_source": "finalized 260",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A5",
+    "name": "optimizer, gold spec",
+    "results": 260,
+    "plan_source": "baseline 260",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   },
+   {
+    "arm": "A6",
+    "name": "oracle (actual data)",
+    "results": 260,
+    "plan_source": "baseline 260",
+    "fallbacks": 0,
+    "escalations": 0,
+    "infra_errors": 0,
+    "infra_fallbacks": 0
+   }
+  ],
+  "goal_satisfaction": [
+   {
+    "arm": "A0",
+    "overall": "53.5% (139/260)",
+    "ahmedabad_cold_store": "44.4% (40/90)",
+    "munich_home (held out)": "58.9% (53/90)",
+    "nairobi_clinic": "57.5% (46/80)",
+    "held-out templates": "40.0% (12/30)"
+   },
+   {
+    "arm": "A1",
+    "overall": "56.9% (148/260)",
+    "ahmedabad_cold_store": "28.9% (26/90)",
+    "munich_home (held out)": "58.9% (53/90)",
+    "nairobi_clinic": "86.2% (69/80)",
+    "held-out templates": "53.3% (16/30)"
+   },
+   {
+    "arm": "A2",
+    "overall": "90.4% (235/260)",
+    "ahmedabad_cold_store": "85.6% (77/90)",
+    "munich_home (held out)": "93.3% (84/90)",
+    "nairobi_clinic": "92.5% (74/80)",
+    "held-out templates": "76.7% (23/30)"
+   },
+   {
+    "arm": "A3",
+    "overall": "93.1% (242/260)",
+    "ahmedabad_cold_store": "92.2% (83/90)",
+    "munich_home (held out)": "93.3% (84/90)",
+    "nairobi_clinic": "93.8% (75/80)",
+    "held-out templates": "76.7% (23/30)"
+   },
+   {
+    "arm": "A4",
+    "overall": "98.8% (257/260)",
+    "ahmedabad_cold_store": "97.8% (88/90)",
+    "munich_home (held out)": "100.0% (90/90)",
+    "nairobi_clinic": "98.8% (79/80)",
+    "held-out templates": "90.0% (27/30)"
+   },
+   {
+    "arm": "A5",
+    "overall": "98.8% (257/260)",
+    "ahmedabad_cold_store": "97.8% (88/90)",
+    "munich_home (held out)": "100.0% (90/90)",
+    "nairobi_clinic": "98.8% (79/80)",
+    "held-out templates": "90.0% (27/30)"
+   },
+   {
+    "arm": "A6",
+    "overall": "99.6% (259/260)",
+    "ahmedabad_cold_store": "98.9% (89/90)",
+    "munich_home (held out)": "100.0% (90/90)",
+    "nairobi_clinic": "100.0% (80/80)",
+    "held-out templates": "96.7% (29/30)"
+   }
+  ],
+  "goal_satisfaction_bootstrap": [
+   {
+    "comparison": "A4 - A0",
+    "overall": "+45.4 pts [+39.2, +51.5]",
+    "ahmedabad_cold_store": "+53.3 pts [+43.3, +63.3]",
+    "munich_home": "+41.1 pts [+31.1, +51.1]",
+    "nairobi_clinic": "+41.2 pts [+31.2, +52.5]"
+   },
+   {
+    "comparison": "A4 - A1",
+    "overall": "+41.9 pts [+36.2, +48.1]",
+    "ahmedabad_cold_store": "+68.9 pts [+58.9, +77.8]",
+    "munich_home": "+41.1 pts [+31.1, +51.1]",
+    "nairobi_clinic": "+12.5 pts [+6.2, +20.0]"
+   },
+   {
+    "comparison": "A4 - A2",
+    "overall": "+8.5 pts [+5.0, +11.9]",
+    "ahmedabad_cold_store": "+12.2 pts [+5.6, +20.0]",
+    "munich_home": "+6.7 pts [+2.2, +12.2]",
+    "nairobi_clinic": "+6.2 pts [+1.2, +12.5]"
+   },
+   {
+    "comparison": "A4 - A3",
+    "overall": "+5.8 pts [+2.7, +8.8]",
+    "ahmedabad_cold_store": "+5.6 pts [+0.0, +11.1]",
+    "munich_home": "+6.7 pts [+2.2, +12.2]",
+    "nairobi_clinic": "+5.0 pts [+1.2, +10.0]"
+   }
+  ],
+  "money_ahmedabad_cold_store": [
+   {
+    "arm": "A0",
+    "pooled savings vs A0": "+0.00%",
+    "median (A0 - X) per day": "+0.00",
+    "W/L/T vs A0": "0/0/90",
+    "cost_min: pooled": "+0.00%",
+    "cost_min: median": "+0.00",
+    "cost_min: W/L/T": "0/0/5"
+   },
+   {
+    "arm": "A1",
+    "pooled savings vs A0": "+1.42%",
+    "median (A0 - X) per day": "+69.89",
+    "W/L/T vs A0": "79/11/0",
+    "cost_min: pooled": "+2.75%",
+    "cost_min: median": "+72.96",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A2",
+    "pooled savings vs A0": "-0.04%",
+    "median (A0 - X) per day": "+49.36",
+    "W/L/T vs A0": "71/18/1",
+    "cost_min: pooled": "+1.43%",
+    "cost_min: median": "+52.32",
+    "cost_min: W/L/T": "4/1/0"
+   },
+   {
+    "arm": "A3",
+    "pooled savings vs A0": "-0.09%",
+    "median (A0 - X) per day": "+42.60",
+    "W/L/T vs A0": "73/17/0",
+    "cost_min: pooled": "+2.27%",
+    "cost_min: median": "+52.57",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A4",
+    "pooled savings vs A0": "+0.62%",
+    "median (A0 - X) per day": "+61.43",
+    "W/L/T vs A0": "78/12/0",
+    "cost_min: pooled": "+2.75%",
+    "cost_min: median": "+72.96",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A5",
+    "pooled savings vs A0": "+0.62%",
+    "median (A0 - X) per day": "+61.43",
+    "W/L/T vs A0": "78/12/0",
+    "cost_min: pooled": "+2.75%",
+    "cost_min: median": "+72.96",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A6",
+    "pooled savings vs A0": "+0.92%",
+    "median (A0 - X) per day": "+70.64",
+    "W/L/T vs A0": "78/12/0",
+    "cost_min: pooled": "+3.20%",
+    "cost_min: median": "+76.05",
+    "cost_min: W/L/T": "5/0/0"
+   }
+  ],
+  "money_munich_home": [
+   {
+    "arm": "A0",
+    "pooled savings vs A0": "+0.00%",
+    "median (A0 - X) per day": "+0.00",
+    "W/L/T vs A0": "0/0/90",
+    "cost_min: pooled": "+0.00%",
+    "cost_min: median": "+0.00",
+    "cost_min: W/L/T": "0/0/5"
+   },
+   {
+    "arm": "A1",
+    "pooled savings vs A0": "-3.99%",
+    "median (A0 - X) per day": "+0.00",
+    "W/L/T vs A0": "47/43/0",
+    "cost_min: pooled": "-11.97%",
+    "cost_min: median": "-0.05",
+    "cost_min: W/L/T": "1/4/0"
+   },
+   {
+    "arm": "A2",
+    "pooled savings vs A0": "-62.99%",
+    "median (A0 - X) per day": "-0.25",
+    "W/L/T vs A0": "3/85/2",
+    "cost_min: pooled": "-23.30%",
+    "cost_min: median": "-0.09",
+    "cost_min: W/L/T": "0/4/1"
+   },
+   {
+    "arm": "A3",
+    "pooled savings vs A0": "-149.21%",
+    "median (A0 - X) per day": "-1.05",
+    "W/L/T vs A0": "2/88/0",
+    "cost_min: pooled": "-104.06%",
+    "cost_min: median": "-1.41",
+    "cost_min: W/L/T": "0/5/0"
+   },
+   {
+    "arm": "A4",
+    "pooled savings vs A0": "-10.06%",
+    "median (A0 - X) per day": "-0.03",
+    "W/L/T vs A0": "33/57/0",
+    "cost_min: pooled": "-11.97%",
+    "cost_min: median": "-0.05",
+    "cost_min: W/L/T": "1/4/0"
+   },
+   {
+    "arm": "A5",
+    "pooled savings vs A0": "-10.06%",
+    "median (A0 - X) per day": "-0.03",
+    "W/L/T vs A0": "33/57/0",
+    "cost_min: pooled": "-11.97%",
+    "cost_min: median": "-0.05",
+    "cost_min: W/L/T": "1/4/0"
+   },
+   {
+    "arm": "A6",
+    "pooled savings vs A0": "+9.49%",
+    "median (A0 - X) per day": "+0.05",
+    "W/L/T vs A0": "71/19/0",
+    "cost_min: pooled": "+8.18%",
+    "cost_min: median": "+0.05",
+    "cost_min: W/L/T": "5/0/0"
+   }
+  ],
+  "money_nairobi_clinic": [
+   {
+    "arm": "A0",
+    "pooled savings vs A0": "+0.00%",
+    "median (A0 - X) per day": "+0.00",
+    "W/L/T vs A0": "0/0/80",
+    "cost_min: pooled": "+0.00%",
+    "cost_min: median": "+0.00",
+    "cost_min: W/L/T": "0/0/5"
+   },
+   {
+    "arm": "A1",
+    "pooled savings vs A0": "+7.33%",
+    "median (A0 - X) per day": "+36.45",
+    "W/L/T vs A0": "79/1/0",
+    "cost_min: pooled": "+8.10%",
+    "cost_min: median": "+34.20",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A2",
+    "pooled savings vs A0": "-3.12%",
+    "median (A0 - X) per day": "-6.48",
+    "W/L/T vs A0": "27/52/1",
+    "cost_min: pooled": "-0.80%",
+    "cost_min: median": "-0.57",
+    "cost_min: W/L/T": "2/3/0"
+   },
+   {
+    "arm": "A3",
+    "pooled savings vs A0": "-5.23%",
+    "median (A0 - X) per day": "-5.62",
+    "W/L/T vs A0": "33/47/0",
+    "cost_min: pooled": "-0.78%",
+    "cost_min: median": "-0.02",
+    "cost_min: W/L/T": "2/3/0"
+   },
+   {
+    "arm": "A4",
+    "pooled savings vs A0": "+5.02%",
+    "median (A0 - X) per day": "+34.20",
+    "W/L/T vs A0": "72/8/0",
+    "cost_min: pooled": "+8.10%",
+    "cost_min: median": "+34.20",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A5",
+    "pooled savings vs A0": "+5.02%",
+    "median (A0 - X) per day": "+34.20",
+    "W/L/T vs A0": "72/8/0",
+    "cost_min: pooled": "+8.10%",
+    "cost_min: median": "+34.20",
+    "cost_min: W/L/T": "5/0/0"
+   },
+   {
+    "arm": "A6",
+    "pooled savings vs A0": "+5.10%",
+    "median (A0 - X) per day": "+34.20",
+    "W/L/T vs A0": "72/8/0",
+    "cost_min: pooled": "+8.12%",
+    "cost_min: median": "+34.20",
+    "cost_min: W/L/T": "5/0/0"
+   }
+  ],
+  "total_cost_ahmedabad_cold_store": [
+   {
+    "arm": "A0",
+    "pooled gap to oracle bound": "+78.95%",
+    "median gap per day": "+5548.62",
+    "A4 vs arm W/L/T": "90/0/0"
+   },
+   {
+    "arm": "A1",
+    "pooled gap to oracle bound": "+46.13%",
+    "median gap per day": "+3976.21",
+    "A4 vs arm W/L/T": "74/2/14"
+   },
+   {
+    "arm": "A2",
+    "pooled gap to oracle bound": "+1.44%",
+    "median gap per day": "+14.44",
+    "A4 vs arm W/L/T": "70/20/0"
+   },
+   {
+    "arm": "A3",
+    "pooled gap to oracle bound": "+4.96%",
+    "median gap per day": "+26.34",
+    "A4 vs arm W/L/T": "84/6/0"
+   },
+   {
+    "arm": "A4",
+    "pooled gap to oracle bound": "+0.08%",
+    "median gap per day": "+5.09",
+    "A4 vs arm W/L/T": "-"
+   },
+   {
+    "arm": "A5",
+    "pooled gap to oracle bound": "+0.08%",
+    "median gap per day": "+5.09",
+    "A4 vs arm W/L/T": "0/2/88"
+   },
+   {
+    "arm": "A6",
+    "pooled gap to oracle bound": "+0.00%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "0/84/6"
+   }
+  ],
+  "total_cost_munich_home": [
+   {
+    "arm": "A0",
+    "pooled gap to oracle bound": "+95.67%",
+    "median gap per day": "+0.34",
+    "A4 vs arm W/L/T": "63/27/0"
+   },
+   {
+    "arm": "A1",
+    "pooled gap to oracle bound": "+84.56%",
+    "median gap per day": "+0.34",
+    "A4 vs arm W/L/T": "44/4/42"
+   },
+   {
+    "arm": "A2",
+    "pooled gap to oracle bound": "+12.24%",
+    "median gap per day": "+0.39",
+    "A4 vs arm W/L/T": "87/3/0"
+   },
+   {
+    "arm": "A3",
+    "pooled gap to oracle bound": "+16.26%",
+    "median gap per day": "+1.06",
+    "A4 vs arm W/L/T": "86/4/0"
+   },
+   {
+    "arm": "A4",
+    "pooled gap to oracle bound": "+1.53%",
+    "median gap per day": "+0.06",
+    "A4 vs arm W/L/T": "-"
+   },
+   {
+    "arm": "A5",
+    "pooled gap to oracle bound": "+1.53%",
+    "median gap per day": "+0.06",
+    "A4 vs arm W/L/T": "0/0/90"
+   },
+   {
+    "arm": "A6",
+    "pooled gap to oracle bound": "+0.00%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "0/90/0"
+   }
+  ],
+  "total_cost_nairobi_clinic": [
+   {
+    "arm": "A0",
+    "pooled gap to oracle bound": "+87.31%",
+    "median gap per day": "+41.34",
+    "A4 vs arm W/L/T": "80/0/0"
+   },
+   {
+    "arm": "A1",
+    "pooled gap to oracle bound": "+26.84%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "11/1/68"
+   },
+   {
+    "arm": "A2",
+    "pooled gap to oracle bound": "+9.16%",
+    "median gap per day": "+42.43",
+    "A4 vs arm W/L/T": "80/0/0"
+   },
+   {
+    "arm": "A3",
+    "pooled gap to oracle bound": "+4.35%",
+    "median gap per day": "+41.94",
+    "A4 vs arm W/L/T": "74/1/5"
+   },
+   {
+    "arm": "A4",
+    "pooled gap to oracle bound": "+0.14%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "-"
+   },
+   {
+    "arm": "A5",
+    "pooled gap to oracle bound": "+0.14%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "0/0/80"
+   },
+   {
+    "arm": "A6",
+    "pooled gap to oracle bound": "+0.00%",
+    "median gap per day": "+0.00",
+    "A4 vs arm W/L/T": "0/20/60"
+   }
+  ],
+  "outage_safety": [
+   {
+    "arm": "A0",
+    "episodes": 45,
+    "plan physics valid": "68.9%",
+    "unserved critical kWh": "0.147",
+    "executor overrides (hours / episodes)": "41 / 22",
+    "E1: unserved critical kWh": "19.036",
+    "E1: episodes with critical loss": 9,
+    "E1: unserved non-critical kWh": "560.775"
+   },
+   {
+    "arm": "A1",
+    "episodes": 45,
+    "plan physics valid": "46.7%",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "130 / 44",
+    "E1: unserved critical kWh": "414.686",
+    "E1: episodes with critical loss": 16,
+    "E1: unserved non-critical kWh": "682.681"
+   },
+   {
+    "arm": "A2",
+    "episodes": 45,
+    "plan physics valid": "17.8%",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "121 / 43",
+    "E1: unserved critical kWh": "12.825",
+    "E1: episodes with critical loss": 4,
+    "E1: unserved non-critical kWh": "255.170"
+   },
+   {
+    "arm": "A3",
+    "episodes": 45,
+    "plan physics valid": "57.8%",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "125 / 44",
+    "E1: unserved critical kWh": "8.764",
+    "E1: episodes with critical loss": 5,
+    "E1: unserved non-critical kWh": "310.548"
+   },
+   {
+    "arm": "A4",
+    "episodes": 45,
+    "plan physics valid": "100.0%",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "136 / 44",
+    "E1: unserved critical kWh": "9.455",
+    "E1: episodes with critical loss": 5,
+    "E1: unserved non-critical kWh": "60.333"
+   },
+   {
+    "arm": "A5",
+    "episodes": 45,
+    "plan physics valid": "100.0%",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "136 / 44",
+    "E1: unserved critical kWh": "9.455",
+    "E1: episodes with critical loss": 5,
+    "E1: unserved non-critical kWh": "60.333"
+   },
+   {
+    "arm": "A6",
+    "episodes": 45,
+    "plan physics valid": "n/a",
+    "unserved critical kWh": "0.000",
+    "executor overrides (hours / episodes)": "5 / 2",
+    "E1: unserved critical kWh": "0.000",
+    "E1: episodes with critical loss": 0,
+    "E1: unserved non-critical kWh": "0.000"
+   }
+  ],
+  "e1_per_site": [
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A0",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.147",
+    "critical kWh lost (E1, no override)": "19.036",
+    "episodes with critical loss (E1)": 9,
+    "non-critical kWh lost (E1)": "548.270",
+    "gold satisfied (E1)": "13.3%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A1",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "406.728",
+    "episodes with critical loss (E1)": 11,
+    "non-critical kWh lost (E1)": "642.020",
+    "gold satisfied (E1)": "0.0%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A2",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "212.340",
+    "gold satisfied (E1)": "100.0%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A3",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "1.163",
+    "episodes with critical loss (E1)": 2,
+    "non-critical kWh lost (E1)": "275.209",
+    "gold satisfied (E1)": "86.7%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A4",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "22.031",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A5",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "22.031",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "ahmedabad_cold_store",
+    "arm": "A6",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "0.000",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A0",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "0.000",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A1",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.397",
+    "episodes with critical loss (E1)": 3,
+    "non-critical kWh lost (E1)": "1.360",
+    "gold satisfied (E1)": "80.0%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A2",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.014",
+    "episodes with critical loss (E1)": 1,
+    "non-critical kWh lost (E1)": "1.075",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A3",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.048",
+    "episodes with critical loss (E1)": 1,
+    "non-critical kWh lost (E1)": "0.218",
+    "gold satisfied (E1)": "93.3%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A4",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "1.893",
+    "episodes with critical loss (E1)": 3,
+    "non-critical kWh lost (E1)": "2.120",
+    "gold satisfied (E1)": "80.0%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A5",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "1.893",
+    "episodes with critical loss (E1)": 3,
+    "non-critical kWh lost (E1)": "2.120",
+    "gold satisfied (E1)": "80.0%"
+   },
+   {
+    "site": "munich_home",
+    "arm": "A6",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "0.000",
+    "gold satisfied (E1)": "100.0%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A0",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "12.505",
+    "gold satisfied (E1)": "80.0%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A1",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "7.562",
+    "episodes with critical loss (E1)": 2,
+    "non-critical kWh lost (E1)": "39.301",
+    "gold satisfied (E1)": "86.7%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A2",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "12.811",
+    "episodes with critical loss (E1)": 3,
+    "non-critical kWh lost (E1)": "41.755",
+    "gold satisfied (E1)": "80.0%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A3",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "7.552",
+    "episodes with critical loss (E1)": 2,
+    "non-critical kWh lost (E1)": "35.121",
+    "gold satisfied (E1)": "86.7%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A4",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "7.562",
+    "episodes with critical loss (E1)": 2,
+    "non-critical kWh lost (E1)": "36.182",
+    "gold satisfied (E1)": "86.7%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A5",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "7.562",
+    "episodes with critical loss (E1)": 2,
+    "non-critical kWh lost (E1)": "36.182",
+    "gold satisfied (E1)": "86.7%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "arm": "A6",
+    "episodes": 15,
+    "critical kWh lost (with override)": "0.000",
+    "critical kWh lost (E1, no override)": "0.000",
+    "episodes with critical loss (E1)": 0,
+    "non-critical kWh lost (E1)": "0.000",
+    "gold satisfied (E1)": "100.0%"
+   }
+  ],
+  "error_decomposition": [
+   {
+    "site": "ahmedabad_cold_store",
+    "episodes": 90,
+    "A4 pooled gap": "+0.075%",
+    "translation (A4 - A5)": "+0.000%",
+    "forecast (A5 - A6 executed)": "+0.075%",
+    "remainder (A6 executed - bound)": "+0.000%"
+   },
+   {
+    "site": "munich_home",
+    "episodes": 90,
+    "A4 pooled gap": "+1.530%",
+    "translation (A4 - A5)": "+0.000%",
+    "forecast (A5 - A6 executed)": "+1.530%",
+    "remainder (A6 executed - bound)": "+0.000%"
+   },
+   {
+    "site": "nairobi_clinic",
+    "episodes": 80,
+    "A4 pooled gap": "+0.143%",
+    "translation (A4 - A5)": "+0.000%",
+    "forecast (A5 - A6 executed)": "+0.143%",
+    "remainder (A6 executed - bound)": "+0.000%"
+   }
+  ],
+  "a4_spec_by_language": [
+   {
+    "group": "English set",
+    "episodes": 170,
+    "exact match": "99.4%",
+    "mean precision": "0.997",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "multilingual: en",
+    "episodes": 18,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "multilingual: es",
+    "episodes": 18,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "multilingual: hi",
+    "episodes": 18,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "multilingual: pt",
+    "episodes": 18,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "multilingual: de",
+    "episodes": 18,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   }
+  ],
+  "a4_spec_by_site": [
+   {
+    "group": "ahmedabad_cold_store",
+    "episodes": 90,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "munich_home",
+    "episodes": 90,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "nairobi_clinic",
+    "episodes": 80,
+    "exact match": "98.8%",
+    "mean precision": "0.994",
+    "mean recall": "1.000"
+   }
+  ],
+  "a4_spec_by_template": [
+   {
+    "group": "cost_min",
+    "episodes": 15,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "evening_reserve",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "outage_critical",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "no_export_midday",
+    "episodes": 10,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "storm_full",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "import_cap_afternoon",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "never_below",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "peak_only_discharge",
+    "episodes": 10,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "cover_critical_hours",
+    "episodes": 15,
+    "exact match": "93.3%",
+    "mean precision": "0.967",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "save_cycles",
+    "episodes": 30,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "end_of_day_reserve",
+    "episodes": 15,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   },
+   {
+    "group": "outage_then_reserve",
+    "episodes": 15,
+    "exact match": "100.0%",
+    "mean precision": "1.000",
+    "mean recall": "1.000"
+   }
+  ],
+  "a4_repair_rounds": [
+   {
+    "repair rounds": 0,
+    "episodes": 194
+   },
+   {
+    "repair rounds": 1,
+    "episodes": 63
+   },
+   {
+    "repair rounds": 2,
+    "episodes": 3
+   }
+  ],
+  "a4_repair_triggers": [
+   {
+    "check": "verified_plan",
+    "repairs triggered (attempts failing it)": 0
+   },
+   {
+    "check": "coverage",
+    "repairs triggered (attempts failing it)": 0
+   },
+   {
+    "check": "grounded_explanation",
+    "repairs triggered (attempts failing it)": 68
+   },
+   {
+    "check": "review",
+    "repairs triggered (attempts failing it)": 1
+   }
+  ],
+  "a4_repair_combinations": [
+   {
+    "failed checks": "grounded_explanation",
+    "repairs": 68
+   },
+   {
+    "failed checks": "review",
+    "repairs": 1
+   }
+  ],
+  "a4_gate_outcomes": [
+   {
+    "outcome": "review approved",
+    "episodes": 260
+   },
+   {
+    "outcome": "review not approved",
+    "episodes": 0
+   },
+   {
+    "outcome": "review unavailable",
+    "episodes": 0
+   },
+   {
+    "outcome": "review disputed (accepted with flag)",
+    "episodes": 0
+   },
+   {
+    "outcome": "explanation not grounded (accepted with flag)",
+    "episodes": 0
+   },
+   {
+    "outcome": "escalated with plan",
+    "episodes": 0
+   },
+   {
+    "outcome": "escalated to fallback",
+    "episodes": 0
+   }
+  ],
+  "cost_speed": [
+   {
+    "arm": "A2",
+    "episodes": 260,
+    "LLM USD / episode": "0.0198",
+    "LLM USD total": "5.15",
+    "median latency s": "16.1",
+    "p90 latency s": "22.0",
+    "tokens in / episode": "1460",
+    "tokens out / episode": "4627"
+   },
+   {
+    "arm": "A3",
+    "episodes": 260,
+    "LLM USD / episode": "0.0515",
+    "LLM USD total": "13.39",
+    "median latency s": "39.3",
+    "p90 latency s": "60.4",
+    "tokens in / episode": "33336",
+    "tokens out / episode": "9993"
+   },
+   {
+    "arm": "A4",
+    "episodes": 260,
+    "LLM USD / episode": "0.0114",
+    "LLM USD total": "2.97",
+    "median latency s": "8.5",
+    "p90 latency s": "13.3",
+    "tokens in / episode": "15161",
+    "tokens out / episode": "2024"
+   }
+  ],
+  "goal_by_template": [
+   {
+    "template": "cost_min",
+    "held out": "",
+    "A0": "100% (15/15)",
+    "A1": "100% (15/15)",
+    "A2": "100% (15/15)",
+    "A3": "100% (15/15)",
+    "A4": "100% (15/15)",
+    "A5": "100% (15/15)",
+    "A6": "100% (15/15)"
+   },
+   {
+    "template": "evening_reserve",
+    "held out": "",
+    "A0": "37% (11/30)",
+    "A1": "63% (19/30)",
+    "A2": "87% (26/30)",
+    "A3": "93% (28/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "outage_critical",
+    "held out": "",
+    "A0": "100% (30/30)",
+    "A1": "100% (30/30)",
+    "A2": "100% (30/30)",
+    "A3": "100% (30/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "no_export_midday",
+    "held out": "",
+    "A0": "60% (6/10)",
+    "A1": "40% (4/10)",
+    "A2": "100% (10/10)",
+    "A3": "100% (10/10)",
+    "A4": "100% (10/10)",
+    "A5": "100% (10/10)",
+    "A6": "100% (10/10)"
+   },
+   {
+    "template": "storm_full",
+    "held out": "",
+    "A0": "13% (4/30)",
+    "A1": "10% (3/30)",
+    "A2": "80% (24/30)",
+    "A3": "77% (23/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "import_cap_afternoon",
+    "held out": "",
+    "A0": "100% (30/30)",
+    "A1": "67% (20/30)",
+    "A2": "100% (30/30)",
+    "A3": "100% (30/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "never_below",
+    "held out": "",
+    "A0": "10% (3/30)",
+    "A1": "40% (12/30)",
+    "A2": "83% (25/30)",
+    "A3": "100% (30/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "peak_only_discharge",
+    "held out": "",
+    "A0": "0% (0/10)",
+    "A1": "50% (5/10)",
+    "A2": "100% (10/10)",
+    "A3": "100% (10/10)",
+    "A4": "100% (10/10)",
+    "A5": "100% (10/10)",
+    "A6": "100% (10/10)"
+   },
+   {
+    "template": "cover_critical_hours",
+    "held out": "",
+    "A0": "53% (8/15)",
+    "A1": "80% (12/15)",
+    "A2": "93% (14/15)",
+    "A3": "100% (15/15)",
+    "A4": "100% (15/15)",
+    "A5": "100% (15/15)",
+    "A6": "100% (15/15)"
+   },
+   {
+    "template": "save_cycles",
+    "held out": "",
+    "A0": "67% (20/30)",
+    "A1": "40% (12/30)",
+    "A2": "93% (28/30)",
+    "A3": "93% (28/30)",
+    "A4": "100% (30/30)",
+    "A5": "100% (30/30)",
+    "A6": "100% (30/30)"
+   },
+   {
+    "template": "end_of_day_reserve",
+    "held out": "yes",
+    "A0": "40% (6/15)",
+    "A1": "47% (7/15)",
+    "A2": "67% (10/15)",
+    "A3": "80% (12/15)",
+    "A4": "100% (15/15)",
+    "A5": "100% (15/15)",
+    "A6": "100% (15/15)"
+   },
+   {
+    "template": "outage_then_reserve",
+    "held out": "yes",
+    "A0": "40% (6/15)",
+    "A1": "60% (9/15)",
+    "A2": "87% (13/15)",
+    "A3": "73% (11/15)",
+    "A4": "80% (12/15)",
+    "A5": "80% (12/15)",
+    "A6": "93% (14/15)"
+   }
+  ],
+  "goal_by_language": [
+   {
+    "language": "en",
+    "A0": "50% (9/18)",
+    "A1": "50% (9/18)",
+    "A2": "89% (16/18)",
+    "A3": "94% (17/18)",
+    "A4": "100% (18/18)",
+    "A5": "100% (18/18)",
+    "A6": "100% (18/18)"
+   },
+   {
+    "language": "es",
+    "A0": "50% (9/18)",
+    "A1": "50% (9/18)",
+    "A2": "94% (17/18)",
+    "A3": "100% (18/18)",
+    "A4": "100% (18/18)",
+    "A5": "100% (18/18)",
+    "A6": "100% (18/18)"
+   },
+   {
+    "language": "hi",
+    "A0": "50% (9/18)",
+    "A1": "50% (9/18)",
+    "A2": "94% (17/18)",
+    "A3": "100% (18/18)",
+    "A4": "100% (18/18)",
+    "A5": "100% (18/18)",
+    "A6": "100% (18/18)"
+   },
+   {
+    "language": "pt",
+    "A0": "50% (9/18)",
+    "A1": "50% (9/18)",
+    "A2": "100% (18/18)",
+    "A3": "94% (17/18)",
+    "A4": "100% (18/18)",
+    "A5": "100% (18/18)",
+    "A6": "100% (18/18)"
+   },
+   {
+    "language": "de",
+    "A0": "50% (9/18)",
+    "A1": "50% (9/18)",
+    "A2": "89% (16/18)",
+    "A3": "94% (17/18)",
+    "A4": "100% (18/18)",
+    "A5": "100% (18/18)",
+    "A6": "100% (18/18)"
+   }
+  ]
+ }
+}

@@ -1,0 +1,4 @@
+group,episodes,exact match,mean precision,mean recall
+ahmedabad_cold_store,90,100.0%,1.000,1.000
+munich_home,90,100.0%,1.000,1.000
+nairobi_clinic,80,98.8%,0.994,1.000

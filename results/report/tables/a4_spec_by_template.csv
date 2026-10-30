@@ -1,0 +1,13 @@
+group,episodes,exact match,mean precision,mean recall
+cost_min,15,100.0%,1.000,1.000
+evening_reserve,30,100.0%,1.000,1.000
+outage_critical,30,100.0%,1.000,1.000
+no_export_midday,10,100.0%,1.000,1.000
+storm_full,30,100.0%,1.000,1.000
+import_cap_afternoon,30,100.0%,1.000,1.000
+never_below,30,100.0%,1.000,1.000
+peak_only_discharge,10,100.0%,1.000,1.000
+cover_critical_hours,15,93.3%,0.967,1.000
+save_cycles,30,100.0%,1.000,1.000
+end_of_day_reserve,15,100.0%,1.000,1.000
+outage_then_reserve,15,100.0%,1.000,1.000

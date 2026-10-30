@@ -1,0 +1,4705 @@
+{
+ "split": "test",
+ "seed": 2026,
+ "n_episodes": 260,
+ "plan_sha256": "2ac37bf2cb4d225d1e90b6f7a59517ada69eda66602c3b83876a9599c35413bc",
+ "counts": {
+  "site": {
+   "ahmedabad_cold_store": 90,
+   "munich_home": 90,
+   "nairobi_clinic": 80
+  },
+  "template": {
+   "cost_min": 15,
+   "cover_critical_hours": 15,
+   "end_of_day_reserve": 15,
+   "evening_reserve": 30,
+   "import_cap_afternoon": 30,
+   "never_below": 30,
+   "no_export_midday": 10,
+   "outage_critical": 30,
+   "outage_then_reserve": 15,
+   "peak_only_discharge": 10,
+   "save_cycles": 30,
+   "storm_full": 30
+  },
+  "language": {
+   "de": 18,
+   "en": 188,
+   "es": 18,
+   "hi": 18,
+   "pt": 18
+  },
+  "set": {
+   "english": 170,
+   "multilingual": 90
+  }
+ },
+ "episodes": [
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_cost_min_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_evening_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_outage_critical_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Power cut announced for 14:00-17:00. The cold room must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_no_export_midday_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_storm_full_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_import_cap_afternoon_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 30 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_never_below_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_peak_only_discharge_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_cover_critical_hours_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "By 19:00 I want enough stored to keep the cold room (8 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 60.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_save_cycles_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 100 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_end_of_day_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_outage_then_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Planned outage from 9 AM to noon. Keep the cold room on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_cost_min_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_evening_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_outage_critical_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the cold room running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_no_export_midday_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No export to the grid from 10:00 to 16:00, please. Otherwise keep costs down.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_storm_full_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_import_cap_afternoon_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 13:00 to 17:00 don't draw more than 30 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_never_below_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_peak_only_discharge_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Save the battery for the peak period: discharge only in peak hours.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_cover_critical_hours_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the cold room (8 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 60.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_save_cycles_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 100 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_end_of_day_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_outage_then_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Grid maintenance 09:00-12:00. The cold room must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_cost_min_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_evening_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_outage_critical_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Power cut announced for 14:00-17:00. The cold room must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_no_export_midday_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_storm_full_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_import_cap_afternoon_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 30 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_never_below_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_peak_only_discharge_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_cover_critical_hours_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "By 19:00 I want enough stored to keep the cold room (8 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 60.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_save_cycles_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 100 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_end_of_day_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-08-30_outage_then_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-08-30",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Planned outage from 9 AM to noon. Keep the cold room on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_cost_min_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_evening_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_outage_critical_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the cold room running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_no_export_midday_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No export to the grid from 10:00 to 16:00, please. Otherwise keep costs down.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_storm_full_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_import_cap_afternoon_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 13:00 to 17:00 don't draw more than 30 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_never_below_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_peak_only_discharge_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Save the battery for the peak period: discharge only in peak hours.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_cover_critical_hours_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the cold room (8 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 60.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_save_cycles_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 100 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_end_of_day_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-11-01_outage_then_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-11-01",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Grid maintenance 09:00-12:00. The cold room must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_cost_min_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_evening_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_outage_critical_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Power cut announced for 14:00-17:00. The cold room must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_no_export_midday_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_storm_full_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_import_cap_afternoon_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 30 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_never_below_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_peak_only_discharge_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_cover_critical_hours_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "By 19:00 I want enough stored to keep the cold room (8 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 60.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_save_cycles_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 100 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_end_of_day_reserve_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_outage_then_reserve_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Planned outage from 9 AM to noon. Keep the cold room on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_cost_min_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_evening_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_outage_critical_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Power cut announced for 14:00-17:00. The fridge, router and lights must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_no_export_midday_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_storm_full_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_import_cap_afternoon_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 7 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_never_below_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_peak_only_discharge_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 8,
+      "end_hour": 9
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 20
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_cover_critical_hours_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "By 19:00 I want enough stored to keep the fridge, router and lights (0.15 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 16.3
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_save_cycles_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Go easy on the battery today: no more than 15 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_end_of_day_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_outage_then_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "Planned outage from 9 AM to noon. Keep the fridge, router and lights on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_cost_min_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_evening_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_outage_critical_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the fridge, router and lights running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_no_export_midday_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "No export to the grid from 10:00 to 16:00, please. Otherwise keep costs down.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_storm_full_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_import_cap_afternoon_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "From 13:00 to 17:00 don't draw more than 7 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_never_below_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_peak_only_discharge_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Save the battery for the peak period: discharge only in peak hours.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 7,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 20
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_cover_critical_hours_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the fridge, router and lights (0.15 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 16.3
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_save_cycles_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 15 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_end_of_day_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-03-15_outage_then_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-03-15",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "Grid maintenance 09:00-12:00. The fridge, router and lights must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_cost_min_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_evening_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_outage_critical_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Power cut announced for 14:00-17:00. The fridge, router and lights must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_no_export_midday_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_storm_full_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_import_cap_afternoon_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 7 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_never_below_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_peak_only_discharge_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 7,
+      "end_hour": 9
+     },
+     {
+      "start_hour": 18,
+      "end_hour": 20
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_cover_critical_hours_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "By 19:00 I want enough stored to keep the fridge, router and lights (0.15 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 16.3
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_save_cycles_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Go easy on the battery today: no more than 15 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_end_of_day_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-07-06_outage_then_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-07-06",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "Planned outage from 9 AM to noon. Keep the fridge, router and lights on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_cost_min_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_evening_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_outage_critical_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the fridge, router and lights running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_no_export_midday_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "No export to the grid from 10:00 to 16:00, please. Otherwise keep costs down.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_storm_full_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_import_cap_afternoon_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "From 13:00 to 17:00 don't draw more than 7 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_never_below_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_peak_only_discharge_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Save the battery for the peak period: discharge only in peak hours.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 7,
+      "end_hour": 9
+     },
+     {
+      "start_hour": 19,
+      "end_hour": 21
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_cover_critical_hours_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the fridge, router and lights (0.15 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 16.3
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_save_cycles_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 15 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_end_of_day_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_outage_then_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "Grid maintenance 09:00-12:00. The fridge, router and lights must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_cost_min_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_evening_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_outage_critical_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Power cut announced for 14:00-17:00. The fridge, router and lights must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_no_export_midday_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "no_export_midday",
+   "goal_id": "no_export_midday_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today.",
+   "gold": {
+    "no_export_windows": [
+     {
+      "start_hour": 10,
+      "end_hour": 16
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_storm_full_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_import_cap_afternoon_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 7 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_never_below_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_peak_only_discharge_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "peak_only_discharge",
+   "goal_id": "peak_only_discharge_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Only use the battery during peak-price hours; don't discharge it at any other time.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 7,
+      "end_hour": 8
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 20
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_cover_critical_hours_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "By 19:00 I want enough stored to keep the fridge, router and lights (0.15 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 16.3
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_save_cycles_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Go easy on the battery today: no more than 15 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_end_of_day_reserve_p1",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-11-12_outage_then_reserve_p0",
+   "site_id": "munich_home",
+   "date": "2025-11-12",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": true,
+   "goal": "Planned outage from 9 AM to noon. Keep the fridge, router and lights on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_cost_min_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_evening_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_outage_critical_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the vaccine fridge, lights and essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_storm_full_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_import_cap_afternoon_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 10 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_never_below_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_cover_critical_hours_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the vaccine fridge, lights and essential equipment (0.8 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 22.6
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_save_cycles_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 40 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_end_of_day_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-02-17_outage_then_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-02-17",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Grid maintenance 09:00-12:00. The vaccine fridge, lights and essential equipment must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_cost_min_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_evening_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_outage_critical_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Power cut announced for 14:00-17:00. The vaccine fridge, lights and essential equipment must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_storm_full_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_import_cap_afternoon_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 13:00 to 17:00 don't draw more than 10 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_never_below_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_cover_critical_hours_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "By 19:00 I want enough stored to keep the vaccine fridge, lights and essential equipment (0.8 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 22.6
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_save_cycles_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 40 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_end_of_day_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_outage_then_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Planned outage from 9 AM to noon. Keep the vaccine fridge, lights and essential equipment on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_cost_min_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_evening_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_outage_critical_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the vaccine fridge, lights and essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_storm_full_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_import_cap_afternoon_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 10 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_never_below_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_cover_critical_hours_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the vaccine fridge, lights and essential equipment (0.8 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 22.6
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_save_cycles_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 40 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_end_of_day_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-06-19_outage_then_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-06-19",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Grid maintenance 09:00-12:00. The vaccine fridge, lights and essential equipment must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_cost_min_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "No special requests today, just run the battery to save money.",
+   "gold": {}
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_evening_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_outage_critical_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Power cut announced for 14:00-17:00. The vaccine fridge, lights and essential equipment must not stop; spend as little as possible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_storm_full_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_import_cap_afternoon_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 13:00 to 17:00 don't draw more than 10 kW from the grid.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_never_below_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "never_below_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_cover_critical_hours_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "By 19:00 I want enough stored to keep the vaccine fridge, lights and essential equipment (0.8 kW) going for 6 hours on the battery alone.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 22.6
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_save_cycles_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 40 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_end_of_day_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "At midnight the battery should be at 60% or more; minimise cost until then.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_outage_then_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Planned outage from 9 AM to noon. Keep the vaccine fridge, lights and essential equipment on, and from noon until 8 PM keep at least 40% in the battery.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_cost_min_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "cost_min",
+   "goal_id": "cost_min_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep today's electricity bill as low as possible.",
+   "gold": {}
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_evening_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "evening_reserve",
+   "goal_id": "evening_reserve_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_outage_critical_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "outage_critical",
+   "goal_id": "outage_critical_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the vaccine fridge, lights and essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_storm_full_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "storm_full",
+   "goal_id": "storm_full_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_import_cap_afternoon_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "import_cap_afternoon_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Our grid connection is limited this afternoon: keep grid import at or below 10 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_never_below_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "never_below",
+   "goal_id": "never_below_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 30 percent or more at all times, and keep costs low.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_cover_critical_hours_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "cover_critical_hours",
+   "goal_id": "cover_critical_hours_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the vaccine fridge, lights and essential equipment (0.8 kW) on its own for 6 hours.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 19,
+      "min_soc_pct": 22.6
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_save_cycles_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "save_cycles",
+   "goal_id": "save_cycles_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "To reduce battery wear, limit today's charging plus discharging to 40 kWh altogether, and keep the bill low.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_end_of_day_reserve_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "end_of_day_reserve",
+   "goal_id": "end_of_day_reserve_p0",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "We start early tomorrow, so finish the day with the battery at least 60% charged.",
+   "gold": {
+    "end_of_day_min_soc_pct": 60.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_outage_then_reserve_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "outage_then_reserve",
+   "goal_id": "outage_then_reserve_p1",
+   "language": "en",
+   "held_out_template": true,
+   "held_out_site": false,
+   "goal": "Grid maintenance 09:00-12:00. The vaccine fridge, lights and essential equipment must stay powered; from 12:00 to 20:00 hold 40% or more in reserve.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 9,
+      "end_hour": 12
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_evening_reserve_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_evening_reserve_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantén al menos la mitad de la batería cargada de 6 de la tarde a 10 de la noche, por si se corta la luz.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_evening_reserve_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "बिजली जाने की स्थिति के लिए शाम 6 बजे से रात 10 बजे तक बैटरी कम से कम आधी चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_evening_reserve_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantenha pelo menos metade da bateria carregada das 18h às 22h, caso falte energia.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_evening_reserve_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte die Batterie von 18 bis 22 Uhr mindestens zur Hälfte geladen, falls der Strom ausfällt.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_outage_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_outage_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "La red estará cortada de 2 a 5 de la tarde por mantenimiento programado. Mantén funcionando el equipo esencial y la factura lo más baja posible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_outage_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "नियोजित रखरखाव के कारण दोपहर 2 बजे से शाम 5 बजे तक ग्रिड बंद रहेगा। ज़रूरी उपकरण चालू रखें और बिजली का बिल कम रखें।",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_outage_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A rede ficará desligada das 14h às 17h para manutenção programada. Mantenha os equipamentos essenciais funcionando e a conta de luz baixa.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_outage_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Das Netz wird von 14 bis 17 Uhr wegen geplanter Wartungsarbeiten abgeschaltet. Sorge dafür, dass die wichtigsten Geräte weiterlaufen, und halte die Stromrechnung niedrig.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_storm_full_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_storm_full_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Esta noche viene una tormenta. Asegúrate de que la batería esté completamente cargada para las 6 de la tarde.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_storm_full_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज रात तूफ़ान आने वाला है। ध्यान रखें कि शाम 6 बजे तक बैटरी पूरी चार्ज हो जाए।",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_storm_full_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Vem uma tempestade hoje à noite. Garanta que a bateria esteja cheia até as 18h.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_storm_full_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Heute Abend zieht ein Sturm auf. Sorge dafür, dass die Batterie bis 18 Uhr voll ist.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_never_below_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_never_below_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy no dejes que la batería baje del 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_never_below_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज बैटरी को कभी भी 30% से नीचे न जाने दें।",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_never_below_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, não deixe a bateria ficar abaixo de 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_never_below_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Lass die Batterie heute nie unter 30% fallen.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_import_cap_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep grid import at or below 30 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_import_cap_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantén la importación de la red en 30 kW o menos de 1 a 5 de la tarde.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_import_cap_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "दोपहर 1 बजे से शाम 5 बजे तक ग्रिड से ली जाने वाली बिजली 30 kW या उससे कम रखें।",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_import_cap_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantenha a importação da rede em no máximo 30 kW das 13h às 17h.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_import_cap_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte den Netzbezug von 13 bis 17 Uhr bei höchstens 30 kW.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_save_cycles_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 100 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_save_cycles_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy cuida la batería: entre carga y descarga, no más de 100 kWh en total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_save_cycles_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज बैटरी पर ज़्यादा ज़ोर न डालें: चार्ज और डिस्चार्ज मिलाकर कुल 100 kWh से ज़्यादा नहीं।",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_save_cycles_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, poupe a bateria: no máximo 100 kWh de carga e descarga no total.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-12-17_ml_save_cycles_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-12-17",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Schone heute die Batterie: Laden und Entladen zusammen höchstens 100 kWh.",
+   "gold": {
+    "max_throughput_kwh": 100.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_evening_reserve_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_evening_reserve_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Mantén al menos la mitad de la batería cargada de 6 de la tarde a 10 de la noche, por si se corta la luz.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_evening_reserve_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "बिजली जाने की स्थिति के लिए शाम 6 बजे से रात 10 बजे तक बैटरी कम से कम आधी चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_evening_reserve_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Mantenha pelo menos metade da bateria carregada das 18h às 22h, caso falte energia.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_evening_reserve_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Halte die Batterie von 18 bis 22 Uhr mindestens zur Hälfte geladen, falls der Strom ausfällt.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_outage_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_outage_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "La red estará cortada de 2 a 5 de la tarde por mantenimiento programado. Mantén funcionando el equipo esencial y la factura lo más baja posible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_outage_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "नियोजित रखरखाव के कारण दोपहर 2 बजे से शाम 5 बजे तक ग्रिड बंद रहेगा। ज़रूरी उपकरण चालू रखें और बिजली का बिल कम रखें।",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_outage_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "A rede ficará desligada das 14h às 17h para manutenção programada. Mantenha os equipamentos essenciais funcionando e a conta de luz baixa.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_outage_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Das Netz wird von 14 bis 17 Uhr wegen geplanter Wartungsarbeiten abgeschaltet. Sorge dafür, dass die wichtigsten Geräte weiterlaufen, und halte die Stromrechnung niedrig.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_storm_full_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_storm_full_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Esta noche viene una tormenta. Asegúrate de que la batería esté completamente cargada para las 6 de la tarde.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_storm_full_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "आज रात तूफ़ान आने वाला है। ध्यान रखें कि शाम 6 बजे तक बैटरी पूरी चार्ज हो जाए।",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_storm_full_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Vem uma tempestade hoje à noite. Garanta que a bateria esteja cheia até as 18h.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_storm_full_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Heute Abend zieht ein Sturm auf. Sorge dafür, dass die Batterie bis 18 Uhr voll ist.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_never_below_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_never_below_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoy no dejes que la batería baje del 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_never_below_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "आज बैटरी को कभी भी 30% से नीचे न जाने दें।",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_never_below_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoje, não deixe a bateria ficar abaixo de 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_never_below_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Lass die Batterie heute nie unter 30% fallen.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_import_cap_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep grid import at or below 7 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_import_cap_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Mantén la importación de la red en 7 kW o menos de 1 a 5 de la tarde.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_import_cap_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "दोपहर 1 बजे से शाम 5 बजे तक ग्रिड से ली जाने वाली बिजली 7 kW या उससे कम रखें।",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_import_cap_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Mantenha a importação da rede em no máximo 7 kW das 13h às 17h.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_import_cap_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Halte den Netzbezug von 13 bis 17 Uhr bei höchstens 7 kW.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_save_cycles_en",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Go easy on the battery today: no more than 15 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_save_cycles_es",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoy cuida la batería: entre carga y descarga, no más de 15 kWh en total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_save_cycles_hi",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "आज बैटरी पर ज़्यादा ज़ोर न डालें: चार्ज और डिस्चार्ज मिलाकर कुल 15 kWh से ज़्यादा नहीं।",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_save_cycles_pt",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoje, poupe a bateria: no máximo 15 kWh de carga e descarga no total.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_ml_save_cycles_de",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Schone heute die Batterie: Laden und Entladen zusammen höchstens 15 kWh.",
+   "gold": {
+    "max_throughput_kwh": 15.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_evening_reserve_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_evening_reserve_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantén al menos la mitad de la batería cargada de 6 de la tarde a 10 de la noche, por si se corta la luz.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_evening_reserve_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "बिजली जाने की स्थिति के लिए शाम 6 बजे से रात 10 बजे तक बैटरी कम से कम आधी चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_evening_reserve_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantenha pelo menos metade da bateria carregada das 18h às 22h, caso falte energia.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_evening_reserve_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "evening_reserve",
+   "goal_id": "ml_evening_reserve_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte die Batterie von 18 bis 22 Uhr mindestens zur Hälfte geladen, falls der Strom ausfällt.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 22,
+      "min_soc_pct": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_outage_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the essential equipment running and keep the bill low.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_outage_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "La red estará cortada de 2 a 5 de la tarde por mantenimiento programado. Mantén funcionando el equipo esencial y la factura lo más baja posible.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_outage_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "नियोजित रखरखाव के कारण दोपहर 2 बजे से शाम 5 बजे तक ग्रिड बंद रहेगा। ज़रूरी उपकरण चालू रखें और बिजली का बिल कम रखें।",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_outage_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A rede ficará desligada das 14h às 17h para manutenção programada. Mantenha os equipamentos essenciais funcionando e a conta de luz baixa.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_outage_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "outage_critical",
+   "goal_id": "ml_outage_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Das Netz wird von 14 bis 17 Uhr wegen geplanter Wartungsarbeiten abgeschaltet. Sorge dafür, dass die wichtigsten Geräte weiterlaufen, und halte die Stromrechnung niedrig.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_storm_full_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "A storm is coming tonight. Make sure the battery is full by 6 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_storm_full_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Esta noche viene una tormenta. Asegúrate de que la batería esté completamente cargada para las 6 de la tarde.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_storm_full_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज रात तूफ़ान आने वाला है। ध्यान रखें कि शाम 6 बजे तक बैटरी पूरी चार्ज हो जाए।",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_storm_full_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Vem uma tempestade hoje à noite. Garanta que a bateria esteja cheia até as 18h.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_storm_full_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "storm_full",
+   "goal_id": "ml_storm_full_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Heute Abend zieht ein Sturm auf. Sorge dafür, dass die Batterie bis 18 Uhr voll ist.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 18,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_never_below_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Never let the battery drop below 30% today.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_never_below_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy no dejes que la batería baje del 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_never_below_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज बैटरी को कभी भी 30% से नीचे न जाने दें।",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_never_below_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, não deixe a bateria ficar abaixo de 30%.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_never_below_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "never_below",
+   "goal_id": "ml_never_below_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Lass die Batterie heute nie unter 30% fallen.",
+   "gold": {
+    "min_soc_pct_all_day": 30.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_import_cap_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep grid import at or below 10 kW from 1 PM to 5 PM.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_import_cap_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantén la importación de la red en 10 kW o menos de 1 a 5 de la tarde.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_import_cap_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "दोपहर 1 बजे से शाम 5 बजे तक ग्रिड से ली जाने वाली बिजली 10 kW या उससे कम रखें।",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_import_cap_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Mantenha a importação da rede em no máximo 10 kW das 13h às 17h.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_import_cap_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "import_cap_afternoon",
+   "goal_id": "ml_import_cap_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte den Netzbezug von 13 bis 17 Uhr bei höchstens 10 kW.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 13,
+      "end_hour": 17,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_save_cycles_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Go easy on the battery today: no more than 40 kWh charged and discharged in total.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_save_cycles_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy cuida la batería: entre carga y descarga, no más de 40 kWh en total.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_save_cycles_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज बैटरी पर ज़्यादा ज़ोर न डालें: चार्ज और डिस्चार्ज मिलाकर कुल 40 kWh से ज़्यादा नहीं।",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_save_cycles_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, poupe a bateria: no máximo 40 kWh de carga e descarga no total.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-11-09_ml_save_cycles_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-11-09",
+   "template_id": "save_cycles",
+   "goal_id": "ml_save_cycles_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Schone heute die Batterie: Laden und Entladen zusammen höchstens 40 kWh.",
+   "gold": {
+    "max_throughput_kwh": 40.0
+   }
+  }
+ ]
+}

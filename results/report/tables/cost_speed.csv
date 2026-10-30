@@ -1,0 +1,4 @@
+arm,episodes,LLM USD / episode,LLM USD total,median latency s,p90 latency s,tokens in / episode,tokens out / episode
+A2,260,0.0198,5.15,16.1,22.0,1460,4627
+A3,260,0.0515,13.39,39.3,60.4,33336,9993
+A4,260,0.0114,2.97,8.5,13.3,15161,2024

@@ -1,0 +1,26 @@
+{
+ "created": "2026-10-30T23:29:03",
+ "run_id": "test-20261030-181315",
+ "code_fingerprint": "20abe8704fc57c9aa9132bf53e7da21c2023985f3a00a3ccc5c8813f6e48f55a",
+ "tolerance": 1e-09,
+ "rows_stored": 1820,
+ "rows_checked": 1820,
+ "rows_not_checked": 0,
+ "passed": true,
+ "gate_fields": [
+  "realized_cost",
+  "realized_total_cost",
+  "gold_satisfied"
+ ],
+ "max_abs_diff": {
+  "realized_cost": 0.0,
+  "realized_total_cost": 0.0,
+  "unserved_critical_kwh": 0.0,
+  "spec_precision": 0.0,
+  "spec_recall": 0.0
+ },
+ "gate_mismatches": [],
+ "info_mismatches": [],
+ "recovery_errors": [],
+ "a4_replayed_tool_outputs_matching_trace": 524
+}

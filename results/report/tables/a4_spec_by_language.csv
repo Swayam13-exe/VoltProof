@@ -1,0 +1,7 @@
+group,episodes,exact match,mean precision,mean recall
+English set,170,99.4%,0.997,1.000
+multilingual: en,18,100.0%,1.000,1.000
+multilingual: es,18,100.0%,1.000,1.000
+multilingual: hi,18,100.0%,1.000,1.000
+multilingual: pt,18,100.0%,1.000,1.000
+multilingual: de,18,100.0%,1.000,1.000

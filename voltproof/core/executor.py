@@ -32,6 +32,10 @@ oracle, which plans on actual data (`plan_basis="actual"`).
 
 realized_cost = Σ p⁺·import − p⁻·export + β·Σ|b| (grid + degradation, the optimizer's definition).
 True outages are facts of the world (from the gold spec), the same for every arm.
+
+`outage_override=False` (SPEC §6.15 E1 only; the default True is the frozen behaviour) drops rule 2's
+deficit cover: in outage hours the battery follows its clipped setpoint, stores surplus PV within
+limits, and any deficit is unserved (non-critical first).
 """
 
 from __future__ import annotations
@@ -54,6 +58,7 @@ def execute(
     plan_basis: Literal["forecast", "actual"] = "forecast",
     protected_soc_kwh: Sequence[float] | None = None,
     import_limit_kw: Sequence[float] | None = None,
+    outage_override: bool = True,
 ) -> ExecutionResult:
     planned = np.asarray(list(battery_kw), dtype=float)
     if planned.shape != (HOURS,) or not np.all(np.isfinite(planned)):
@@ -87,7 +92,12 @@ def execute(
         b = min(max(planned[t], -max_discharge), max_charge)
         if abs(b - planned[t]) > TOL:
             clipped.append(t)
-        if t in outages:
+        if t in outages and not outage_override:  # E1 counterfactual: follow the plan, only store surplus PV
+            surplus = pv[t] - load[t] - b
+            if surplus > TOL and b < max_charge - TOL:
+                b = min(b + surplus, max_charge)
+                absorbed.append(t)
+        elif t in outages:
             residual = load[t] + b - pv[t]
             future_need = _future_critical_need(t, outages, critical, expected_pv)
             b_new = _outage_setpoint(b, residual, load[t], critical[t], e, e_min, max_discharge, max_charge, future_need, battery.eta_discharge)

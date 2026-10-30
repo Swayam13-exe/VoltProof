@@ -1,0 +1,8 @@
+outcome,episodes
+review approved,260
+review not approved,0
+review unavailable,0
+review disputed (accepted with flag),0
+explanation not grounded (accepted with flag),0
+escalated with plan,0
+escalated to fallback,0

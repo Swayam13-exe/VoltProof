@@ -1,0 +1,8 @@
+arm,episodes,plan physics valid,unserved critical kWh,executor overrides (hours / episodes),E1: unserved critical kWh,E1: episodes with critical loss,E1: unserved non-critical kWh
+A0,45,68.9%,0.147,41 / 22,19.036,9,560.775
+A1,45,46.7%,0.000,130 / 44,414.686,16,682.681
+A2,45,17.8%,0.000,121 / 43,12.825,4,255.170
+A3,45,57.8%,0.000,125 / 44,8.764,5,310.548
+A4,45,100.0%,0.000,136 / 44,9.455,5,60.333
+A5,45,100.0%,0.000,136 / 44,9.455,5,60.333
+A6,45,n/a,0.000,5 / 2,0.000,0,0.000

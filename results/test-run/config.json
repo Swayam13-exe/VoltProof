@@ -1,0 +1,45 @@
+{
+ "created": "2026-10-30T18:13:16",
+ "plan_only": false,
+ "args": {
+  "split": "test",
+  "arms": [
+   "A0",
+   "A1",
+   "A2",
+   "A3",
+   "A4",
+   "A5",
+   "A6"
+  ],
+  "sites": null,
+  "limit": null,
+  "episodes": null,
+  "pilot": false,
+  "plan_only": false,
+  "concurrency": 2,
+  "resume": false,
+  "run_id": null,
+  "force": false,
+  "seed": 2026
+ },
+ "fingerprint": "cb2f74a5a7ec2f5981cba2a6d8613173cd51133215840ff059e909c5dd4bfda9",
+ "code_fingerprint": "79958a98d7cc9d2291a3d57390fef973a9e76a9ed141acddc58a8a66efd5f5eb",
+ "plan_sha256": "2ac37bf2cb4d225d1e90b6f7a59517ada69eda66602c3b83876a9599c35413bc",
+ "settings": {
+  "llm_base_url": "https://inference.baseten.co/v1",
+  "llm_model": "meta-models/muse-spark-open-1026",
+  "llm_reasoning_effort": "medium",
+  "llm_max_output_tokens": "8192",
+  "llm_timeout_s": "120.0",
+  "price_input_usd_per_m": "1.25",
+  "price_output_usd_per_m": "4.25",
+  "price_cached_input_usd_per_m": "0.15",
+  "budget_usd_cap": "85.0",
+  "demo_budget_usd_cap": "20.0",
+  "live_mode": "False",
+  "cache_dir": "C:\\Meta Global AI Developer Hackathon\\VoltProof\\.cache\\llm",
+  "ledger_path": "C:\\Meta Global AI Developer Hackathon\\VoltProof\\runs\\ledger.jsonl"
+ },
+ "ledger_usd_at_start": 0.8200586499999997
+}

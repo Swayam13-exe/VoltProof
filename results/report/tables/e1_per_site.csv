@@ -1,0 +1,22 @@
+site,arm,episodes,critical kWh lost (with override),"critical kWh lost (E1, no override)",episodes with critical loss (E1),non-critical kWh lost (E1),gold satisfied (E1)
+ahmedabad_cold_store,A0,15,0.147,19.036,9,548.270,13.3%
+ahmedabad_cold_store,A1,15,0.000,406.728,11,642.020,0.0%
+ahmedabad_cold_store,A2,15,0.000,0.000,0,212.340,100.0%
+ahmedabad_cold_store,A3,15,0.000,1.163,2,275.209,86.7%
+ahmedabad_cold_store,A4,15,0.000,0.000,0,22.031,93.3%
+ahmedabad_cold_store,A5,15,0.000,0.000,0,22.031,93.3%
+ahmedabad_cold_store,A6,15,0.000,0.000,0,0.000,93.3%
+munich_home,A0,15,0.000,0.000,0,0.000,93.3%
+munich_home,A1,15,0.000,0.397,3,1.360,80.0%
+munich_home,A2,15,0.000,0.014,1,1.075,93.3%
+munich_home,A3,15,0.000,0.048,1,0.218,93.3%
+munich_home,A4,15,0.000,1.893,3,2.120,80.0%
+munich_home,A5,15,0.000,1.893,3,2.120,80.0%
+munich_home,A6,15,0.000,0.000,0,0.000,100.0%
+nairobi_clinic,A0,15,0.000,0.000,0,12.505,80.0%
+nairobi_clinic,A1,15,0.000,7.562,2,39.301,86.7%
+nairobi_clinic,A2,15,0.000,12.811,3,41.755,80.0%
+nairobi_clinic,A3,15,0.000,7.552,2,35.121,86.7%
+nairobi_clinic,A4,15,0.000,7.562,2,36.182,86.7%
+nairobi_clinic,A5,15,0.000,7.562,2,36.182,86.7%
+nairobi_clinic,A6,15,0.000,0.000,0,0.000,100.0%
