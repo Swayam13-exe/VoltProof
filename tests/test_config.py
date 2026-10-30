@@ -29,7 +29,7 @@ def test_env_example_matches_defaults_and_parses() -> None:
     assert s.llm_max_output_tokens == 8192 and isinstance(s.llm_max_output_tokens, int)
     assert s.llm_timeout_s == 120.0
     assert (s.price_input_usd_per_m, s.price_output_usd_per_m, s.price_cached_input_usd_per_m) == (1.25, 4.25, 0.15)
-    assert (s.budget_usd_cap, s.demo_budget_usd_cap) == (95.0, 20.0)
+    assert (s.budget_usd_cap, s.demo_budget_usd_cap) == (85.0, 20.0)
     assert s.live_mode is False
 
 

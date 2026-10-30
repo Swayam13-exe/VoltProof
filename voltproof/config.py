@@ -34,7 +34,7 @@ DEFAULTS: Mapping[str, str] = MappingProxyType(
         "PRICE_INPUT_USD_PER_M": "1.25",
         "PRICE_OUTPUT_USD_PER_M": "4.25",
         "PRICE_CACHED_INPUT_USD_PER_M": "0.15",
-        "BUDGET_USD_CAP": "95",
+        "BUDGET_USD_CAP": "85",
         "DEMO_BUDGET_USD_CAP": "20",
         "LIVE_MODE": "false",
     }

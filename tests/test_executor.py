@@ -137,7 +137,7 @@ def test_goal_topup_lets_a_forecast_plan_meet_its_reserve_when_the_sun_fails() -
 
     site, day, gold, plan = _pv_shortfall_reserve_case()
     assert plan.protected_soc_kwh is not None and plan.shortfalls == []
-    result = execute(plan.battery_kw, day, site, [], plan.export_limit_kw, protected_soc_kwh=plan.protected_soc_kwh)
+    result = execute(plan.battery_kw, day, site, [], export_limit_kw=plan.export_limit_kw, protected_soc_kwh=plan.protected_soc_kwh)
     assert result.grid_charge_limited_hours  # the PV charging it counted on is not taken from the grid ...
     assert result.goal_topup_hours  # ... except what the reserve needs
     assert min(result.soc_kwh[17:22]) >= 8.0 - 1e-6
@@ -150,7 +150,7 @@ def test_a_plan_without_protected_soc_gets_no_topup() -> None:
     from voltproof.core.metrics import gold_check
 
     site, day, gold, plan = _pv_shortfall_reserve_case()
-    result = execute(plan.battery_kw, day, site, [], plan.export_limit_kw)  # battery-only plan (like A0, A2, A3)
+    result = execute(plan.battery_kw, day, site, [], export_limit_kw=plan.export_limit_kw)  # battery-only plan (like A0, A2, A3)
     assert result.goal_topup_hours == []
     assert min(result.soc_kwh[17:22]) < 8.0 - 1e-6
     assert not gold_check(result, gold, site)[0]
@@ -201,7 +201,7 @@ def test_executing_an_optimizer_plan_on_its_own_data_reproduces_it() -> None:
         day = day.model_copy(update={"pv_actual_kw": day.pv_forecast_kw, "load_actual_kw": day.load_forecast_kw})
         goal = random_spec(rng).model_copy(update={"grid_outages": []})
         plan = solve(day, site, goal, use="actual")
-        result = execute(plan.battery_kw, day, site, [], plan.export_limit_kw, plan_basis="actual")
+        result = execute(plan.battery_kw, day, site, [], export_limit_kw=plan.export_limit_kw, plan_basis="actual")
         assert result.grid_charge_limited_hours == []  # the plan's own data: every charge is as intended
         if result.overrides:
             # Allowed deviation: the LP shed load at the import limit to keep energy for later, and the

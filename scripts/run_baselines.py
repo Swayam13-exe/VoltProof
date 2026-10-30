@@ -56,7 +56,7 @@ def run_case(
             day,
             site,
             gold.grid_outages,
-            plan.export_limit_kw,
+            export_limit_kw=plan.export_limit_kw,
             plan_basis=plan.use,
             protected_soc_kwh=plan.protected_soc_kwh,
             import_limit_kw=plan.import_limit_kw,

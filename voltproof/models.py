@@ -493,6 +493,7 @@ class EpisodeResult(_Model):
     escalation: Literal["with_plan", "fallback"] | None = None
     unknown_tool_calls: int | None = None
     import_cap_hours: int | None = None
+    infra_retries: int | None = None  # infrastructure-error attempts before this result
 
 
 TraceKind = Literal["llm_call", "tool_call", "tool_result", "gate", "review", "final"]

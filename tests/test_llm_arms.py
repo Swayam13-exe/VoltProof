@@ -109,7 +109,7 @@ def test_a3_finalized_plan_is_accepted_on_physics_only() -> None:
 def test_a3_invalid_final_plan_falls_back_to_the_cheapest_valid_simulation() -> None:
     llm = ScriptedLLM(info_turn(), simulate(IDLE, "s1"), simulate(EVENING, "s2"), finalize([50.0] * 24))
     run = run_a3(llm, make_context())
-    assert run.plan_source == "log" and run.battery_kw in (IDLE, EVENING) and run.export_limit_kw is None
+    assert run.plan_source == "log_physics_valid" and run.battery_kw in (IDLE, EVENING) and run.export_limit_kw is None
     assert run.repair_turns == 1
 
 
@@ -144,4 +144,4 @@ def test_a3_simulated_fallback_plan_carries_no_declarations() -> None:
     caps = [{"start_hour": 13, "end_hour": 17, "max_kw": 1.0}]
     llm = ScriptedLLM(info_turn(), simulate(IDLE), finalize([50.0] * 24, import_caps=caps))
     run = run_a3(llm, make_context())
-    assert run.plan_source == "log" and run.import_limit_kw is None
+    assert run.plan_source == "log_physics_valid" and run.import_limit_kw is None

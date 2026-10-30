@@ -21,17 +21,17 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tqdm import tqdm  # noqa: E402
 
 from voltproof.agents.loop import STOP_RUN_ERRORS, ChatLLM, to_json  # noqa: E402
-from voltproof.agents.tools import ArmRun  # noqa: E402
 from voltproof.baselines.optimizer_arms import a5_plan  # noqa: E402
 from voltproof.bench.episode import LLM_ARMS, Episode, dev_episodes, evaluate, run_llm_arm, select_episodes  # noqa: E402
 from voltproof.bench.intents import load_intents  # noqa: E402
+from voltproof.bench.runner import format_trace, write_line  # noqa: E402
 from voltproof.config import PROJECT_ROOT, ConfigError, Settings, get_settings  # noqa: E402
 from voltproof.data import GLOBAL_SEED  # noqa: E402
 from voltproof.llm.client import LLMClient, read_ledger_totals  # noqa: E402
@@ -83,36 +83,6 @@ def print_dry_run(selected: list[Episode], episodes: list[Episode], arms: list[s
         print(f"  {e.site.site_id:<21} {e.day.date}  {e.goal.template_id:<21} {status}")
 
 
-def format_trace(run: ArmRun) -> str:
-    lines = []
-    for event in run.trace.events:
-        data = event.data
-        if event.kind == "llm_call":
-            lines.append(
-                f"[turn {event.turn}] LLM {event.name}: in {data.get('tokens_in')} (cached {data.get('tokens_cached')}) / "
-                f"out {data.get('tokens_out')} (reasoning {data.get('tokens_reasoning')}), ${data.get('cost_usd', 0):.6f}, "
-                f"finish={data.get('finish_reason')}, cache_hit={data.get('cache_hit')}"
-            )
-            if data.get("reasoning"):
-                lines.append(f"    reasoning: {' '.join(str(data['reasoning']).split())}")
-            if data.get("content"):
-                lines.append(f"    content: {data['content']}")
-        elif event.kind == "tool_call":
-            lines.append(f"  -> {event.name} {to_json(data.get('args'))}")
-        elif event.kind == "tool_result":
-            lines.append(f"  <- {event.name} {to_json(data.get('result'))}")
-        elif event.kind == "gate":
-            lines.append(f"  GATE {event.name}: {event.summary}")
-            for failed in data.get("failed_checks", []):
-                lines.append(f"     x {failed['check']}: {failed['message']}")
-        elif event.kind == "review":
-            lines.append(f"  REVIEW approve={data.get('approved')} issues={to_json(data.get('issues'))}")
-            lines.append(f"     raw: {data.get('raw')}")
-        else:
-            lines.append(f"  {event.kind.upper()} {event.name}: {event.summary or to_json(data)}")
-    return "\n".join(lines)
-
-
 def row(result: EpisodeResult) -> str:
     def pct(value: float | None) -> str:
         return "   n/a" if value is None else f"{value:+6.1f}"
@@ -122,11 +92,6 @@ def row(result: EpisodeResult) -> str:
         f"{pct(result.savings_vs_rule_pct)} {pct(result.gap_to_oracle_pct)}  {'yes' if result.plan_physics_valid else 'NO ':<4}"
         f"{result.repair_turns or 0:>3} {result.tokens_in or 0:>7} {result.tokens_out or 0:>6}  ${result.cost_usd or 0:.4f}"
     )
-
-
-def write_line(path: Path, obj: Any) -> None:
-    with path.open("a", encoding="utf-8") as out:
-        out.write(json.dumps(obj, ensure_ascii=False, default=str) + "\n")
 
 
 def main(argv: Sequence[str] | None = None, *, llm: ChatLLM | None = None, settings: Settings | None = None) -> int:

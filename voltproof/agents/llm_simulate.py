@@ -2,7 +2,7 @@
 
 Plan selection (physics only; A3 checks the goal itself, nothing here does):
 1. the finalized schedule, if physics-valid with its declared export limit
-2. else the cheapest physics-valid simulated schedule (no declarations)
+2. else the cheapest physics-valid simulated schedule (no declarations; source log_physics_valid)
 3. else the A0 fallback
 """
 
@@ -58,6 +58,6 @@ def run_a3(llm: ChatLLM, ctx: EpisodeContext, *, tags: dict[str, Any] | None = N
     if run.fallback_used:
         best = sims.cheapest_valid()
         if best is not None:
-            run.battery_kw, run.plan_source, run.fallback_used = best.battery_kw, "log", False
+            run.battery_kw, run.plan_source, run.fallback_used = best.battery_kw, "log_physics_valid", False
     loop.trace.add("final", "selection", summary=f"plan source: {run.plan_source}", data={"stop_reason": loop.stop_reason})
     return run

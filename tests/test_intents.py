@@ -18,11 +18,13 @@ from voltproof.bench.intents import (
     PENDING,
     TranslationPendingError,
     applicable,
+    english_goal,
     fill_text,
     format_value,
     gold_spec,
     goals_for,
     load_intents,
+    multilingual_goal,
     multilingual_goals,
     placeholder_values,
 )
@@ -111,15 +113,17 @@ def test_placeholders_fill_with_the_number_format() -> None:
     assert "no more than 100 kWh" in fill_text(save.phrasings[0], placeholder_values(save, store, tariff))
 
 
-def test_dev_split_excludes_held_out_templates_and_test_split_includes_them() -> None:
+def test_dev_goals_exclude_held_out_templates_and_test_goals_are_built_elsewhere() -> None:
     intents = load_intents()
     store = SITES["ahmedabad_cold_store"]
     tariff = build_tariff(store.tariff_template, DAY, seed=2026, stream=store.site_id)
     dev = goals_for(intents, store, tariff, "dev")
     assert dev and not any(g.held_out for g in dev) and {g.language for g in dev} == {"en"}
-    test = goals_for(intents, store, tariff, "test")
-    assert {"end_of_day_reserve", "outage_then_reserve"} <= {g.template_id for g in test}
-    assert {g.language for g in test} == {"en", *LANGUAGES}
+    assert len(dev) == 2 * sum(1 for t in intents.templates if not t.held_out)  # both phrasings
+    with pytest.raises(ValueError, match="dev goals only"):
+        goals_for(intents, store, tariff, "test")  # type: ignore[arg-type]
+    held = english_goal(intents.template("outage_then_reserve"), store, tariff, 1)
+    assert held.held_out and held.goal_id == "outage_then_reserve_p1" and held.gold.grid_outages
 
 
 def test_multilingual_subset_loads_cleanly_with_the_same_gold_specs() -> None:
@@ -129,11 +133,11 @@ def test_multilingual_subset_loads_cleanly_with_the_same_gold_specs() -> None:
     assert all(PENDING not in str(value) for goal in raw["multilingual"] for value in goal.values())
     store = SITES["ahmedabad_cold_store"]
     tariff = build_tariff(store.tariff_template, DAY, seed=2026, stream=store.site_id)
-    test_goals = goals_for(intents, store, tariff, "test")
     for goal in goals:
         gold = gold_spec(intents.template(goal.template), store, tariff)
-        versions = [g for g in test_goals if g.goal_id.startswith(f"{goal.id}_")]
-        assert len(versions) == 5 and all(v.gold == gold for v in versions)
+        versions = [multilingual_goal(intents, goal, language, store, tariff) for language in ("en", *LANGUAGES)]
+        assert [v.language for v in versions] == ["en", "es", "hi", "pt", "de"]
+        assert all(v.gold == gold and v.template_id == goal.template for v in versions)
         assert all("{" not in v.text for v in versions)
 
 
@@ -146,9 +150,6 @@ def test_pending_translation_fails_loudly(tmp_path: Path) -> None:
     intents = load_intents(path)
     with pytest.raises(TranslationPendingError, match="2 multilingual goals still TRANSLATION_PENDING: ml_outage:hi, ml_import_cap:de"):
         multilingual_goals(intents)
-    store = SITES["ahmedabad_cold_store"]
-    with pytest.raises(TranslationPendingError):
-        goals_for(intents, store, build_tariff(store.tariff_template, DAY, seed=2026, stream=store.site_id), "test")
 
 
 def test_unknown_placeholders_are_rejected(tmp_path: Path) -> None:

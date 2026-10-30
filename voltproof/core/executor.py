@@ -49,6 +49,7 @@ def execute(
     day: DayData,
     site: Site,
     true_outages: Sequence[HourWindow] = (),
+    *,
     export_limit_kw: Sequence[float] | None = None,
     plan_basis: Literal["forecast", "actual"] = "forecast",
     protected_soc_kwh: Sequence[float] | None = None,

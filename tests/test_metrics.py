@@ -91,7 +91,7 @@ def test_no_executed_trajectory_beats_the_oracle_lp_bound() -> None:
         a6 = a6_plan(day, site, goal)
         bound = oracle_bound(a6)
         a6_exec = execute(
-            a6.battery_kw, day, site, goal.grid_outages, a6.export_limit_kw, plan_basis="actual", protected_soc_kwh=a6.protected_soc_kwh
+            a6.battery_kw, day, site, goal.grid_outages, export_limit_kw=a6.export_limit_kw, plan_basis="actual", protected_soc_kwh=a6.protected_soc_kwh
         )
         a6_total = trajectory_total_cost(a6_exec, goal, day, site).total
         adjusted = a6_exec.overrides or a6_exec.clipped_hours or a6_exec.grid_charge_limited_hours or a6_exec.solar_absorbed_hours
@@ -184,5 +184,5 @@ def test_executed_outage_is_feasible_for_a6() -> None:
     day = make_day(load=2, critical=1, price=10)
     goal = spec(grid_outages=[{"start_hour": 14, "end_hour": 17}])
     plan = a6_plan(day, site, goal)
-    result = execute(plan.battery_kw, day, site, [HourWindow(start_hour=14, end_hour=17)], plan.export_limit_kw)
+    result = execute(plan.battery_kw, day, site, [HourWindow(start_hour=14, end_hour=17)], export_limit_kw=plan.export_limit_kw)
     assert result.unserved_critical_kwh == 0 and result.unserved_noncritical_kwh == 0

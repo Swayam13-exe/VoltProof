@@ -230,25 +230,27 @@ def _substitute(node: Any, values: dict[str, Any]) -> Any:
     return node
 
 
-def goals_for(intents: IntentSet, site: Site, tariff: Tariff, split: Literal["dev", "test"]) -> list[GoalInstance]:
-    """Goal instances for one site-day. dev: non-held-out templates, English phrasings only.
-    test: every template, plus the multilingual subset (which must be fully translated)."""
-    goals = []
-    for template in intents.templates:
-        if (split == "dev" and template.held_out) or not applicable(template, site, tariff):
-            continue
-        values = placeholder_values(template, site, tariff)
-        gold = gold_spec(template, site, tariff)
-        for k, phrasing in enumerate(template.phrasings):
-            goals.append(GoalInstance(f"{template.id}_p{k}", template.id, "en", fill_text(phrasing, values), gold, template.held_out))
-    if split == "test":
-        for goal in multilingual_goals(intents):
-            template = intents.template(goal.template)
-            if not applicable(template, site, tariff):
-                continue
-            values = placeholder_values(template, site, tariff)
-            gold = gold_spec(template, site, tariff)
-            for language in ("en", *LANGUAGES):
-                text = fill_text(goal.text(language), values)
-                goals.append(GoalInstance(f"{goal.id}_{language}", template.id, language, text, gold, template.held_out))
-    return goals
+def english_goal(template: Template, site: Site, tariff: Tariff, phrasing: int) -> GoalInstance:
+    """One English phrasing of a template, filled for this site and day."""
+    text = fill_text(template.phrasings[phrasing], placeholder_values(template, site, tariff))
+    return GoalInstance(f"{template.id}_p{phrasing}", template.id, "en", text, gold_spec(template, site, tariff), template.held_out)
+
+
+def multilingual_goal(intents: IntentSet, goal: MultilingualGoal, language: str, site: Site, tariff: Tariff) -> GoalInstance:
+    """One language version of a multilingual goal; its gold spec is its template's."""
+    template = intents.template(goal.template)
+    text = fill_text(goal.text(language), placeholder_values(template, site, tariff))
+    return GoalInstance(f"{goal.id}_{language}", template.id, language, text, gold_spec(template, site, tariff), template.held_out)
+
+
+def goals_for(intents: IntentSet, site: Site, tariff: Tariff, split: Literal["dev"] = "dev") -> list[GoalInstance]:
+    """Dev goal instances for one site-day: non-held-out templates, both English phrasings. The test
+    set has its own fixed design (one phrasing, plus the multilingual subset): see bench.episode."""
+    if split != "dev":
+        raise ValueError("goals_for builds dev goals only; the test set is built by bench.episode.build_test_episodes")
+    return [
+        english_goal(template, site, tariff, k)
+        for template in intents.templates
+        if not template.held_out and applicable(template, site, tariff)
+        for k in range(len(template.phrasings))
+    ]
