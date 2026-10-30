@@ -229,3 +229,63 @@ def test_rejects_bad_setpoints() -> None:
         execute([0.0] * 23, make_day(), SITE)
     with pytest.raises(ValueError):
         execute([float("nan")] * 24, make_day(), SITE)
+
+
+# --- import caps (SPEC 6.6) ---------------------------------------------------------------------
+
+CAP_SITE = simple_site(capacity_kwh=10, power_kw=5, eta=1.0, import_max_kw=50)  # E0 = 5, E_min = 1
+
+
+def capped(hour: int, cap: float) -> list[float]:
+    return [cap if t == hour else 50.0 for t in range(24)]
+
+
+def test_cloudy_day_holds_the_cap_by_reducing_charging() -> None:
+    # The plan expected 3 kW of PV at hour 0 (load 5: import 5 = the cap, plus 3 kW of charging still
+    # meant to come from the grid). Actual PV is 1 kW, so without the cap import would be 7 kW.
+    day = make_day(pv=[3.0] + [0.0] * 23, pv_actual=[1.0] + [0.0] * 23, load=5.0, critical=1.0)
+    free = execute([3.0] + [0.0] * 23, day, CAP_SITE)
+    assert free.flows.grid_import_kw[0] == pytest.approx(7.0)
+    held = execute([3.0] + [0.0] * 23, day, CAP_SITE, import_limit_kw=capped(0, 5.0))
+    assert held.flows.grid_import_kw[0] == pytest.approx(5.0) and held.battery_kw[0] == pytest.approx(1.0)
+    assert held.import_cap_hours == [0] and held.overrides == 0 and held.unserved_noncritical_kwh == 0
+
+
+def test_cap_then_discharges_within_limits() -> None:
+    day = make_day(pv=[1.0] + [0.0] * 23, load=5.0, critical=1.0)
+    result = execute([0.0] * 24, day, CAP_SITE, import_limit_kw=capped(0, 3.0))
+    assert result.battery_kw[0] == pytest.approx(-1.0) and result.flows.grid_import_kw[0] == pytest.approx(3.0)
+    assert result.import_cap_hours == [0]
+
+
+def test_cap_is_exceeded_rather_than_shedding_load_and_counts_as_a_shortfall() -> None:
+    from voltproof.core.metrics import gold_check, trajectory_total_cost
+
+    low = simple_site(capacity_kwh=10, power_kw=5, eta=1.0, import_max_kw=50, initial_soc_frac=0.2)  # 1 kWh above E_min
+    day = make_day(load=[7.0] + [1.0] * 23, critical=1.0)
+    gold = IntentSpec.model_validate({"import_caps": [{"start_hour": 0, "end_hour": 1, "max_kw": 3.0}]})
+    result = execute([0.0] * 24, day, low, import_limit_kw=capped(0, 3.0))
+    assert result.battery_kw[0] == pytest.approx(-1.0)  # all the battery can give
+    assert result.flows.grid_import_kw[0] == pytest.approx(6.0)  # above the cap of 3 kW
+    assert result.unserved_noncritical_kwh == 0 and result.unserved_critical_kwh == 0
+    assert result.import_cap_hours == [0] and result.overrides == 0
+    ok, violations = gold_check(result, gold, low)
+    assert not ok and violations[0].rule == "IMPORT_CAP" and violations[0].value == pytest.approx(6.0)
+    assert trajectory_total_cost(result, gold, day, low).goal_penalty == pytest.approx(20 * 10.0 * 3.0)
+
+
+def test_goal_topup_stays_under_the_cap() -> None:
+    day = make_day(load=1.0, critical=1.0)
+    protected = [9.0] + [0.0] * 23
+    free = execute([0.0] * 24, day, CAP_SITE, protected_soc_kwh=protected)
+    held = execute([0.0] * 24, day, CAP_SITE, protected_soc_kwh=protected, import_limit_kw=capped(0, 3.0))
+    assert free.battery_kw[0] == pytest.approx(4.0) and held.battery_kw[0] == pytest.approx(2.0)
+    assert held.flows.grid_import_kw[0] == pytest.approx(3.0)
+
+
+def test_optimizer_plans_carry_their_import_caps() -> None:
+    day = make_day(load=2.0, price=10.0)
+    caps = [{"start_hour": 13, "end_hour": 17, "max_kw": 1.5}, {"start_hour": 15, "end_hour": 18, "max_kw": 1.0}]
+    plan = solve(day, CAP_SITE, IntentSpec.model_validate({"import_caps": caps}))
+    assert plan.import_limit_kw[13:15] == [1.5, 1.5] and plan.import_limit_kw[15:18] == [1.0] * 3
+    assert plan.import_limit_kw[12] == 50.0 and solve(day, CAP_SITE).import_limit_kw == [50.0] * 24

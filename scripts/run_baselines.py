@@ -59,6 +59,7 @@ def run_case(
             plan.export_limit_kw,
             plan_basis=plan.use,
             protected_soc_kwh=plan.protected_soc_kwh,
+            import_limit_kw=plan.import_limit_kw,
         )
         runs[arm] = (execution, check, plan.solve_time_s)
     bound = oracle_bound(plans["A6"])

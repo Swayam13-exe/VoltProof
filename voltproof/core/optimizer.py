@@ -81,6 +81,16 @@ def default_export_limits(site: Site, outages: set[int], no_export: set[int] = f
     return np.array([0.0 if t in outages or t in no_export else limit for t in range(HOURS)])
 
 
+def default_import_limits(site: Site, spec: IntentSpec | None = None) -> FloatArray:
+    """Import limit per hour for the executor (SPEC §6.6): the spec's import caps in their hours
+    (the tightest one where caps overlap), the site limit elsewhere."""
+    limits = np.full(HOURS, site.grid.import_max_kw)
+    for cap in spec.import_caps if spec is not None else []:
+        for t in cap.hours():
+            limits[t] = min(limits[t], cap.max_kw)
+    return limits
+
+
 def solve(day: DayData, site: Site, spec: IntentSpec | None = None, use: Literal["forecast", "actual"] = "forecast") -> Plan:
     """Cheapest plan for `day` that respects `spec` as far as physically possible."""
     spec = spec or IntentSpec()
@@ -245,6 +255,7 @@ def _plan(
         spec=spec,
         battery_kw=(v["c"] - v["d"]).tolist(),
         export_limit_kw=export_limit.tolist(),
+        import_limit_kw=default_import_limits(site, spec).tolist(),
         flows=Flows(
             charge_kw=v["c"].tolist(),
             discharge_kw=v["d"].tolist(),
@@ -256,7 +267,7 @@ def _plan(
         ),
         soc_kwh=soc.tolist(),
         initial_soc_kwh=initial,
-        protected_soc_kwh=_protected_soc(rows, soc, v["c"], site),
+        protected_soc_kwh=protected_soc(rows, soc, v["c"], site),
         energy_cost=energy_cost,
         penalty_cost=objective - energy_cost + terminal_value,
         terminal_value_per_kwh=value_per_kwh,
@@ -269,8 +280,10 @@ def _plan(
     )
 
 
-def _protected_soc(rows: list[SoftRow], soc: FloatArray, charge: FloatArray, site: Site) -> list[float] | None:
+def protected_soc(rows: list[SoftRow], soc: FloatArray, charge: FloatArray, site: Site) -> list[float] | None:
     """SOC levels the executor may defend by importing (SPEC §6.6 goal protection), or None.
+
+    Shared by the optimizer and by the LLM arms' reserve declarations (agents.declarations).
 
     For every SOC goal with required level R and first constrained hour τ0, protect
     min(planned SOC, required level), where the required level is

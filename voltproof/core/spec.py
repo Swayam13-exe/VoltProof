@@ -247,3 +247,14 @@ def _merged(kind: str, windows: list[tuple[int, int, float | None]]) -> list[Spe
 
 def windows_hours(windows: list[HourWindow]) -> set[int]:
     return {hour for window in windows for hour in window.hours()}
+
+
+def hours_to_windows(hours: list[int]) -> list[tuple[int, int]]:
+    """Contiguous runs of hours as half-open windows: [6, 7, 17, 18] → [(6, 8), (17, 19)]."""
+    windows: list[tuple[int, int]] = []
+    for hour in sorted(set(hours)):
+        if windows and windows[-1][1] == hour:
+            windows[-1] = (windows[-1][0], hour + 1)
+        else:
+            windows.append((hour, hour + 1))
+    return windows

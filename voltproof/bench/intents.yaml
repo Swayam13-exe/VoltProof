@@ -1,0 +1,194 @@
+# VoltProof benchmark goals (SPEC §6.11). Site-agnostic: {placeholders} are filled per site (and per
+# day for tariff periods) by voltproof/bench/intents.py. Hours are site-local; windows are half-open
+# [start_hour, end_hour). Gold specs follow the SPEC §3 conventions.
+#
+# Built-in placeholders: {critical_load_name}, {critical_load_kw}.
+# Template params use one of these derivations:
+#   import_limit_frac_kw(frac)    floor(frac * grid.import_max_kw), at least 1                  [kW]
+#   capacity_frac_kwh(frac)       frac * battery.capacity_kwh, rounded to 0.1                    [kWh]
+#   cover_hours_soc_pct(hours)    SOC % needed to run the critical load alone for `hours`:
+#                                 min SOC % + 100 * hours * critical_load_kw / (eta_discharge * capacity_kwh),
+#                                 rounded to 0.1                                                  [%]
+#   tariff_period_windows(period) the day's named tariff period as half-open windows             [windows]
+# Numbers print without a decimal when whole (100), else with one decimal (60.5); a site value that
+# one decimal would misstate keeps up to 3 (0.15).
+# requires (optional): export_allowed | tariff_period:<name>
+version: 1
+
+templates:
+  - id: cost_min
+    category: plain_cost
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Keep today's electricity bill as low as possible."
+      - "No special requests today, just run the battery to save money."
+    gold: {}
+
+  - id: evening_reserve
+    category: evening_reserve
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out."
+      - "Between 18:00 and 22:00 the battery should never be below 50%. Otherwise keep costs down."
+    gold:
+      reserve_windows: [{start_hour: 18, end_hour: 22, min_soc_pct: 50}]
+
+  - id: outage_critical
+    category: announced_outage
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the {critical_load_name} running and keep the bill low."
+      - "Power cut announced for 14:00-17:00. The {critical_load_name} must not stop; spend as little as possible."
+    gold:
+      grid_outages: [{start_hour: 14, end_hour: 17}]
+
+  - id: no_export_midday
+    category: no_export
+    held_out: false
+    site_types: [commercial_cold_store, household]
+    requires: [export_allowed]
+    phrasings:
+      - "The utility asked us not to feed any power into the grid between 10 AM and 4 PM today."
+      - "No export to the grid from 10:00 to 16:00, please. Otherwise keep costs down."
+    gold:
+      no_export_windows: [{start_hour: 10, end_hour: 16}]
+
+  - id: storm_full
+    category: full_by_time
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "A storm is coming tonight. Make sure the battery is full by 6 PM."
+      - "Storm warning for this evening: have the battery fully charged by 18:00, as cheaply as possible."
+    gold:
+      soc_targets: [{by_hour: 18, min_soc_pct: 95}]
+
+  - id: import_cap_afternoon
+    category: import_cap
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    params:
+      import_cap_kw: {derive: import_limit_frac_kw, frac: 0.5}
+    phrasings:
+      - "Our grid connection is limited this afternoon: keep grid import at or below {import_cap_kw} kW from 1 PM to 5 PM."
+      - "From 13:00 to 17:00 don't draw more than {import_cap_kw} kW from the grid."
+    gold:
+      import_caps: [{start_hour: 13, end_hour: 17, max_kw: "{import_cap_kw}"}]
+
+  - id: never_below
+    category: min_soc_all_day
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Never let the battery drop below 30% today."
+      - "Keep the battery at 30 percent or more at all times, and keep costs low."
+    gold:
+      min_soc_pct_all_day: 30
+
+  - id: peak_only_discharge
+    category: battery_peak_only
+    held_out: false
+    site_types: [commercial_cold_store, household]
+    requires: ["tariff_period:peak"]
+    params:
+      peak_windows: {derive: tariff_period_windows, period: peak}
+    phrasings:
+      - "Only use the battery during peak-price hours; don't discharge it at any other time."
+      - "Save the battery for the peak period: discharge only in peak hours."
+    gold:
+      discharge_only_windows: "{peak_windows}"
+
+  - id: cover_critical_hours
+    category: cover_load_hours
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    params:
+      cover_soc_pct: {derive: cover_hours_soc_pct, hours: 6}
+    phrasings:
+      - "In case of a power cut tonight: by 7 PM the battery must hold enough energy to run the {critical_load_name} ({critical_load_kw} kW) on its own for 6 hours."
+      - "By 19:00 I want enough stored to keep the {critical_load_name} ({critical_load_kw} kW) going for 6 hours on the battery alone."
+    gold:
+      soc_targets: [{by_hour: 19, min_soc_pct: "{cover_soc_pct}"}]
+
+  - id: save_cycles
+    category: save_cycles
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    params:
+      throughput_kwh: {derive: capacity_frac_kwh, frac: 1.0}
+    phrasings:
+      - "Go easy on the battery today: no more than {throughput_kwh} kWh charged and discharged in total."
+      - "To reduce battery wear, limit today's charging plus discharging to {throughput_kwh} kWh altogether, and keep the bill low."
+    gold:
+      max_throughput_kwh: "{throughput_kwh}"
+
+  - id: end_of_day_reserve          # held out: test split only
+    category: end_of_day_min
+    held_out: true
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "We start early tomorrow, so finish the day with the battery at least 60% charged."
+      - "At midnight the battery should be at 60% or more; minimise cost until then."
+    gold:
+      end_of_day_min_soc_pct: 60
+
+  - id: outage_then_reserve         # held out: test split only (compound goal)
+    category: announced_outage_plus_reserve
+    held_out: true
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Planned outage from 9 AM to noon. Keep the {critical_load_name} on, and from noon until 8 PM keep at least 40% in the battery."
+      - "Grid maintenance 09:00-12:00. The {critical_load_name} must stay powered; from 12:00 to 20:00 hold 40% or more in reserve."
+    gold:
+      grid_outages: [{start_hour: 9, end_hour: 12}]
+      reserve_windows: [{start_hour: 12, end_hour: 20, min_soc_pct: 40}]
+
+# Multilingual subset (SPEC §6.11): same gold spec and site types as `template`. Translations written
+# by the user; the loader refuses to load this subset while any TRANSLATION_PENDING remains.
+# {critical_load_name} is avoided here (it would stay in English inside a translated sentence).
+multilingual:
+  - id: ml_evening_reserve
+    template: evening_reserve
+    en: "Keep at least half of the battery charged from 6 PM to 10 PM, in case the power goes out."
+    es: "Mantén al menos la mitad de la batería cargada de 6 de la tarde a 10 de la noche, por si se corta la luz."
+    hi: "बिजली जाने की स्थिति के लिए शाम 6 बजे से रात 10 बजे तक बैटरी कम से कम आधी चार्ज रखें।"
+    pt: "Mantenha pelo menos metade da bateria carregada das 18h às 22h, caso falte energia."
+    de: "Halte die Batterie von 18 bis 22 Uhr mindestens zur Hälfte geladen, falls der Strom ausfällt."
+  - id: ml_outage
+    template: outage_critical
+    en: "The grid will be off from 2 PM to 5 PM for planned maintenance. Keep the essential equipment running and keep the bill low."
+    es: "La red estará cortada de 2 a 5 de la tarde por mantenimiento programado. Mantén funcionando el equipo esencial y la factura lo más baja posible."
+    hi: "नियोजित रखरखाव के कारण दोपहर 2 बजे से शाम 5 बजे तक ग्रिड बंद रहेगा। ज़रूरी उपकरण चालू रखें और बिजली का बिल कम रखें।"
+    pt: "A rede ficará desligada das 14h às 17h para manutenção programada. Mantenha os equipamentos essenciais funcionando e a conta de luz baixa."
+    de: "Das Netz wird von 14 bis 17 Uhr wegen geplanter Wartungsarbeiten abgeschaltet. Sorge dafür, dass die wichtigsten Geräte weiterlaufen, und halte die Stromrechnung niedrig."
+  - id: ml_storm_full
+    template: storm_full
+    en: "A storm is coming tonight. Make sure the battery is full by 6 PM."
+    es: "Esta noche viene una tormenta. Asegúrate de que la batería esté completamente cargada para las 6 de la tarde."
+    hi: "आज रात तूफ़ान आने वाला है। ध्यान रखें कि शाम 6 बजे तक बैटरी पूरी चार्ज हो जाए।"
+    pt: "Vem uma tempestade hoje à noite. Garanta que a bateria esteja cheia até as 18h."
+    de: "Heute Abend zieht ein Sturm auf. Sorge dafür, dass die Batterie bis 18 Uhr voll ist."
+  - id: ml_never_below
+    template: never_below
+    en: "Never let the battery drop below 30% today."
+    es: "Hoy no dejes que la batería baje del 30%."
+    hi: "आज बैटरी को कभी भी 30% से नीचे न जाने दें।"
+    pt: "Hoje, não deixe a bateria ficar abaixo de 30%."
+    de: "Lass die Batterie heute nie unter 30% fallen."
+  - id: ml_import_cap
+    template: import_cap_afternoon
+    en: "Keep grid import at or below {import_cap_kw} kW from 1 PM to 5 PM."
+    es: "Mantén la importación de la red en {import_cap_kw} kW o menos de 1 a 5 de la tarde."
+    hi: "दोपहर 1 बजे से शाम 5 बजे तक ग्रिड से ली जाने वाली बिजली {import_cap_kw} kW या उससे कम रखें।"
+    pt: "Mantenha a importação da rede em no máximo {import_cap_kw} kW das 13h às 17h."
+    de: "Halte den Netzbezug von 13 bis 17 Uhr bei höchstens {import_cap_kw} kW."
+  - id: ml_save_cycles
+    template: save_cycles
+    en: "Go easy on the battery today: no more than {throughput_kwh} kWh charged and discharged in total."
+    es: "Hoy cuida la batería: entre carga y descarga, no más de {throughput_kwh} kWh en total."
+    hi: "आज बैटरी पर ज़्यादा ज़ोर न डालें: चार्ज और डिस्चार्ज मिलाकर कुल {throughput_kwh} kWh से ज़्यादा नहीं।"
+    pt: "Hoje, poupe a bateria: no máximo {throughput_kwh} kWh de carga e descarga no total."
+    de: "Schone heute die Batterie: Laden und Entladen zusammen höchstens {throughput_kwh} kWh."

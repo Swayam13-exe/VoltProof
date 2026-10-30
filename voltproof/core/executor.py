@@ -15,10 +15,13 @@ Hour by hour on ACTUAL PV and load, the same rules for every arm:
       further planned charging must come from actual PV surplus (recorded in grid_charge_limited_hours)
       goal protection: a plan that carries protected_soc_kwh (the optimizer sets it from the spec's
       SOC goals) may import beyond that cap, only as much as needed to end the hour at or above the
-      protected level, within power and import limits (recorded in goal_topup_hours); plans without
-      it get no top-up
-   b. import limit: if the hour would import more than the grid allows, first reduce charging, then
-      discharge within limits, and only then shed load, non-critical first (counted as an override)
+      protected level, within power and import limits and under the hour's import cap (recorded in
+      goal_topup_hours); plans without it get no top-up
+   b. import limit and import caps: if the hour would import more than min(grid limit, the plan's
+      import_limit_kw), first reduce charging, then discharge within limits. Above an import cap the
+      grid then supplies the rest anyway (load before goals; the excess is a goal shortfall, recorded
+      in import_cap_hours); only above the grid's own limit is load shed, non-critical first
+      (counted as an override)
    c. no wasted solar: PV surplus that would be curtailed (export not allowed or at its limit) is
       charged into the battery within power and SOC limits (recorded in solar_absorbed_hours)
    d. the grid imports the rest of any deficit and exports surplus up to the hour's export limit;
@@ -49,6 +52,7 @@ def execute(
     export_limit_kw: Sequence[float] | None = None,
     plan_basis: Literal["forecast", "actual"] = "forecast",
     protected_soc_kwh: Sequence[float] | None = None,
+    import_limit_kw: Sequence[float] | None = None,
 ) -> ExecutionResult:
     planned = np.asarray(list(battery_kw), dtype=float)
     if planned.shape != (HOURS,) or not np.all(np.isfinite(planned)):
@@ -57,6 +61,9 @@ def execute(
     outages = {hour for window in true_outages for hour in window.hours()}
     limits = default_export_limits(site, outages) if export_limit_kw is None else np.asarray(export_limit_kw, dtype=float)
     limits = np.where([t in outages for t in range(HOURS)], 0.0, np.maximum(limits, 0.0))
+    caps = np.full(HOURS, grid.import_max_kw)
+    if import_limit_kw is not None:
+        caps = np.clip(np.asarray(import_limit_kw, dtype=float), 0.0, grid.import_max_kw)
 
     pv = np.asarray(day.pv_actual_kw, dtype=float)
     load = np.asarray(day.load_actual_kw, dtype=float)
@@ -71,7 +78,7 @@ def execute(
     applied = np.zeros(HOURS)
     soc = np.zeros(HOURS)
     f = {name: np.zeros(HOURS) for name in ("import", "export", "curtail", "unserved_nc", "unserved_c")}
-    clipped, overridden, grid_limited, absorbed, topped_up = [], [], [], [], []
+    clipped, overridden, grid_limited, absorbed, topped_up, capped = [], [], [], [], [], []
     e = initial
     for t in range(HOURS):
         max_charge = max(0.0, min(battery.p_charge_max_kw, (e_max - e) / battery.eta_charge))
@@ -93,17 +100,20 @@ def execute(
                     b = allowed
                     grid_limited.append(t)
             if protected is not None:  # goal protection: keep realized SOC at the plan's protected level
-                b_new = _topup_setpoint(b, e, protected[t], max_charge, grid.import_max_kw - load[t] + pv[t], battery)
+                b_new = _topup_setpoint(b, e, protected[t], max_charge, caps[t] - load[t] + pv[t], battery)
                 if b_new > b + TOL:
                     b = b_new
                     topped_up.append(t)
             residual = load[t] + b - pv[t]
-            if residual > grid.import_max_kw + TOL:  # (b) import limit: charging, then discharge, then shed
-                excess = residual - grid.import_max_kw
+            if residual > caps[t] + TOL:  # (b) import limit / cap: charging, then discharge
+                excess = residual - caps[t]
                 cut = min(max(b, 0.0), excess)
                 extra = min(excess - cut, b - cut + max_discharge)
                 if cut + extra > TOL:
-                    overridden.append(t)
+                    if residual > grid.import_max_kw + TOL:
+                        overridden.append(t)
+                    if caps[t] < grid.import_max_kw - TOL:
+                        capped.append(t)
                 b -= cut + extra
             elif -residual > limits[t] + TOL and b < max_charge - TOL:  # (c) no wasted solar
                 b = min(b + (-residual - limits[t]), max_charge)
@@ -146,6 +156,7 @@ def execute(
         clipped_hours=clipped,
         grid_charge_limited_hours=grid_limited,
         goal_topup_hours=topped_up,
+        import_cap_hours=capped,
         solar_absorbed_hours=absorbed,
         outage_hours=sorted(outages),
     )

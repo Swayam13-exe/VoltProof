@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from datetime import date as Date
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -371,6 +371,8 @@ class Plan(_Model):
     spec: IntentSpec
     battery_kw: Array24  # > 0 charges, < 0 discharges
     export_limit_kw: Array24  # inverter export limit per hour (0 in no-export windows and outages)
+    # import limit per hour for the executor: spec import caps in their hours, the site limit elsewhere
+    import_limit_kw: Array24 | None = None
     flows: Flows
     soc_kwh: Array24  # at the END of each hour
     initial_soc_kwh: float
@@ -435,8 +437,14 @@ class ExecutionResult(_Model):
     clipped_hours: list[int]  # setpoint clipped to power / SOC limits
     grid_charge_limited_hours: list[int]  # planned charging the plan expected from PV, not taken from the grid
     goal_topup_hours: list[int]  # extra grid charging to keep realized SOC at the plan's protected level
+    import_cap_hours: list[int] = Field(default_factory=list)  # hours an import cap changed the setpoint
     solar_absorbed_hours: list[int]  # PV surplus charged instead of curtailed
     outage_hours: list[int]
+
+
+class ReviewIssue(_Model):
+    kind: Literal["missing", "wrong", "unneeded", "malformed"]  # malformed: the reviewer's output, not the spec
+    detail: str
 
 
 class EpisodeResult(_Model):
@@ -469,6 +477,36 @@ class EpisodeResult(_Model):
     tool_calls: int | None = None
     repair_turns: int | None = None
     fallback_used: bool = False
+    # LLM arms (SPEC §6.7); A4 fills the gate fields
+    episode_id: str | None = None
+    stop_reason: str | None = None
+    plan_source: str | None = None  # finalized | log | fallback | escalated_with_plan | ...
+    checklist_coverage: float | None = None
+    dropped_requirements: list[str] | None = None
+    explanation_grounded: bool | None = None
+    ungrounded_numbers: list[str] | None = None
+    review_approved: bool | None = None
+    review_issues: list[ReviewIssue] | None = None
+    review_disputed: bool | None = None
+    repair_rounds: int | None = None
+    escalated: bool | None = None
+    escalation: Literal["with_plan", "fallback"] | None = None
+    unknown_tool_calls: int | None = None
+    import_cap_hours: int | None = None
+
+
+TraceKind = Literal["llm_call", "tool_call", "tool_result", "gate", "review", "final"]
+
+
+class TraceEvent(_Model):
+    """One step of an agent episode, for logs and the UI (SPEC §6.9)."""
+
+    kind: TraceKind
+    turn: int = Field(ge=0)
+    name: str | None = None  # tool name, gate check or arm
+    call_id: str | None = None
+    summary: str | None = None  # ≤ 200 characters
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 class DayData(_Model):

@@ -65,6 +65,26 @@ class LLMUnavailable(LLMError):
     """Every attempt failed with a retryable error (429, 5xx, timeout, connection)."""
 
 
+class LLMFatalError(LLMError):
+    """The run must stop: the account cannot make calls. Credit use cannot be checked anywhere,
+    so auth, payment and persistent rate-limit errors stop everything instead of being retried."""
+
+
+class LLMAccountError(LLMRequestRejected, LLMFatalError):
+    """HTTP 401, 402 or 403: bad key, credits exhausted or access denied."""
+
+
+class LLMRateLimitPersisted(LLMUnavailable, LLMFatalError):
+    """HTTP 429 on the last attempt, after every retry."""
+
+
+class LLMClientStopped(LLMFatalError):
+    """A call after an earlier fatal error; refused without touching the network."""
+
+
+FATAL_STATUS_CODES = frozenset({401, 402, 403})
+
+
 @dataclass(frozen=True)
 class ToolCall:
     id: str
@@ -144,13 +164,15 @@ class _Failure:
 
     def to_error(self, attempts: int) -> LLMError:
         if self.retryable:
-            return LLMUnavailable(
+            error_class = LLMRateLimitPersisted if self.status_code == 429 else LLMUnavailable
+            return error_class(
                 f"LLM unavailable after {attempts} attempt(s); last error: {self.message}",
                 status_code=self.status_code,
                 attempts=attempts,
             )
         if self.status_code is not None:
-            return LLMRequestRejected(
+            error_class = LLMAccountError if self.status_code in FATAL_STATUS_CODES else LLMRequestRejected
+            return error_class(
                 f"LLM request rejected: {self.message}", status_code=self.status_code, attempts=attempts
             )
         return LLMError(f"LLM call failed: {self.message}", attempts=attempts)
@@ -311,6 +333,7 @@ class LLMClient:
         self._lock = threading.Lock()
         self._reserved_usd = 0.0
         self._reserved_demo_usd = 0.0
+        self._stopped_by: str | None = None  # label of the fatal error that stopped this client
 
     def __repr__(self) -> str:
         return f"LLMClient(model={self._settings.llm_model!r}, base_url={self._settings.llm_base_url!r})"
@@ -328,11 +351,15 @@ class LLMClient:
         """One chat completion. Cache hits cost $0; misses pass the budget guard first.
 
         `tags` is a JSON-serializable dict (e.g. arm, episode id); `{"demo": True}` also
-        applies DEMO_BUDGET_USD_CAP.
+        applies DEMO_BUDGET_USD_CAP. After an LLMFatalError every later call raises
+        LLMClientStopped without touching the cache or the network.
         """
         s = self._settings
         tags = dict(tags or {})
         canonical_json(tags)  # fail before any call if tags cannot be written to the ledger
+        if self._stopped_by is not None:
+            self._append_ledger(self._entry(purpose, tags, "", status="refused", error="LLMClientStopped"))
+            raise LLMClientStopped(f"LLM client stopped after an earlier fatal error: {self._stopped_by}")
         key = cache_key(
             model=s.llm_model,
             messages=messages,
@@ -383,6 +410,10 @@ class LLMClient:
         finally:
             self._release(worst, demo)
         if error is not None:
+            if isinstance(error, LLMFatalError):
+                with self._lock:
+                    status = f" (HTTP {error.status_code})" if error.status_code else ""
+                    self._stopped_by = f"{type(error).__name__}{status}"
             raise error
         return response
 
