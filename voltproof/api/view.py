@@ -14,6 +14,7 @@ Every string from the model stays a plain string: the page renders it as text, n
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
@@ -32,8 +33,10 @@ LIVE_LABEL = "live run"
 AGENT_SPEC_NOTE = "Checked against the goals as the agent understood them; benchmark scores use hand-written gold specs."
 GOLD_MATCH_NOTE = "Checked against the agent's spec, which matched the benchmark's hand-written gold spec for this goal."
 TRACE_DROP = ("reasoning", "content")  # model reasoning text and raw replies are not shown
+PLAN_NOTICE = "The plan shown is the accepted plan from the log; re-solving its spec gave a different schedule."
 
 Event = Mapping[str, Any]
+log = logging.getLogger("voltproof.live")
 
 
 class LoggedPlanMismatch(ValueError):
@@ -152,6 +155,29 @@ def logged_plan(spec: IntentSpec, day: DayData, site: Site, logged_battery_kw: S
     if [float(v) for v in plan.battery_kw] != [float(v) for v in logged_battery_kw]:
         raise LoggedPlanMismatch("the re-solved plan differs from the accepted plan in the plan log")
     return plan
+
+
+def plan_from_log(spec: IntentSpec, day: DayData, site: Site, logged_battery_kw: Sequence[float], limits: Mapping[str, Any]) -> Plan:
+    """The logged setpoints as a plan: simulated on the forecast by the frozen verifier, with the run's
+    own execution limits (live runs only, when re-solving gave a different schedule)."""
+    resolved = solve(day, site, spec, use="forecast")
+    battery = [float(v) for v in logged_battery_kw]
+    export_limit = limits.get("export_limit_kw") or resolved.export_limit_kw
+    sim = verify(battery, day, site, spec, "forecast", export_limit_kw=export_limit)
+    if sim.soc_kwh is None or sim.flows is None:
+        raise ValueError("the logged setpoints could not be simulated")
+    return resolved.model_copy(
+        update={
+            "battery_kw": battery,
+            "soc_kwh": sim.soc_kwh,
+            "flows": sim.flows,
+            "energy_cost": sim.energy_cost or 0.0,
+            "shortfalls": [],
+            "export_limit_kw": export_limit,
+            "import_limit_kw": limits.get("import_limit_kw"),
+            "protected_soc_kwh": limits.get("protected_soc_kwh"),
+        }
+    )
 
 
 def plan_view(plan: Plan, day: DayData, site: Site, tariff: Tariff) -> dict[str, Any]:
@@ -277,9 +303,15 @@ def view_model(
     spec: IntentSpec | None,
     meta: Mapping[str, Any],
     spec_matches_gold: bool = False,
+    on_mismatch: Literal["raise", "log"] = "raise",
+    logged_limits: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The page payload. `logged_battery_kw` and `spec` are the accepted plan from the plan log
-    (None when the run ended without a plan: the page then shows the trace and the fallback)."""
+    (None when the run ended without a plan: the page then shows the trace and the fallback).
+
+    Replays are strict (`on_mismatch="raise"`). A live run (`"log"`) never fails on a mismatch: it
+    shows the logged plan (`plan_from_log`, with the run's own limits), adds `plan_notice` and logs
+    one warning."""
     finalize = accepted_finalize(events)
     checklists = tool_calls(events, "set_checklist")
     view: dict[str, Any] = {
@@ -303,7 +335,14 @@ def view_model(
         "same_day": None,
     }
     if spec is not None and logged_battery_kw is not None:
-        plan = logged_plan(spec, day, site, logged_battery_kw)
+        try:
+            plan = logged_plan(spec, day, site, logged_battery_kw)
+        except LoggedPlanMismatch:
+            if on_mismatch == "raise":
+                raise
+            plan = plan_from_log(spec, day, site, logged_battery_kw, logged_limits or {})
+            view["plan_notice"] = PLAN_NOTICE
+            log.warning("live run %s: the re-solved plan differs from the logged plan; showing the logged plan", meta.get("run_id"))
         view["plan"] = plan_view(plan, day, site, tariff)
         view["same_day"] = same_day_view(plan, day, site)
     return view

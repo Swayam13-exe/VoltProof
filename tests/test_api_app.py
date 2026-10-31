@@ -55,3 +55,5 @@ def test_goal_box_limits_and_notice() -> None:
     assert 'id="goal"' in html and 'maxlength="500"' in html and '<label for="goal">' in html and '<label for="day">' in html
     assert "Typed goals are sent to the model provider" in html and "do not enter personal information" in html
     assert "Weather data by" in html and "Open-Meteo.com" in html and "Built with Muse Spark Open (Meta), served by Baseten" in html
+    conversation = re.search(r'<section id="conversation"[^>]*>', html).group(0)
+    assert "aria-live" not in conversation and 'id="status"' in html and 'role="status"' in html  # the status line announces

@@ -21,7 +21,7 @@
   const INFO_TOOLS = { get_site_info: "the site", get_forecast: "the day-ahead forecast", get_tariff: "the tariff" };
   const KIND_TAGS = { english: "EN", hard: "hard", multilingual: null };
 
-  const state = { chips: [], sites: [], siteId: null, chipId: null, playToken: 0 };
+  const state = { chips: [], sites: [], siteId: null, chipId: null, playToken: 0, live: null };
 
   /* --- formatting -------------------------------------------------------------------------- */
 
@@ -75,9 +75,20 @@
   }
 
   function renderDays() {
-    const days = [...new Set(state.chips.filter((c) => c.site_id === state.siteId).map((c) => c.date))].sort();
+    const recorded = new Set(state.chips.filter((c) => c.site_id === state.siteId).map((c) => c.date));
     const select = $("day");
-    select.replaceChildren(...days.map((d) => make("option", { value: d }, `${d} (recorded runs)`)));
+    select.replaceChildren(...[...recorded].sort().map((d) => make("option", { value: d }, `${d} (recorded runs)`)));
+    if (!state.live || !state.live.live) return;
+    const siteId = state.siteId;
+    fetch(`api/days?site=${encodeURIComponent(siteId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((days) => {
+        if (!days || siteId !== state.siteId) return;
+        const keep = select.value;
+        select.replaceChildren(...days.map((d) => make("option", { value: d.date }, `${d.date} · ${d.split} day${recorded.has(d.date) ? ", recorded runs" : ""}`)));
+        if (keep) select.value = keep;
+      })
+      .catch(() => {});
   }
 
   function renderChips() {
@@ -195,9 +206,11 @@
         r.issues && r.issues.length ? make("ul", { class: "list" }, r.issues.map((i) => make("li", {}, `[${i.kind}] ${i.detail}`))) : null
       )
     );
-    const outcome = gate.outcome
-      ? make("p", {}, make("strong", {}, gate.outcome.decision === "accepted" ? "Accepted." : `Outcome: ${gate.outcome.decision.replaceAll("_", " ")}.`), " ", gate.outcome.message || "")
-      : make("p", {}, `Plan source: ${(view.meta && view.meta.plan_source) || "unknown"}`);
+    const lastAttempt = gate.attempts[gate.attempts.length - 1];
+    let outcome;
+    if (!gate.outcome) outcome = make("p", {}, `Plan source: ${(view.meta && view.meta.plan_source) || "unknown"}`);
+    else if (gate.outcome.decision === "accepted") outcome = make("p", {}, make("strong", {}, `Accepted: plan ${lastAttempt ? lastAttempt.plan_id : ""}`));
+    else outcome = make("p", {}, make("strong", {}, `Outcome: ${gate.outcome.decision.replaceAll("_", " ")}.`), " ", gate.outcome.message || "");
     return make("div", {}, make("ol", { class: "list" }, attempts), reviews, outcome);
   }
 
@@ -265,6 +278,35 @@
     return make("div", { class: "approve-row" }, button, result);
   }
 
+  function summaryLine(label, value, ok, explain) {
+    const mark = ok === null ? make("span", { class: "not-run" }, value) : make("span", { class: ok ? "ok" : "fail" }, value);
+    return make("li", {}, make("span", { class: "summary-label" }, `${label}: `), mark, make("span", { class: "summary-explain" }, explain));
+  }
+
+  /* The result first: one line per outcome, each with a plain explanation; the details follow below. */
+  function summaryCard(view) {
+    if (!view.plan) {
+      return make("section", { class: "summary", "aria-label": "Result" }, make("p", {}, make("span", { class: "fail" }, "✗ No accepted plan."), " Nothing would be sent to the battery; the steps below show what happened."));
+    }
+    const sd = view.same_day;
+    const currency = view.site.currency;
+    const diff = sd.cost_difference;
+    const review = view.gate.reviews[view.gate.reviews.length - 1];
+    const lines = [
+      summaryLine("Goal", sd.agent.goals_met ? "✓ met" : `✗ not met (missed ${sd.agent.goals_missed.join(", ")})`, sd.agent.goals_met, "Checked hour by hour against the spec, on the same-day weather."),
+      summaryLine("Critical load served", pct(sd.agent.critical_served_pct), sd.agent.critical_served_pct >= 99.95, `Share of the ${view.site.critical_load_name}'s demand supplied on the same-day weather.`),
+      summaryLine("Cost against the rule-based battery", diff >= 0 ? `${money(diff, currency)} cheaper` : `${money(-diff, currency)} more expensive`, diff >= 0, "Realized-cost difference on the same-day weather, counting the energy left in the battery."),
+      summaryLine("Physics-verified", view.plan.verified ? "✓ yes" : "✗ no", view.plan.verified, "Within the battery's and the grid's limits with all demand served, on the forecast."),
+      summaryLine(
+        "Reviewer",
+        !review || review.approved === null ? "no verdict" : review.approved ? "✓ approved" : "✗ raised issues",
+        !review || review.approved === null ? null : review.approved,
+        "A separate AI call judged whether the spec captures the goal."
+      ),
+    ];
+    return make("section", { class: "summary", "aria-label": "Result" }, make("h3", { class: "summary-title" }, "Result"), make("ul", { class: "summary-list" }, lines));
+  }
+
   function agentMessage(view) {
     const message = make("article", { class: "message agent", "aria-label": "Agent's answer" });
     const header = [
@@ -272,7 +314,9 @@
       make("div", { class: "badges" }, make("span", { class: "badge" }, view.label)),
       make("p", { class: "checked-against" }, view.checked_against),
       metaLine(view),
-    ];
+      view.plan_notice ? make("p", { class: "fallback", role: "note" }, view.plan_notice) : null,
+      summaryCard(view),
+    ].filter(Boolean);
     const sections = [stepsSection(view)];
     if (view.plan) {
       sections.push(planSection(view));
@@ -307,12 +351,12 @@
     return response.json();
   }
 
-  async function playChip(chip, { instant, notice } = {}) {
+  async function playChip(chip, { instant, notice, keepUrl } = {}) {
     state.chipId = chip.id;
     if (state.siteId !== chip.site_id) selectSite(chip.site_id);
     else renderChips();
     $("day").value = chip.date;
-    history.replaceState(null, "", `#replay=${encodeURIComponent(chip.id)}`);
+    if (!keepUrl) history.replaceState(null, "", `#replay=${encodeURIComponent(chip.id)}`);
     status(notice ? "" : `Playing a recorded run (${chip.site_name}, ${chip.date}).`);
     try {
       await show(await loadReplay(chip), { instant, notice });
@@ -322,6 +366,108 @@
   }
 
   /* --- typed goals: live API, with a recorded run as the fallback --------------------------------- */
+
+  function reasonText(reason, body) {
+    const minutes = body && body.retry_after_s ? Math.max(1, Math.ceil(body.retry_after_s / 60)) : null;
+    switch (reason) {
+      case "rate_limit": return `you have used this hour's 10 live runs${minutes ? `; try again in about ${minutes} min` : ""}`;
+      case "daily_cap": return "today's live runs are used up";
+      case "busy": return "two live runs are already in progress; try again in a minute";
+      case "budget": return "the demo's AI budget is used up";
+      case "live_mode_off":
+      case "live_off": return "the live AI is switched off here";
+      case "paused":
+      case "busy_upstream": return "the model provider is busy, so live runs are paused for a few minutes";
+      case "network": return "the live AI could not be reached";
+      default: return "the live run failed";
+    }
+  }
+
+  async function fallBack(reason, body, started) {
+    const fallback = state.chips.find((c) => c.site_id === state.siteId);
+    const notice = `Live run unavailable: ${reasonText(reason, body)}. Showing a recorded run for this site instead, labelled "replay (recorded run)". Your goal was not ${started ? "completed" : "run"}.`;
+    status(notice, true);
+    if (fallback) await playChip(fallback, { instant: true, notice });
+    refreshLive();
+  }
+
+  /* While the agent works: one plain line per step, text only. */
+  function liveStepText(kind, data) {
+    if (kind === "tool_call") {
+      if (data.name === "set_checklist") return "Listing what the goal requires";
+      if (INFO_TOOLS[data.name]) return `Reading ${INFO_TOOLS[data.name]}`;
+      if (data.name === "solve_plan") return `Solving a plan for the spec ${JSON.stringify(data.spec || {})}`;
+      if (data.name === "finalize") return "Submitting the plan for checking";
+      return `Calling ${data.name}`;
+    }
+    if (kind === "tool_result") {
+      const r = data.result || {};
+      if (r.error) return `Tool refused: ${r.error}`;
+      if (data.name === "set_checklist" && r.checklist) return `Checklist: ${r.checklist.join("; ")}`;
+      if (data.name === "solve_plan" && r.plan_id) return `Plan ${r.plan_id}: ${r.valid ? "verified" : "not verified"}, expected cost ${money(r.energy_cost, r.currency)}`;
+      if (data.name === "finalize" && r.failed_checks && r.failed_checks.length) return `Checks not passed: ${r.failed_checks.map((c) => CHECK_NAMES[c] || c).join("; ")}. The agent is fixing it.`;
+      return null;
+    }
+    if (kind === "review") return data.approved === true ? "Independent reviewer: ✓ approved" : data.approved === false ? "Independent reviewer: ✗ raised issues" : "Independent reviewer: no verdict";
+    return null;
+  }
+
+  function liveShell(goal) {
+    VPCharts.destroyAll();
+    state.playToken += 1;
+    const steps = make("ol", { class: "steps" });
+    const conversation = $("conversation");
+    conversation.replaceChildren(
+      make("article", { class: "message user", "aria-label": "Your goal" }, make("p", { class: "who" }, "Goal"), make("p", { class: "goal-text" }, goal)),
+      make(
+        "article",
+        { class: "message agent", "aria-label": "Agent's answer" },
+        make("p", { class: "who" }, "VoltProof agent"),
+        make("div", { class: "badges" }, make("span", { class: "badge" }, "live run")),
+        make("p", { class: "checked-against" }, "The agent is working: it writes a spec, the optimizer plans, and the checks run. This usually takes 10 to 30 seconds."),
+        make("h3", {}, "What the agent is doing"),
+        steps
+      )
+    );
+    return steps;
+  }
+
+  function streamRun(runId, goal) {
+    return new Promise((resolve) => {
+      const steps = liveShell(goal);
+      const source = new EventSource(`api/plan/${encodeURIComponent(runId)}/events`);
+      let ended = false;
+      const add = (kind) => (event) => {
+        const text = liveStepText(kind, JSON.parse(event.data));
+        if (text) steps.append(make("li", {}, text));
+      };
+      for (const kind of ["tool_call", "tool_result", "review"]) source.addEventListener(kind, add(kind));
+      source.addEventListener("end", async (event) => {
+        ended = true;
+        source.close();
+        const end = JSON.parse(event.data);
+        if (end.status !== "done") {
+          resolve(fallBack(end.reason, null, true));
+          return;
+        }
+        try {
+          const result = await (await fetch(`api/plan/${encodeURIComponent(runId)}`)).json();
+          status("Live run finished.");
+          await show(result.view, { instant: true });
+        } catch (_err) {
+          await fallBack("network", null, true);
+        }
+        refreshLive();
+        resolve();
+      });
+      source.onerror = () => {
+        if (ended) return;
+        ended = true;
+        source.close();
+        resolve(fallBack("network", null, true));
+      };
+    });
+  }
 
   async function submitGoal(event) {
     event.preventDefault();
@@ -335,22 +481,42 @@
       status(`Goals are limited to ${MAX_GOAL} characters.`, true);
       return;
     }
-    let reason;
+    const button = $("goal-form").querySelector("button[type=submit]");
+    button.disabled = true;
     try {
-      const response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: state.siteId, day: $("day").value, goal }) });
-      reason = response.ok ? null : `the live AI answered ${response.status}`;
-      if (!reason) {
-        status("Live runs arrive in the next step of this build.", true);
+      let response;
+      try {
+        response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: state.siteId, day: $("day").value, goal }) });
+      } catch (_err) {
+        await fallBack("network");
         return;
       }
-    } catch (_err) {
-      reason = "the live AI could not be reached";
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.run_id) {
+        await fallBack(body.reason || (response.status === 422 ? "invalid" : "error"), body);
+        return;
+      }
+      history.replaceState(null, "", location.pathname);
+      status("Running live: the agent is working.");
+      await streamRun(body.run_id, goal);
+    } finally {
+      button.disabled = false;
     }
-    const fallback = state.chips.find((c) => c.site_id === state.siteId);
-    if (!fallback) return;
-    const notice = `Live run unavailable (${reason}). Showing a recorded run for this site instead, labelled "replay (recorded run)". Your goal was not run.`;
-    status(notice, true);
-    await playChip(fallback, { instant: true, notice });
+  }
+
+  /* --- live status ---------------------------------------------------------------------------------- */
+
+  async function refreshLive() {
+    try {
+      const response = await fetch("api/status", { cache: "no-store" });
+      state.live = response.ok ? await response.json() : null;
+    } catch (_err) {
+      state.live = null;
+    }
+    const note = $("live-note");
+    if (!state.live) note.textContent = "Live AI not available here: typed goals show a recorded run instead.";
+    else if (!state.live.live) note.textContent = `Live AI unavailable (${reasonText(state.live.reason)}${state.live.paused_until ? `, until ${new Date(state.live.paused_until).toLocaleTimeString()}` : ""}): typed goals show a recorded run instead.`;
+    else note.textContent = `Live AI on: ${state.live.runs_left_this_hour} live runs left for you this hour.`;
   }
 
   function updateCount() {
@@ -373,10 +539,12 @@
     const seen = new Map();
     for (const chip of state.chips) if (!seen.has(chip.site_id)) seen.set(chip.site_id, chip.site);
     state.sites = [...seen.values()];
+    await refreshLive();
     const wanted = new URLSearchParams(location.hash.slice(1)).get("replay");
     const chip = state.chips.find((c) => c.id === wanted);
     selectSite(chip ? chip.site_id : state.sites[0].site_id);
-    if (chip) await playChip(chip, { instant: true });
+    // With no #replay in the URL, show one full example at once (the first chip; it is labelled replay)
+    await playChip(chip || state.chips.find((c) => c.site_id === state.siteId), { instant: true, keepUrl: !chip });
   }
 
   start();

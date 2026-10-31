@@ -35,8 +35,9 @@ DEFAULTS: Mapping[str, str] = MappingProxyType(
         "PRICE_OUTPUT_USD_PER_M": "4.25",
         "PRICE_CACHED_INPUT_USD_PER_M": "0.15",
         "BUDGET_USD_CAP": "85",
-        "DEMO_BUDGET_USD_CAP": "20",
+        "DEMO_BUDGET_USD_CAP": "10",
         "LIVE_MODE": "false",
+        "TRUSTED_PROXY_HOPS": "0",
     }
 )
 ENV_VARS = (API_KEY_VAR, *DEFAULTS)
@@ -90,6 +91,7 @@ class Settings:
     budget_usd_cap: float
     demo_budget_usd_cap: float
     live_mode: bool
+    trusted_proxy_hops: int = 0  # demo app: X-Forwarded-For entries added by trusted proxies (0: use the peer address)
     cache_dir: Path = DEFAULT_CACHE_DIR
     ledger_path: Path = DEFAULT_LEDGER_PATH
 
@@ -176,6 +178,7 @@ def load_settings(environ: Mapping[str, str]) -> Settings:
         budget_usd_cap=read.number("BUDGET_USD_CAP", float, low=0, low_inclusive=False),
         demo_budget_usd_cap=read.number("DEMO_BUDGET_USD_CAP", float, low=0, low_inclusive=False),
         live_mode=read.boolean("LIVE_MODE"),
+        trusted_proxy_hops=read.number("TRUSTED_PROXY_HOPS", int, low=0, high=5),
     )
     if 0 < settings.budget_usd_cap < settings.demo_budget_usd_cap:
         read.errors.append(
