@@ -16,7 +16,7 @@ The frozen test run of VoltProof Bench. Every reported number comes from these f
 | ledger total at report time | $22.32 of $85 |
 | sha256 of the run directory, before / after this report | `a13e0d472207fa471079be5d7432a079391a4e0b4e14807f9c303e61c28ea971` / `a13e0d472207fa471079be5d7432a079391a4e0b4e14807f9c303e61c28ea971` |
 
-Files: `config.json` (arguments, fingerprints, settings without the key), `episodes_plan.json` (every episode with its goal and gold spec, written before the run), `episodes.jsonl` (one line per episode and arm), `traces.zip` (one trace per LLM arm and episode).
+Files: `config.json` (arguments, fingerprints, settings without the key; in this published copy, local absolute paths are redacted to paths relative to the repo root; sha256 of the original `config.json`: `0da5d6b427edc471b70ac1de32bc9d5f45d0088a6d17d8cb9e61d0ba4a218bf0`), `episodes_plan.json` (every episode with its goal and gold spec, written before the run), `episodes.jsonl` (one line per episode and arm), `traces.zip` (one trace per LLM arm and episode).
 
 ## Regression check after the freeze
 

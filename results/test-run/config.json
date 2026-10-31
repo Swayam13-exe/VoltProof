@@ -38,8 +38,8 @@
   "budget_usd_cap": "85.0",
   "demo_budget_usd_cap": "20.0",
   "live_mode": "False",
-  "cache_dir": "C:\\Meta Global AI Developer Hackathon\\VoltProof\\.cache\\llm",
-  "ledger_path": "C:\\Meta Global AI Developer Hackathon\\VoltProof\\runs\\ledger.jsonl"
+  "cache_dir": ".cache/llm",
+  "ledger_path": "runs/ledger.jsonl"
  },
  "ledger_usd_at_start": 0.8200586499999997
 }

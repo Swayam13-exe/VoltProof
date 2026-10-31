@@ -340,7 +340,21 @@ def e1_site_table(e1: Mapping[str, Any]) -> Table:
         }
         for r in e1["per_site_arm"]
     ]
-    return Table("e1_per_site", "E1 outage counterfactual per site", out, note=e1["caption"])
+    return Table("e1_per_site", "E1 outage counterfactual per site", out, note=e1["caption"] + e1_finding(e1))
+
+
+def e1_finding(e1: Mapping[str, Any]) -> str:
+    """The reading of E1 for A4, stated only when the data support it (valid plans aside, which the
+    outage table shows): A4 loses critical load without the override and the oracle loses none."""
+    per_arm = {r["arm"]: r for r in e1.get("per_arm", [])}
+    a4, a6 = per_arm.get("A4"), per_arm.get("A6")
+    if not a4 or not a6 or a4["cf_episodes_any_critical_loss"] == 0 or a6["cf_episodes_any_critical_loss"] != 0:
+        return ""
+    return (
+        " VoltProof's plans meet the announced outage on the forecast; the critical load lost in "
+        f"{a4['cf_episodes_any_critical_loss']} episodes comes from solar falling short of the forecast (A6, with perfect "
+        "information, loses none). The plan is verified, and the controller override remains as a second layer."
+    )
 
 
 def decomposition_table(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Mapping[str, EpisodeInfo]) -> Table:
@@ -721,11 +735,31 @@ def files_digest(run_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def publish_run(run_dir: Path, out_dir: Path) -> dict[str, Any]:
-    """Copy the run's files into out_dir and zip its traces (if under the size cap); read only on run_dir."""
+def redact_paths(node: Any, root: Path) -> Any:
+    """Absolute paths inside the repo become repo-relative (posix); other values are unchanged."""
+    if isinstance(node, dict):
+        return {key: redact_paths(value, root) for key, value in node.items()}
+    if isinstance(node, list):
+        return [redact_paths(item, root) for item in node]
+    if isinstance(node, str) and Path(node).is_absolute():
+        try:
+            return Path(node).resolve().relative_to(root.resolve()).as_posix()
+        except ValueError:
+            return node
+    return node
+
+
+def publish_run(run_dir: Path, out_dir: Path, root: Path = PROJECT_ROOT) -> dict[str, Any]:
+    """Copy the run's files into out_dir (config.json with repo-relative paths) and zip its traces
+    (if under the size cap); read only on run_dir."""
     out_dir.mkdir(parents=True, exist_ok=True)
     for name in RUN_FILES:
-        shutil.copyfile(run_dir / name, out_dir / name)
+        if name == "config.json":
+            config = json.loads((run_dir / name).read_text(encoding="utf-8"))
+            (out_dir / name).write_text(json.dumps(redact_paths(config, root), indent=1) + "\n", encoding="utf-8")
+        else:
+            shutil.copyfile(run_dir / name, out_dir / name)
+    original_config_sha256 = hashlib.sha256((run_dir / "config.json").read_bytes()).hexdigest()
     zipped = out_dir / "traces.zip"
     with zipfile.ZipFile(zipped, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for path in sorted((run_dir / "traces").glob("*.jsonl")):
@@ -733,7 +767,11 @@ def publish_run(run_dir: Path, out_dir: Path) -> dict[str, Any]:
     size = zipped.stat().st_size
     if size > TRACES_ZIP_MAX_BYTES:
         zipped.unlink()
-    return {"traces_zip_bytes": size if size <= TRACES_ZIP_MAX_BYTES else None, "traces_zip_skipped": size > TRACES_ZIP_MAX_BYTES}
+    return {
+        "traces_zip_bytes": size if size <= TRACES_ZIP_MAX_BYTES else None,
+        "traces_zip_skipped": size > TRACES_ZIP_MAX_BYTES,
+        "original_config_sha256": original_config_sha256,
+    }
 
 
 def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequence[Mapping[str, Any]], context: Mapping[str, Any]) -> str:
@@ -758,7 +796,9 @@ def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequenc
         f"| ledger total at report time | ${context.get('ledger_usd', float('nan')):.2f} of ${float(config['settings']['budget_usd_cap']):.0f} |",
         f"| sha256 of the run directory, before / after this report | `{context['digest_before']}` / `{context['digest_after']}` |",
         "",
-        "Files: `config.json` (arguments, fingerprints, settings without the key), `episodes_plan.json` (every episode with its goal "
+        "Files: `config.json` (arguments, fingerprints, settings without the key; in this published copy, local absolute paths are "
+        f"redacted to paths relative to the repo root; sha256 of the original `config.json`: `{context.get('original_config_sha256', '?')}`), "
+        "`episodes_plan.json` (every episode with its goal "
         "and gold spec, written before the run), `episodes.jsonl` (one line per episode and arm), "
         + ("`traces.zip` (one trace per LLM arm and episode)." if context.get("traces_zip_bytes") else "traces not included (over 50 MB)."),
         "",

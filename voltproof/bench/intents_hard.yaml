@@ -1,0 +1,155 @@
+# VoltProof Bench "hard" goals (SPEC §6.15 E2). Same conventions as intents.yaml: site-agnostic,
+# {placeholders} filled per site (and per day for tariff periods) by voltproof/bench/intents_hard.py,
+# site-local hours, half-open windows [start_hour, end_hour), gold specs per SPEC §3.
+#
+# What makes these goals harder than intents.yaml: the number the spec needs is not stated as written
+# (kWh instead of %, a fraction of the grid connection, a negation, a relative or colloquial time, a
+# distractor with its own hours, three requirements at once, a goal the battery cannot meet, a named
+# tariff period). Hours avoid the system prompt's example hours (8-11, 9-11, by 7).
+#
+# Derivations (in addition to the four of intents.yaml):
+#   import_limit_frac_exact_kw(frac)      frac * grid.import_max_kw, rounded to 0.1 (no floor)       [kW]
+#   tariff_period_reserves(period, pct)   one reserve window per window of the day's named period    [windows]
+# Requirements (in addition to export_allowed | tariff_period:<name>):
+#   unreachable_first_hour                the gold min_soc_pct_all_day exceeds what the battery can
+#                                         reach by the end of hour 0: (E0 + eta_c * P_charge * 1 h) / capacity
+version: 1
+
+templates:
+  - id: hard_reserve_kwh
+    category: reserve_in_kwh
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    params:
+      reserve_kwh: {derive: capacity_frac_kwh, frac: 0.4}
+    phrasings:
+      - "Keep at least {reserve_kwh} kWh stored in the battery from 7 PM to 11 PM."
+      - "Between 19:00 and 23:00 there should always be {reserve_kwh} kWh or more in the battery; otherwise keep costs low."
+    gold:
+      reserve_windows: [{start_hour: 19, end_hour: 23, min_soc_pct: 40}]
+
+  - id: hard_cap_relative
+    category: cap_relative_to_site
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    params:
+      half_import_kw: {derive: import_limit_frac_exact_kw, frac: 0.5}
+    phrasings:
+      - "We share our grid connection with the neighbours from noon to 4 PM, so draw at most half of our connection's limit during that time."
+      - "From 12:00 to 16:00, grid import must stay at or below half of our grid connection."
+    gold:
+      import_caps: [{start_hour: 12, end_hour: 16, max_kw: "{half_import_kw}"}]
+
+  - id: hard_negation
+    category: negation
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Don't discharge the battery before 5 PM today."
+      - "The battery must not discharge until 17:00; after that, use it freely to cut costs."
+    gold:
+      discharge_only_windows: [{start_hour: 17, end_hour: 24}]
+
+  - id: hard_relative_time
+    category: relative_time
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "For the 4 hours after 3 PM, keep the battery at least 70% charged."
+      - "Starting at 15:00 and for the next four hours, hold 70% or more in the battery."
+    gold:
+      reserve_windows: [{start_hour: 15, end_hour: 19, min_soc_pct: 70}]
+
+  - id: hard_tonight
+    category: colloquial_time
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Tonight between 9 and 11, keep at least 60% in the battery."
+      - "Keep the battery at 60% or more from 9 to 11 tonight."
+    gold:
+      reserve_windows: [{start_hour: 21, end_hour: 23, min_soc_pct: 60}]
+
+  - id: hard_noon_midnight
+    category: colloquial_time
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Have the battery full by noon, then keep it at 50% or more until midnight."
+      - "I want a full battery by midday, and from then until midnight it shouldn't drop under half."
+    gold:
+      soc_targets: [{by_hour: 12, min_soc_pct: 95}]
+      reserve_windows: [{start_hour: 12, end_hour: 24, min_soc_pct: 50}]
+
+  - id: hard_distractor
+    category: distractor
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    phrasings:
+      - "Yesterday the grid was down from 2 to 4 PM, which was a pain, but there is no outage planned today. All I need is at least 40% in the battery at 8 PM."
+      - "Last week the utility cut the power from 14:00 to 16:00 without warning. Nothing like that is announced for today; just make sure the battery holds 40% or more at 20:00."
+    gold:
+      soc_targets: [{by_hour: 20, min_soc_pct: 40}]
+
+  - id: hard_compound3
+    category: compound_three_part
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    requires: [export_allowed]
+    phrasings:
+      - "Grid maintenance from 11 AM to 2 PM: keep the {critical_load_name} running. After that, don't export anything from 2 PM to 5 PM, and hold at least 50% in the battery from 6 PM to 11 PM."
+      - "Three things today: the grid is off 11:00-14:00 (the {critical_load_name} must stay on), no feeding into the grid 14:00-17:00, and 50% or more in the battery 18:00-23:00."
+    gold:
+      grid_outages: [{start_hour: 11, end_hour: 14}]
+      no_export_windows: [{start_hour: 14, end_hour: 17}]
+      reserve_windows: [{start_hour: 18, end_hour: 23, min_soc_pct: 50}]
+
+  - id: hard_impossible
+    category: physically_impossible
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    requires: [unreachable_first_hour]
+    phrasings:
+      - "Keep the battery at 100% the whole day, starting from the very first hour."
+      - "I want the battery at 100% at the end of every hour today, from midnight on."
+    gold:
+      min_soc_pct_all_day: 100
+
+  - id: hard_named_period
+    category: named_tariff_period
+    held_out: false
+    site_types: [commercial_cold_store, health_clinic, household]
+    requires: ["tariff_period:peak"]
+    params:
+      peak_reserves: {derive: tariff_period_reserves, period: peak, pct: 40}
+    phrasings:
+      - "During the peak-price hours, never let the battery drop below 40%."
+      - "Hold at least 40% in the battery throughout the peak period today."
+    gold:
+      reserve_windows: "{peak_reserves}"
+
+# Multilingual subset: same gold spec as `template`; `en` is the English source sentence (also run, so
+# each language is paired with English on the same goal, day and site). Translations are supplied by
+# the user; the loader refuses a real run while any TRANSLATION_PENDING remains.
+multilingual:
+  - id: ml_hard_negation
+    template: hard_negation
+    en: "Don't discharge the battery before 5 PM today."
+    es: "TRANSLATION_PENDING"
+    hi: "TRANSLATION_PENDING"
+    pt: "TRANSLATION_PENDING"
+    de: "TRANSLATION_PENDING"
+  - id: ml_hard_relative_time
+    template: hard_relative_time
+    en: "For the 4 hours after 3 PM, keep the battery at least 70% charged."
+    es: "TRANSLATION_PENDING"
+    hi: "TRANSLATION_PENDING"
+    pt: "TRANSLATION_PENDING"
+    de: "TRANSLATION_PENDING"
+  - id: ml_hard_tonight
+    template: hard_tonight
+    en: "Tonight between 9 and 11, keep at least 60% in the battery."
+    es: "TRANSLATION_PENDING"
+    hi: "TRANSLATION_PENDING"
+    pt: "TRANSLATION_PENDING"
+    de: "TRANSLATION_PENDING"

@@ -1,6 +1,6 @@
 # VoltProof Bench report: `test-20261030-181315`
 
-Generated 2026-10-30T23:29:10 by `python -m voltproof.bench.report`. 260 episodes x 7 arms. Oracle-bound check: 260 episodes checked, 0 skipped (A0 gap None), 0 mismatches, 0 results below the bound. Regression check: passed.
+Generated 2026-10-31T00:06:49 by `python -m voltproof.bench.report`. 260 episodes x 7 arms. Oracle-bound check: 260 episodes checked, 0 skipped (A0 gap None), 0 mismatches, 0 results below the bound. Regression check: passed.
 
 Arms: A0 rule-based; A1 optimizer, cost only; A2 LLM writes schedule; A3 LLM + simulator; A4 VoltProof; A5 optimizer, gold spec; A6 oracle (actual data).
 
@@ -165,7 +165,7 @@ Plan physics validity: did the plan as written avoid needing a grid that is down
 | nairobi_clinic | A5 | 15 | 0.000 | 7.562 | 2 | 36.182 | 86.7% |
 | nairobi_clinic | A6 | 15 | 0.000 | 0.000 | 0 | 0.000 | 100.0% |
 
-E1 counterfactual: only the executor's deficit-covering outage override is removed; in outage hours the battery follows its clipped setpoint and still stores surplus PV within its limits (the no-wasted-solar rule every arm gets outside outages), and any deficit goes unserved, non-critical load first. Planned charging above the PV surplus during an outage is a deficit, as in the verifier. This is a conservative estimate of what the plans alone would have lost.
+E1 counterfactual: only the executor's deficit-covering outage override is removed; in outage hours the battery follows its clipped setpoint and still stores surplus PV within its limits (the no-wasted-solar rule every arm gets outside outages), and any deficit goes unserved, non-critical load first. Planned charging above the PV surplus during an outage is a deficit, as in the verifier. This is a conservative estimate of what the plans alone would have lost. VoltProof's plans meet the announced outage on the forecast; the critical load lost in 5 episodes comes from solar falling short of the forecast (A6, with perfect information, loses none). The plan is verified, and the controller override remains as a second layer.
 
 ### Error decomposition of A4's pooled total-cost gap (share of sum|A0_total|)
 

@@ -209,6 +209,19 @@ def test_bound_check_flags_a_mismatch_and_a_result_below_the_bound(data) -> None
     assert {b["arm"] for b in rp.bound_check(by_ep, lowered)["below_bound"]} == {"A5", "A6"}
 
 
+def test_published_config_has_repo_relative_paths(tmp_path: Path) -> None:
+    config = {"settings": {"cache_dir": str(tmp_path / ".cache" / "llm"), "elsewhere": "C:\\other\\x", "model": "m"}, "args": {"split": "test"}}
+    assert rp.redact_paths(config, tmp_path) == {"settings": {"cache_dir": ".cache/llm", "elsewhere": "C:\\other\\x", "model": "m"}, "args": {"split": "test"}}
+
+
+def test_e1_finding_is_stated_only_when_the_data_support_it() -> None:
+    def e1(a4_eps: int, a6_eps: int) -> dict[str, Any]:
+        return {"per_arm": [{"arm": "A4", "cf_episodes_any_critical_loss": a4_eps}, {"arm": "A6", "cf_episodes_any_critical_loss": a6_eps}]}
+
+    assert "lost in 5 episodes" in rp.e1_finding(e1(5, 0)) and "controller override remains" in rp.e1_finding(e1(5, 0))
+    assert rp.e1_finding(e1(0, 0)) == "" and rp.e1_finding(e1(5, 1)) == ""
+
+
 def test_report_writes_everything_under_out_and_leaves_the_run_untouched(tmp_path: Path) -> None:
     run_dir, out = tmp_path / "run", tmp_path / "results"
     make_run(run_dir)
@@ -224,3 +237,5 @@ def test_report_writes_everything_under_out_and_leaves_the_run_untouched(tmp_pat
         assert (out / "test-run" / name).is_file()
     readme = (out / "test-run" / "README.md").read_text(encoding="utf-8")
     assert "Aggregation rules" in readme and summary["run_digest"] in readme
+    original = __import__("hashlib").sha256((run_dir / "config.json").read_bytes()).hexdigest()
+    assert original in readme and "redacted" in readme

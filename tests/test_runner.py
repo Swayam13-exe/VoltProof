@@ -276,3 +276,55 @@ def test_pilot_run_summarizes_and_projects(tmp_path: Path, settings: Settings, c
     assert summary["projected_usd"] == pytest.approx(3 * expected * runner.NOMINAL_TEST_EPISODES)
     out = capsys.readouterr().out
     assert "PILOT (dev split only)" in out and "Projected test cost" in out and "allowed after the $30 reserve" in out
+
+
+# --- E2: the hard goal set (SPEC §6.15) ---------------------------------------------------------------
+
+
+def filled_hard_intents():
+    from voltproof.bench.intents_hard import load_hard_intents
+
+    intents = load_hard_intents()
+    goals = [g.model_copy(update={lang: f"{g.en} [{lang}]" for lang in LANGUAGES}) for g in intents.multilingual]
+    return intents.model_copy(update={"multilingual": goals})
+
+
+def write_regression(path: Path, passed: bool = True, fingerprint: str | None = None) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"passed": passed, "code_fingerprint": fingerprint or runner.code_fingerprint()}), encoding="utf-8")
+    return path
+
+
+def test_hard_plan_only_works_with_pending_translations(tmp_path: Path, settings: Settings, capsys: pytest.CaptureFixture[str]) -> None:
+    arms = StubArms()
+    assert run_main(tmp_path, settings, ["--split", "test", "--intents", "hard", "--plan-only", "--run-id", "e2-plan"], arms) == 0
+    plan = json.loads((tmp_path / "runs" / "e2-plan" / "episodes_plan.json").read_text(encoding="utf-8"))
+    assert plan["split"] == "test-hard" and plan["n_episodes"] == 56 + 45 and arms.calls == []
+    assert plan["counts"]["set"] == {"english": 56, "multilingual": 45}
+    assert sum(e["goal"] == "TRANSLATION_PENDING" for e in plan["episodes"]) == 36
+    config = json.loads((tmp_path / "runs" / "e2-plan" / "config.json").read_text(encoding="utf-8"))
+    assert config["args"]["intents"] == "hard" and len(config["intents_hard_sha256"]) == 64
+
+
+def test_hard_run_refuses_pending_translations_and_a_missing_or_stale_regression_check(tmp_path: Path, settings: Settings, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = ["--split", "test", "--intents", "hard", "--arms", "A4", "--limit", "2", "--force"]
+    arms = StubArms()
+    assert run_main(tmp_path, settings, argv, arms) == runner.EXIT_REFUSED and "TRANSLATION_PENDING" in capsys.readouterr().out
+    hard = filled_hard_intents()
+    missing = tmp_path / "none.json"
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=hard, regression_path=missing) == runner.EXIT_REFUSED
+    assert "no regression check" in capsys.readouterr().out
+    stale = write_regression(tmp_path / "stale.json", fingerprint="0" * 64)
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=hard, regression_path=stale) == runner.EXIT_REFUSED
+    failed = write_regression(tmp_path / "failed.json", passed=False)
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=hard, regression_path=failed) == runner.EXIT_REFUSED
+    assert arms.calls == []
+    good = write_regression(tmp_path / "good.json")
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=hard, regression_path=good) == runner.EXIT_OK and len(arms.calls) == 2
+    assert all(eid.split("_", 3)[-1].startswith(("hard_", "ml_hard_")) or "_hard_" in eid for _, eid in arms.calls)
+    assert any(p.name.startswith("e2-") for p in (tmp_path / "runs").iterdir())
+
+
+def test_hard_intents_need_the_test_split() -> None:
+    with pytest.raises(SystemExit):
+        runner.parse_args(["--intents", "hard", "--pilot"])
