@@ -4,7 +4,7 @@ Reported separately from the main test run and never pooled with it. Same frozen
 
 Disclosure: 4 English-set episodes have the same goal text, site and day as a multilingual English source episode, so they sent identical requests (served from the LLM cache) and have identical results: ahmedabad_cold_store_2025-01-12_hard_negation_p0, ahmedabad_cold_store_2025-01-12_hard_tonight_p0, munich_home_2025-08-30_hard_relative_time_p0, nairobi_clinic_2025-03-28_hard_relative_time_p0.
 
-Multilingual goals: translations supplied by the author.
+Multilingual goals: translations written by AI and not reviewed by native speakers (Hindi checked by the author).
 
 Generated 2026-10-31T14:06:33 by `python -m voltproof.bench.report`. 101 episodes x 7 arms. Oracle-bound check: 101 episodes checked, 0 skipped (A0 gap None), 0 mismatches, 0 results below the bound. Regression check: passed.
 

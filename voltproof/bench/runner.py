@@ -50,6 +50,7 @@ from voltproof.bench.episode import (
     select_per_site,
 )
 from voltproof.bench.intents import IntentSet, TranslationPendingError, load_intents
+from voltproof.bench.effort_sweep import E4_CAP_USD, EFFORTS, CappedLLM, e4_episodes, effort_llm
 from voltproof.bench.intents_hard import HardIntentSet, build_hard_episodes, intents_sha256, load_hard_intents
 from voltproof.config import PROJECT_ROOT, ConfigError, Settings, get_settings
 from voltproof.data import GLOBAL_SEED
@@ -484,10 +485,16 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--run-id")
     parser.add_argument("--force", action="store_true", help="skip the projection refusal")
     parser.add_argument("--seed", type=int, default=GLOBAL_SEED)
-    parser.add_argument("--intents", choices=("main", "hard"), default="main", help="hard: the E2 goal set (SPEC §6.15), test split only")
+    parser.add_argument("--intents", choices=("main", "hard", "e4"), default="main", help="hard: the E2 goal set; e4: the E4 effort-sweep set (SPEC §6.15); test split only")
+    parser.add_argument("--agent-effort", choices=EFFORTS, help="E4: the A4 agent's reasoning effort (the reviewer stays medium); A4 only, concurrency 1, E4 cap")
+    parser.add_argument("--cost-cap", type=float, help=f"E4: lower the E4 cap (at most ${E4_CAP_USD:.0f}, the default)")
     args = parser.parse_args(argv)
-    if args.intents == "hard" and (args.pilot or args.split != "test"):
-        parser.error("--intents hard runs on the test split only (no pilot)")
+    if args.intents in ("hard", "e4") and (args.pilot or args.split != "test"):
+        parser.error(f"--intents {args.intents} runs on the test split only (no pilot)")
+    if args.cost_cap is not None and not args.agent_effort:
+        parser.error("--cost-cap applies to E4 runs (--agent-effort) only")
+    if args.cost_cap is not None and not 0 < args.cost_cap <= E4_CAP_USD:
+        parser.error(f"--cost-cap must be in (0, {E4_CAP_USD:g}]")
     if args.pilot:
         args.split = "dev"
     default = PILOT_ARMS if args.pilot else ALL_ARMS
@@ -495,6 +502,12 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     unknown = [a for a in args.arms if a not in ALL_ARMS]
     if unknown:
         parser.error(f"unknown arms {unknown}")
+    if args.agent_effort:
+        if args.arms != ["A4"]:
+            parser.error("--agent-effort sweeps the A4 agent only: use --arms A4")
+        args.concurrency = 1  # two clients (swept effort, medium reviewer) share the ledger: one call at a time
+    if args.intents == "e4" and not args.plan_only and not args.agent_effort:
+        parser.error("--intents e4 runs need --agent-effort (medium results are reused from the frozen runs, not re-run)")
     return args
 
 
@@ -533,6 +546,10 @@ def regression_refusal(path: Path) -> str | None:
 
 def run_directory(args: argparse.Namespace, runs_dir: Path) -> Path:
     prefix = "pilot" if args.pilot else ("e2" if args.intents == "hard" else args.split)
+    if args.intents == "e4":
+        prefix = f"e4-{args.agent_effort}" if args.agent_effort else "e4-plan"
+    elif args.agent_effort:
+        prefix = f"e4-probe-{args.agent_effort}"
     if args.resume:
         if args.run_id:
             path = runs_dir / args.run_id
@@ -593,6 +610,13 @@ def main(
             if refusal:
                 print(f"REFUSED: {refusal}")
                 return EXIT_REFUSED
+    elif args.intents == "e4":
+        episodes = e4_episodes(intents, hard_intents, splits, sites, day_builder, args.seed)
+        if not args.plan_only:
+            refusal = regression_refusal(regression_path or REGRESSION_PATH)
+            if refusal:
+                print(f"REFUSED: {refusal}")
+                return EXIT_REFUSED
     elif args.pilot:
         episodes = pilot_episodes(intents, splits, day_builder, args.seed)
     elif args.split == "dev":
@@ -600,7 +624,8 @@ def main(
     else:
         episodes = build_test_episodes(intents, splits, sites, day_builder, args.seed)
     episodes = select(episodes, args, sites)
-    plan = plan_document(episodes, "pilot" if args.pilot else ("test-hard" if args.intents == "hard" else args.split), args.seed)
+    split_label = {"hard": "test-hard", "e4": "test-e4"}.get(args.intents, args.split)
+    plan = plan_document(episodes, "pilot" if args.pilot else split_label, args.seed)
     fingerprint = run_fingerprint(plan)
 
     run_dir = run_directory(args, runs_dir)
@@ -635,7 +660,11 @@ def main(
     if not args.resume:
         _create_run(run_dir, args, fingerprint, settings, plan)
 
-    stats = run_jobs(pending, llm or LLMClient(settings), run_dir, run_id=run_dir.name, base_arms=base_arms, concurrency=args.concurrency, run_arm=run_arm, progress=progress)
+    client = llm or LLMClient(settings)
+    if args.agent_effort:
+        client = CappedLLM(llm or effort_llm(settings, args.agent_effort), settings, args.cost_cap or E4_CAP_USD)
+        print(f"E4: A4 agent at reasoning_effort={args.agent_effort}, reviewer at medium; concurrency 1; E4 cap ${args.cost_cap or E4_CAP_USD:.2f}")
+    stats = run_jobs(pending, client, run_dir, run_id=run_dir.name, base_arms=base_arms, concurrency=args.concurrency, run_arm=run_arm, progress=progress)
     if stats.message:
         print(f"\n{stats.message}. Partial results saved in {run_dir}")
     rows = read_jsonl(run_dir / "episodes.jsonl")
@@ -696,7 +725,10 @@ def _create_run(run_dir: Path, args: argparse.Namespace, fingerprint: str, setti
         "fingerprint": fingerprint,
         "code_fingerprint": code_fingerprint(),
         "plan_sha256": plan["plan_sha256"],
-        "intents_hard_sha256": intents_sha256() if getattr(args, "intents", "main") == "hard" else None,
+        "intents_hard_sha256": intents_sha256() if getattr(args, "intents", "main") in ("hard", "e4") else None,
+        "agent_reasoning_effort": getattr(args, "agent_effort", None),
+        "reviewer_reasoning_effort": "medium" if getattr(args, "agent_effort", None) else None,
+        "e4_cap_usd": (args.cost_cap or E4_CAP_USD) if getattr(args, "agent_effort", None) else None,
         "settings": safe,
         "ledger_usd_at_start": read_ledger_totals(settings.ledger_path).total_usd if settings else None,
     }

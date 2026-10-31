@@ -1,0 +1,5 @@
+measure,comparison,main,hard,all
+goal satisfied,low - medium,"+0.0 pts [+0.0, +0.0] (0 of 30 episodes differ)","+0.0 pts [+0.0, +0.0] (0 of 30 episodes differ)","+0.0 pts [+0.0, +0.0] (0 of 60 episodes differ)"
+goal satisfied,high - medium,"+0.0 pts [+0.0, +0.0] (0 of 30 episodes differ)","+0.0 pts [+0.0, +0.0] (0 of 30 episodes differ)","+0.0 pts [+0.0, +0.0] (0 of 60 episodes differ)"
+spec exact match,low - medium,"+3.3 pts [+0.0, +10.0] (1 of 30 episodes differ)","+0.0 pts [+0.0, +0.0] (0 of 30 episodes differ)","+1.7 pts [+0.0, +5.0] (1 of 60 episodes differ)"
+spec exact match,high - medium,"+3.3 pts [+0.0, +10.0] (1 of 30 episodes differ)","-3.3 pts [-10.0, +0.0] (1 of 30 episodes differ)","+0.0 pts [-5.0, +5.0] (2 of 60 episodes differ)"

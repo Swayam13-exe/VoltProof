@@ -570,7 +570,7 @@ def e2_notes(plan: Mapping[str, Any]) -> list[str]:
         + ", ".join(e["episode_id"] for e in duplicates)
         + ".",
         "",
-        "Multilingual goals: translations supplied by the author.",
+        "Multilingual goals: translations written by AI and not reviewed by native speakers (Hindi checked by the author).",
         "",
     ]
 
