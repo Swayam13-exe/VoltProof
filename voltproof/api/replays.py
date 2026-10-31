@@ -122,6 +122,8 @@ def index_entry(chip: Chip, view: Mapping[str, Any]) -> dict[str, Any]:
         "file": f"{chip.chip_id}.json",
         "site_id": view["site"]["site_id"],
         "site_name": view["site"]["name"],
+        "site": view["site"],  # the site card, so the page needs no API to show the sites
+        "date": view["day"]["date"],
         "kind": chip.kind,
         "language": view["goal"]["language"],
         "goal": view["goal"]["text"],

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <title>VoltProof AI</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="charts.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#setup">Skip to the conversation</a>
+  <header class="site-header">
+    <p class="brand">VoltProof AI</p>
+    <h1 class="lede">Tell a solar-and-battery site what you need today, in plain words: an AI turns it into exact rules, an optimizer finds the cheapest plan that meets them, and a physics check verifies the plan before anything reaches the battery.</h1>
+  </header>
+
+  <main id="main">
+    <section id="setup" class="panel" aria-labelledby="setup-title" tabindex="-1">
+      <h2 id="setup-title" class="visually-hidden">Choose a site and a goal</h2>
+
+      <fieldset class="sites">
+        <legend>1. Choose a site</legend>
+        <div id="site-list" class="site-list"></div>
+      </fieldset>
+
+      <div class="field">
+        <label for="day">2. Day</label>
+        <select id="day" aria-describedby="day-hint"></select>
+        <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
+      </div>
+
+      <div class="field">
+        <h3 class="field-title" id="chips-title">3. Try a recorded goal</h3>
+        <p class="hint" id="chips-hint">Recorded runs of the agent, replayed for free. Goals in several languages.</p>
+        <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
+      </div>
+
+      <form id="goal-form" class="field goal-form" novalidate>
+        <label for="goal">Or type your own goal</label>
+        <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count"></textarea>
+        <div class="goal-meta">
+          <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
+          <p id="goal-count" class="hint count" aria-live="polite">0 / 500</p>
+        </div>
+        <button type="submit" class="primary">Plan my day</button>
+      </form>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="conversation" class="conversation" aria-label="Conversation with the agent" aria-live="polite"></section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0), model DWD ICON global. Built with Muse Spark Open (Meta), served by Baseten.</p>
+    <p>Sites, tariffs, prices and loads are illustrative and synthetic. "Same-day weather" is a weather model's same-day analysis, not a measurement. No real device is controlled.</p>
+  </footer>
+</body>
+</html>
