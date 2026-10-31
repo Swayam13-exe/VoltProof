@@ -214,6 +214,37 @@
     return make("div", {}, make("ol", { class: "list" }, attempts), reviews, outcome);
   }
 
+  /* --- missed goals in plain words (rule code -> what it means, with the spec's window and level) --- */
+
+  function hourText(h) {
+    return h === 24 ? "midnight" : `${h}:00`;
+  }
+
+  function windowText(w) {
+    return `from ${hourText(w.start_hour)} to ${hourText(w.end_hour)}`;
+  }
+
+  function goalWords(code, spec) {
+    const s = spec || {};
+    const list = (items, fmt) => (items && items.length ? `: ${items.map(fmt).join("; ")}` : "");
+    switch (code) {
+      case "RESERVE": return `battery reserve${list(s.reserve_windows, (w) => `at least ${w.min_soc_pct}% ${windowText(w)}`)}`;
+      case "SOC_TARGET": return `charge target${list(s.soc_targets, (t) => `at least ${t.min_soc_pct}% by ${hourText(t.by_hour)}`)}`;
+      case "ALL_DAY_MIN": return `all-day minimum${s.min_soc_pct_all_day !== undefined && s.min_soc_pct_all_day !== null ? `: at least ${s.min_soc_pct_all_day}% at every hour` : ""}`;
+      case "END_SOC": return `end-of-day level${s.end_of_day_min_soc_pct !== undefined && s.end_of_day_min_soc_pct !== null ? `: at least ${s.end_of_day_min_soc_pct}% at midnight` : ""}`;
+      case "IMPORT_CAP": return `grid import cap${list(s.import_caps, (c) => `at most ${c.max_kw} kW ${windowText(c)}`)}`;
+      case "NO_EXPORT": return `no export to the grid${list(s.no_export_windows, windowText)}`;
+      case "DISCHARGE_WINDOW": return `battery discharging only${list(s.discharge_only_windows, windowText)}`;
+      case "THROUGHPUT": return `battery use limit${s.max_throughput_kwh !== undefined && s.max_throughput_kwh !== null ? `: at most ${s.max_throughput_kwh} kWh charged and discharged` : ""}`;
+      case "OUTAGE_DEFICIT": return `critical load during the outage${list(s.grid_outages, windowText)}`;
+      default: return String(code).toLowerCase().replaceAll("_", " ");
+    }
+  }
+
+  function missedText(codes, spec) {
+    return codes.map((code) => goalWords(code, spec)).join("; ");
+  }
+
   function stat(label, value, explain) {
     return make("div", { class: "stat" }, make("p", { class: "stat-label" }, label), make("p", { class: "stat-value" }, value), make("p", { class: "stat-explain" }, explain));
   }
@@ -248,7 +279,7 @@
     const currency = view.site.currency;
     const diff = sd.cost_difference;
     const diffText = diff >= 0 ? `${money(diff, currency)} cheaper` : `${money(-diff, currency)} more expensive`;
-    const goals = (side) => (side.goals_met ? "✓ all goals met" : `✗ missed: ${side.goals_missed.join(", ")}`);
+    const goals = (side) => (side.goals_met ? "✓ all goals met" : `✗ missed: ${missedText(side.goals_missed, view.spec)}`);
     return make(
       "section",
       { "aria-label": "Replay against the same-day weather" },
@@ -293,7 +324,7 @@
     const diff = sd.cost_difference;
     const review = view.gate.reviews[view.gate.reviews.length - 1];
     const lines = [
-      summaryLine("Goal", sd.agent.goals_met ? "✓ met" : `✗ not met (missed ${sd.agent.goals_missed.join(", ")})`, sd.agent.goals_met, "Checked hour by hour against the spec, on the same-day weather."),
+      summaryLine("Goal", sd.agent.goals_met ? "✓ met" : `✗ not met (missed ${missedText(sd.agent.goals_missed, view.spec)})`, sd.agent.goals_met, "Checked hour by hour against the spec, on the same-day weather."),
       summaryLine("Critical load served", pct(sd.agent.critical_served_pct), sd.agent.critical_served_pct >= 99.95, `Share of the ${view.site.critical_load_name}'s demand supplied on the same-day weather.`),
       summaryLine("Cost against the rule-based battery", diff >= 0 ? `${money(diff, currency)} cheaper` : `${money(-diff, currency)} more expensive`, diff >= 0, "Realized-cost difference on the same-day weather, counting the energy left in the battery."),
       summaryLine("Physics-verified", view.plan.verified ? "✓ yes" : "✗ no", view.plan.verified, "Within the battery's and the grid's limits with all demand served, on the forecast."),
