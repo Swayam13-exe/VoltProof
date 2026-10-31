@@ -1,6 +1,6 @@
 # VoltProof Bench report: `test-20261030-181315`
 
-Generated 2026-10-31T00:06:49 by `python -m voltproof.bench.report`. 260 episodes x 7 arms. Oracle-bound check: 260 episodes checked, 0 skipped (A0 gap None), 0 mismatches, 0 results below the bound. Regression check: passed.
+Generated 2026-10-31T14:06:38 by `python -m voltproof.bench.report`. 260 episodes x 7 arms. Oracle-bound check: 260 episodes checked, 0 skipped (A0 gap None), 0 mismatches, 0 results below the bound. Regression check: passed.
 
 Arms: A0 rule-based; A1 optimizer, cost only; A2 LLM writes schedule; A3 LLM + simulator; A4 VoltProof; A5 optimizer, gold spec; A6 oracle (actual data).
 

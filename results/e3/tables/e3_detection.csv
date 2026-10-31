@@ -1,0 +1,7 @@
+error,with assumptions: flagged,no assumptions: flagged,issue kind matches (with / no),"assumptions state original numbers: n, flagged"
+control (false alarm),"0% [0, 9] (0/40)","0% [0, 9] (0/40)",-,-
+shift_hours,"100% [88, 100] (29/29)","100% [88, 100] (29/29)",29/29 / 29/29,"yes 28 (100%), no 1 (100%)"
+wrong_level,"100% [89, 100] (30/30)","87% [70, 95] (26/30)",30/30 / 26/26,"yes 20 (100%), no 10 (100%)"
+missing_item,"82% [68, 91] (33/40)","100% [91, 100] (40/40)",33/33 / 40/40,"yes 33 (79%), no 7 (100%)"
+unneeded_item,"100% [91, 100] (40/40)","100% [91, 100] (40/40)",40/40 / 40/40,"yes 0 (-), no 0 (-)"
+wrong_field,"97% [86, 100] (35/36)","100% [90, 100] (36/36)",29/35 / 29/36,"yes 15 (100%), no 3 (100%)"

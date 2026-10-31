@@ -1,0 +1,8 @@
+arm,episodes,plan physics valid,unserved critical kWh,executor overrides (hours / episodes)
+A0,4,75.0%,0.000,0 / 0
+A1,4,50.0%,0.000,12 / 4
+A2,4,0.0%,0.000,12 / 4
+A3,4,75.0%,0.000,11 / 4
+A4,4,100.0%,0.000,12 / 4
+A5,4,100.0%,0.000,12 / 4
+A6,4,n/a,0.000,4 / 2

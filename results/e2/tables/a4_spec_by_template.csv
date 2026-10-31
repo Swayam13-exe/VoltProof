@@ -1,0 +1,11 @@
+group,episodes,exact match,mean precision,mean recall
+hard_reserve_kwh,6,100.0%,1.000,1.000
+hard_cap_relative,6,100.0%,1.000,1.000
+hard_negation,21,100.0%,1.000,1.000
+hard_relative_time,21,100.0%,1.000,1.000
+hard_tonight,21,100.0%,1.000,1.000
+hard_noon_midnight,6,100.0%,1.000,1.000
+hard_distractor,6,100.0%,1.000,1.000
+hard_compound3,4,100.0%,1.000,1.000
+hard_impossible,6,66.7%,0.667,0.667
+hard_named_period,4,100.0%,1.000,1.000

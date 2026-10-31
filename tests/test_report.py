@@ -95,7 +95,7 @@ def make_run(run_dir: Path) -> None:
             "held_out_template": TEMPLATES[k] == "evening_reserve",
             "held_out_site": site == "fake_clinic",
             "goal": "g",
-            "gold": {},
+            "gold": {"grid_outages": [{"start_hour": 14, "end_hour": 17}]} if k == 1 else {},
         }
         for eid, site, k in episode_ids()
     ]
@@ -122,7 +122,7 @@ def data() -> tuple[dict, dict]:
     rows = make_rows()
     for eid, site, k in episode_ids():
         plan_entries["episodes"].append(
-            {"episode_id": eid, "site_id": site, "template_id": TEMPLATES[k], "goal_id": f"{TEMPLATES[k]}_p0", "language": "en", "held_out_site": site == "fake_clinic", "held_out_template": k == 2}
+            {"episode_id": eid, "site_id": site, "template_id": TEMPLATES[k], "goal_id": f"{TEMPLATES[k]}_p0", "language": "en", "held_out_site": site == "fake_clinic", "held_out_template": k == 2, "gold": {"grid_outages": [{"start_hour": 14, "end_hour": 17}]} if k == 1 else {}}
         )
     p_hats, bounds = fake_references(Path("."), False)
     return rp.paired(rows), rp.episode_infos(plan_entries, p_hats, bounds)
@@ -239,3 +239,56 @@ def test_report_writes_everything_under_out_and_leaves_the_run_untouched(tmp_pat
     assert "Aggregation rules" in readme and summary["run_digest"] in readme
     original = __import__("hashlib").sha256((run_dir / "config.json").read_bytes()).hexdigest()
     assert original in readme and "redacted" in readme
+
+
+# --- E2 and E3 -----------------------------------------------------------------------------------------
+
+
+def test_impossible_goal_table_checks_the_shortfall_in_each_explanation(data) -> None:
+    from voltproof.models import Shortfall
+
+    by_ep, infos = data
+    eid = next(iter(infos))
+    short = Shortfall(path="min_soc_pct_all_day", rule="ALL_DAY_MIN", hours=[0], amount=2.5, unit="kWh", message="m")
+    rows = [
+        {"episode_id": eid, "arm": "A2", "explanation": "It falls 2.5 kWh short in the first hour."},
+        {"episode_id": eid, "arm": "A3", "explanation": "Kept at 100% all day."},
+        {"episode_id": eid, "arm": "A4", "explanation": "Short by 25% at hour 0.", "spec_precision": 1.0, "spec_recall": 1.0},
+    ]
+    table = by_arm(rp.shortfall_table(rows, infos, {eid: ([short], 10.0)}))
+    assert table["A2"]["shortfall stated"] == "1/1" and table["A3"]["shortfall stated"] == "0/1"
+    assert table["A4"]["shortfall stated"] == "1/1" and table["A4"]["spec exact match"] == "1/1"  # 25 % of 10 kWh
+
+
+def test_e2_notes_list_english_episodes_identical_to_a_multilingual_source() -> None:
+    plan = {"episodes": [
+        {"episode_id": "s_d_hard_x_p0", "site_id": "s", "date": "d", "goal": "G", "goal_id": "hard_x_p0", "language": "en"},
+        {"episode_id": "s_d_hard_y_p1", "site_id": "s", "date": "d", "goal": "H", "goal_id": "hard_y_p1", "language": "en"},
+        {"episode_id": "s_d_ml_hard_x_en", "site_id": "s", "date": "d", "goal": "G", "goal_id": "ml_hard_x_en", "language": "en"},
+        {"episode_id": "s_d_ml_hard_x_es", "site_id": "s", "date": "d", "goal": "g", "goal_id": "ml_hard_x_es", "language": "es"},
+    ]}
+    text = " ".join(rp.e2_notes(plan))
+    assert "1 English-set episodes" in text and "s_d_hard_x_p0" in text and "s_d_hard_y_p1" not in text
+
+
+def test_e3_report_puts_both_conditions_side_by_side(tmp_path: Path) -> None:
+    e3 = tmp_path / "e3-x"
+    e3.mkdir()
+    variants, results = [], []
+    for k, (error_type, kind) in enumerate([("control", None), ("missing_item", "missing"), ("shift_hours", "wrong")]):
+        for condition in ("with_assumptions", "no_assumptions"):
+            vid = f"e{k}__{condition}"
+            variants.append({"variant_id": vid, "episode_id": "e", "condition": condition, "error_type": error_type, "expected_kind": kind,
+                             "assumptions_state_original": (True if error_type != "control" else None) if condition == "with_assumptions" else None,
+                             "spec": {}, "original_spec": {}, "assumptions": [], "same_input_as_with_assumptions": False})
+            flagged = error_type != "control" and not (error_type == "missing_item" and condition == "with_assumptions")
+            results.append({"variant_id": vid, "approved": not flagged, "issues": [{"kind": kind, "detail": "d"}] if flagged else [], "raw": "{}", "cost_usd": 0.001, "cache_hit": False})
+    (e3 / "config.json").write_text(json.dumps({"episodes": ["e"]}), encoding="utf-8")
+    (e3 / "variants.jsonl").write_text("".join(json.dumps(v) + "\n" for v in variants), encoding="utf-8")
+    (e3 / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in results), encoding="utf-8")
+    out = rp.e3_report(e3, tmp_path / "results")
+    rows = {r["error"]: r for r in out["table"].rows}
+    assert rows["control (false alarm)"]["with assumptions: flagged"].startswith("0% ")
+    assert rows["missing_item"]["with assumptions: flagged"].endswith("(0/1)") and rows["missing_item"]["no assumptions: flagged"].endswith("(1/1)")
+    assert rows["shift_hours"]["issue kind matches (with / no)"] == "1/1 / 1/1"
+    assert (tmp_path / "results" / "e3" / "REPORT.md").is_file() and (tmp_path / "results" / out["figures"][0]).is_file()

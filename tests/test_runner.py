@@ -289,6 +289,14 @@ def filled_hard_intents():
     return intents.model_copy(update={"multilingual": goals})
 
 
+def pending_hard_intents():
+    from voltproof.bench.intents_hard import load_hard_intents
+
+    intents = load_hard_intents()
+    goals = [g.model_copy(update={lang: "TRANSLATION_PENDING" for lang in LANGUAGES}) for g in intents.multilingual]
+    return intents.model_copy(update={"multilingual": goals})
+
+
 def write_regression(path: Path, passed: bool = True, fingerprint: str | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"passed": passed, "code_fingerprint": fingerprint or runner.code_fingerprint()}), encoding="utf-8")
@@ -297,7 +305,8 @@ def write_regression(path: Path, passed: bool = True, fingerprint: str | None = 
 
 def test_hard_plan_only_works_with_pending_translations(tmp_path: Path, settings: Settings, capsys: pytest.CaptureFixture[str]) -> None:
     arms = StubArms()
-    assert run_main(tmp_path, settings, ["--split", "test", "--intents", "hard", "--plan-only", "--run-id", "e2-plan"], arms) == 0
+    argv = ["--split", "test", "--intents", "hard", "--plan-only", "--run-id", "e2-plan"]
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=pending_hard_intents()) == 0
     plan = json.loads((tmp_path / "runs" / "e2-plan" / "episodes_plan.json").read_text(encoding="utf-8"))
     assert plan["split"] == "test-hard" and plan["n_episodes"] == 56 + 45 and arms.calls == []
     assert plan["counts"]["set"] == {"english": 56, "multilingual": 45}
@@ -309,7 +318,8 @@ def test_hard_plan_only_works_with_pending_translations(tmp_path: Path, settings
 def test_hard_run_refuses_pending_translations_and_a_missing_or_stale_regression_check(tmp_path: Path, settings: Settings, capsys: pytest.CaptureFixture[str]) -> None:
     argv = ["--split", "test", "--intents", "hard", "--arms", "A4", "--limit", "2", "--force"]
     arms = StubArms()
-    assert run_main(tmp_path, settings, argv, arms) == runner.EXIT_REFUSED and "TRANSLATION_PENDING" in capsys.readouterr().out
+    assert run_main(tmp_path, settings, argv, arms, hard_intents=pending_hard_intents()) == runner.EXIT_REFUSED
+    assert "TRANSLATION_PENDING" in capsys.readouterr().out
     hard = filled_hard_intents()
     missing = tmp_path / "none.json"
     assert run_main(tmp_path, settings, argv, arms, hard_intents=hard, regression_path=missing) == runner.EXIT_REFUSED

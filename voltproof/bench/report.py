@@ -39,7 +39,8 @@ from voltproof.bench.counterfactual import E1_CAPTION, FROZEN_RUN, RESULTS_DIR, 
 from voltproof.bench.runner import ALL_ARMS, code_fingerprint, read_jsonl
 from voltproof.core.metrics import oracle_bound
 from voltproof.core.rules import penalty_scale
-from voltproof.baselines.optimizer_arms import a6_plan
+from voltproof.agents.gate import extract_numbers, shortfall_stated
+from voltproof.baselines.optimizer_arms import a5_plan, a6_plan
 from voltproof.config import PROJECT_ROOT
 from voltproof.data import GLOBAL_SEED
 from voltproof.data.sites import SITES
@@ -49,7 +50,6 @@ BOOTSTRAP_RESAMPLES = 10_000
 TIE_REL = 1e-6
 BOUND_TOL = 1e-6
 TRACES_ZIP_MAX_BYTES = 50 * 1024 * 1024
-OUTAGE_TEMPLATES = ("outage_critical", "outage_then_reserve")
 LLM_ARMS = ("A2", "A3", "A4")
 GATE_CHECKS = ("verified_plan", "coverage", "grounded_explanation", "review")
 ARM_NAMES = {
@@ -76,6 +76,7 @@ class EpisodeInfo:
     held_out_template: bool
     p_hat: float
     bound: float
+    outage: bool = False  # the gold spec announces a grid outage
 
 
 @dataclass
@@ -109,6 +110,7 @@ def episode_infos(plan: Mapping[str, Any], p_hats: Mapping[str, float], bounds: 
             held_out_template=bool(entry["held_out_template"]),
             p_hat=p_hats[eid],
             bound=bounds[eid],
+            outage=bool((entry.get("gold") or {}).get("grid_outages")),
         )
     return infos
 
@@ -203,7 +205,8 @@ def goal_rates(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Mapp
     for site in sorted({i.site_id for i in infos.values()}):
         held = any(i.held_out_site for i in infos.values() if i.site_id == site)
         groups.append((f"{site}{' (held out)' if held else ''}", lambda i, s=site: i.site_id == s))
-    groups.append(("held-out templates", lambda i: i.held_out_template))
+    if any(i.held_out_template for i in infos.values()):
+        groups.append(("held-out templates", lambda i: i.held_out_template))
     out = []
     for arm in arms:
         row: dict[str, Any] = {"arm": arm}
@@ -251,18 +254,11 @@ def money_table(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Map
     out = []
     for arm in arms:
         pooled, median, record = stats(all_ids, arm)
-        c_pooled, c_median, c_record = stats(cost_ids, arm)
-        out.append(
-            {
-                "arm": arm,
-                "pooled savings vs A0": pooled,
-                "median (A0 - X) per day": median,
-                "W/L/T vs A0": record,
-                "cost_min: pooled": c_pooled,
-                "cost_min: median": c_median,
-                "cost_min: W/L/T": c_record,
-            }
-        )
+        row = {"arm": arm, "pooled savings vs A0": pooled, "median (A0 - X) per day": median, "W/L/T vs A0": record}
+        if cost_ids:  # the cost-only template (absent from the hard set)
+            c_pooled, c_median, c_record = stats(cost_ids, arm)
+            row.update({"cost_min: pooled": c_pooled, "cost_min: median": c_median, "cost_min: W/L/T": c_record})
+        out.append(row)
     currency = _currency(by_ep, all_ids)
     return Table(
         f"money_{site}",
@@ -301,7 +297,8 @@ def total_cost_table(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos
 
 
 def outage_table(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Mapping[str, EpisodeInfo], arms: Sequence[str], e1: Mapping[str, Any] | None) -> Table:
-    ids = [e for e in select(infos, lambda i: i.template_id in OUTAGE_TEMPLATES) if e in by_ep]
+    ids = [e for e in select(infos, lambda i: i.outage) if e in by_ep]
+    templates = ", ".join(dict.fromkeys(infos[e].template_id for e in ids))
     e1_arm = {r["arm"]: r for r in (e1 or {}).get("per_arm", [])}
     out = []
     for arm in arms:
@@ -323,7 +320,7 @@ def outage_table(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Ma
     note = "Plan physics validity: did the plan as written avoid needing a grid that is down? A6 plans on actual data, so its forecast check is not applicable."
     if e1:
         note += " " + E1_CAPTION
-    return Table("outage_safety", f"Outage safety ({', '.join(OUTAGE_TEMPLATES)}: {len(ids)} episodes)", out, note=note)
+    return Table("outage_safety", f"Outage safety ({templates or 'no outage goals'}: {len(ids)} episodes)", out, note=note)
 
 
 def e1_site_table(e1: Mapping[str, Any]) -> Table:
@@ -518,6 +515,155 @@ def bound_check(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], infos: Map
     return {"checked": checked, "skipped_gap_none": skipped, "mismatches": mismatches, "below_bound": below, "passed": not mismatches and not below}
 
 
+IMPOSSIBLE_TEMPLATE = "hard_impossible"
+
+
+def impossible_shortfalls(run_dir: Path) -> dict[str, tuple[list[Any], float]]:
+    """Per impossible-goal episode: the shortfalls of the gold spec's plan on the forecast (A5, what
+    any arm can at best achieve) and the battery capacity."""
+    out = {}
+    for episode in run_episodes(run_dir):
+        if episode.goal.template_id == IMPOSSIBLE_TEMPLATE:
+            plan = a5_plan(episode.day, episode.site, episode.goal.gold)
+            out[episode.episode_id] = (list(plan.shortfalls), episode.site.battery.capacity_kwh)
+    return out
+
+
+def shortfall_table(rows: Sequence[Mapping[str, Any]], infos: Mapping[str, EpisodeInfo], targets: Mapping[str, tuple[list[Any], float]]) -> Table:
+    """E2's physically impossible goal: does each LLM arm's explanation state the shortfall (as A4's
+    gate requires: quoted within 5 %, or rounded to the nearest whole unit)?"""
+    out = []
+    by_ep = paired(rows)
+    for arm in LLM_ARMS:
+        ids = [e for e in targets if arm in by_ep.get(e, {})]
+        stated = 0
+        for eid in ids:
+            explanation = by_ep[eid][arm].get("explanation") or ""
+            shortfalls, capacity = targets[eid]
+            numbers = extract_numbers(explanation)
+            stated += bool(shortfalls) and all(shortfall_stated(s, numbers, capacity) for s in shortfalls)
+        row: dict[str, Any] = {"arm": arm, "episodes": len(ids), "shortfall stated": f"{stated}/{len(ids)}", "spec exact match": "-"}
+        if arm == "A4":
+            exact = sum(by_ep[e][arm].get("spec_precision") == 1 and by_ep[e][arm].get("spec_recall") == 1 for e in ids)
+            row["spec exact match"] = f"{exact}/{len(ids)}"
+        out.append(row)
+    amounts = sorted({f"{infos[e].site_id}: {s.amount:.3f} {s.unit}" for e, (ss, _) in targets.items() for s in ss})
+    return Table(
+        "e2_impossible_shortfall",
+        f"Physically impossible goal ({IMPOSSIBLE_TEMPLATE}): is the shortfall stated in the explanation?",
+        out,
+        note="Shortfall = the gold spec's plan on the forecast (A5), the least any arm can fall short by: " + "; ".join(amounts) + ".",
+    )
+
+
+def e2_notes(plan: Mapping[str, Any]) -> list[str]:
+    """Disclosures for the E2 report header."""
+    entries = plan["episodes"]
+    ml_sources = {(e["site_id"], e["date"], e["goal"]) for e in entries if e["language"] == "en" and e["goal_id"].startswith("ml_")}
+    duplicates = [e for e in entries if not e["goal_id"].startswith("ml_") and (e["site_id"], e["date"], e["goal"]) in ml_sources]
+    return [
+        "Reported separately from the main test run and never pooled with it. Same frozen code (plus the additive executor "
+        "flag, default unchanged; the regression check passed before any spend), the same arms, metrics and aggregation rules.",
+        "",
+        f"Disclosure: {len(duplicates)} English-set episodes have the same goal text, site and day as a multilingual English "
+        "source episode, so they sent identical requests (served from the LLM cache) and have identical results: "
+        + ", ".join(e["episode_id"] for e in duplicates)
+        + ".",
+        "",
+        "Multilingual goals: translations supplied by the author.",
+        "",
+    ]
+
+
+def e3_report(e3_dir: Path, out_dir: Path) -> dict[str, Any]:
+    """The E3 reviewer stress test: detection per error type in both conditions, side by side."""
+    from voltproof.bench.reviewer_stress import CONTROL, ERROR_TYPES, summarize
+
+    config = json.loads((e3_dir / "config.json").read_text(encoding="utf-8"))
+    variants = read_jsonl(e3_dir / "variants.jsonl")
+    results = read_jsonl(e3_dir / "results.jsonl")
+    summary = summarize(variants, results)
+    cell = {(r["condition"], r["error_type"]): r for r in summary}
+
+    def show(r: Mapping[str, Any]) -> str:
+        judged = r["variants"] - r["unavailable"]
+        if not judged:
+            return "-"
+        return f"{100 * r['rate']:.0f}% [{100 * r['ci_low']:.0f}, {100 * r['ci_high']:.0f}] ({r['flagged']}/{judged})"
+
+    rows = []
+    for error_type in (CONTROL, *ERROR_TYPES):
+        a, b = cell[("with_assumptions", error_type)], cell[("no_assumptions", error_type)]
+        row: dict[str, Any] = {
+            "error": "control (false alarm)" if error_type == CONTROL else error_type,
+            "with assumptions: flagged": show(a),
+            "no assumptions: flagged": show(b),
+            "issue kind matches (with / no)": "-",
+            "assumptions state original numbers: n, flagged": "-",
+        }
+        if error_type != CONTROL:
+            row["issue kind matches (with / no)"] = f"{a['kind_match']}/{a['flagged']} / {b['kind_match']}/{b['flagged']}"
+            yes, no = a.get("n_assumptions_state_original_true", 0), a.get("n_assumptions_state_original_false", 0)
+            rate_yes, rate_no = a.get("rate_if_assumptions_state_original_true"), a.get("rate_if_assumptions_state_original_false")
+            row["assumptions state original numbers: n, flagged"] = (
+                f"yes {yes} ({'-' if rate_yes is None else f'{100 * rate_yes:.0f}%'}), no {no} ({'-' if rate_no is None else f'{100 * rate_no:.0f}%'})"
+            )
+        rows.append(row)
+    unavailable = sum(r["unavailable"] for r in summary)
+    same = sum(bool(v.get("same_input_as_with_assumptions")) for v in variants)
+    same_eps = len({v["episode_id"] for v in variants if v.get("same_input_as_with_assumptions")})
+    cost = sum(r.get("cost_usd") or 0.0 for r in results)
+    notes = [
+        f"{len(config['episodes'])} A4 episodes of the frozen run (spec exactly matching gold; cost_min excluded), {len(variants)} review calls, "
+        f"{sum(bool(r.get('cache_hit')) for r in results)} served from the LLM cache, {unavailable} unusable verdicts, LLM cost ${cost:.2f}.",
+        "Flagged = the reviewer did not approve. 95% Wilson intervals. Issue kind matches = the flagged verdict names the expected kind "
+        "(wrong for shifted hours, wrong levels and wrong fields; missing; unneeded).",
+        "Disclosure: the with-assumptions controls are byte-identical to the frozen run's review calls and replay its cached verdicts. "
+        f"{same} no-assumptions variants in {same_eps} episodes are identical to their with-assumptions input (the run's reviewer saw no "
+        "assumptions there), so they replay that verdict; they are kept and flagged.",
+        "The reviewer prompt counts a requirement captured by the assumptions as not missing, so with assumptions present a dropped "
+        "spec item the assumptions still describe is not necessarily an error to this reviewer.",
+    ]
+    table = Table("e3_detection", "E3: does the independent reviewer catch a wrong spec?", rows, note=" ".join(notes))
+    target = out_dir / "e3"
+    write_tables([table], target)
+    merged = [{**{k: v for k, v in var.items() if k not in ("spec", "original_spec", "assumptions")}, **{k: v for k, v in res.items() if k not in ("raw",)}} for var in variants for res in results if res["variant_id"] == var["variant_id"]]
+    write_csv(target / "tables" / "e3_variants.csv", [{k: json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v for k, v in m.items()} for m in merged])
+    for name in ("config.json", "variants.jsonl", "results.jsonl"):
+        shutil.copyfile(e3_dir / name, target / name)
+    figure = figure_e3(summary, out_dir / "figures" / "e3_detection.png", f"VoltProof Bench E3, run {e3_dir.name}. Reviewer = the frozen A4 reviewer (same prompt and schema).")
+    (target / "REPORT.md").write_text(f"# VoltProof Bench E3, reviewer stress test: `{e3_dir.name}`\n\n" + markdown(table), encoding="utf-8")
+    (target / "summary.json").write_text(json.dumps({"run_id": e3_dir.name, "summary": summary, "cost_usd": cost}, indent=1) + "\n", encoding="utf-8")
+    return {"summary": summary, "figures": [str(figure.relative_to(out_dir))], "table": table}
+
+
+def figure_e3(summary: Sequence[Mapping[str, Any]], path: Path, caption: str) -> Path:
+    from voltproof.bench.reviewer_stress import CONDITIONS, CONTROL, ERROR_TYPES
+
+    fig, ax = _figure(8.0, 3.8)
+    types = [CONTROL, *ERROR_TYPES]
+    cell = {(r["condition"], r["error_type"]): r for r in summary}
+    x = np.arange(len(types))
+    width = 0.38
+    for k, condition in enumerate(CONDITIONS):
+        rows = [cell[(condition, t)] for t in types]
+        rates = [100 * (r["rate"] or 0.0) for r in rows]
+        low = [max(0.0, 100 * ((r["rate"] or 0.0) - (r["ci_low"] or 0.0))) for r in rows]
+        high = [max(0.0, 100 * ((r["ci_high"] or 0.0) - (r["rate"] or 0.0))) for r in rows]  # float noise at 0 % / 100 %
+        xs = x + (k - 0.5) * width
+        ax.bar(xs, rates, width=width - 0.03, color=SERIES[k], edgecolor=SURFACE, linewidth=2, label=condition.replace("_", " "))
+        ax.errorbar(xs, rates, yerr=[low, high], fmt="none", ecolor=INK, elinewidth=1.0, capsize=2)
+        for xi, r, v, h in zip(xs, rows, rates, high):
+            ax.text(xi, v + h + 1.5, f"{r['flagged']}/{r['variants'] - r['unavailable']}", ha="center", fontsize=6, color=INK)
+    ax.set_xticks(x, ["control\n(false alarm)", "shifted\nhours", "wrong\nlevel", "missing\nitem", "unneeded\nitem", "wrong\nfield"], fontsize=8)
+    ax.set_ylim(0, 128)
+    ax.set_yticks(range(0, 101, 20))
+    ax.set_ylabel("flagged by the reviewer (%)", color=INK_2, fontsize=9)
+    ax.set_title("E3: reviewer detection of one injected spec error, 95% Wilson CI", color=INK, fontsize=10, loc="left")
+    ax.legend(frameon=False, fontsize=8, labelcolor=INK, loc="upper center", ncol=2)
+    return _save(fig, path, caption)
+
+
 def _currency(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]], ids: Sequence[str]) -> str:
     return next((r["currency"] for e in ids for r in by_ep[e].values()), "?")
 
@@ -607,8 +753,9 @@ def _figure(width: float = 7.0, height: float = 3.6, ncols: int = 1) -> tuple[An
 
 
 def _save(fig: Any, path: Path, caption: str) -> Path:
-    fig.text(0.01, 0.01, caption, fontsize=7, color=INK_2, ha="left", va="bottom")
-    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    lines = textwrap.wrap(caption, width=int(fig.get_figwidth() * 17))  # about 17 characters per inch at 7 pt
+    fig.text(0.01, 0.01, "\n".join(lines), fontsize=7, color=INK_2, ha="left", va="bottom")
+    fig.tight_layout(rect=(0, 0.02 + 0.035 * len(lines), 1, 1))
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=160, facecolor=SURFACE)
     import matplotlib.pyplot as plt
@@ -634,7 +781,9 @@ def figure_goal_satisfaction(by_ep: Mapping[str, Mapping[str, Mapping[str, Any]]
 
 
 def figure_outage(table: Table, path: Path, caption: str) -> Path:
-    fig, (left, right) = _figure(9.0, 3.6, 2)
+    has_e1 = "E1: unserved critical kWh" in table.rows[0]
+    fig, axes = _figure(9.0 if has_e1 else 6.0, 3.6, 2 if has_e1 else 1)
+    left, right = (axes[0], axes[1]) if has_e1 else (axes, None)
     arms = [r["arm"] for r in table.rows]
     x = np.arange(len(arms))
     valid = [float(r["plan physics valid"].rstrip("%")) if r["plan physics valid"] != "n/a" else 0.0 for r in table.rows]
@@ -644,14 +793,14 @@ def figure_outage(table: Table, path: Path, caption: str) -> Path:
     left.set_xticks(x, arms)
     left.set_ylim(0, 112)
     left.set_title("Outage plans physically valid (%)", color=INK, fontsize=10, loc="left")
-    if "E1: unserved critical kWh" in table.rows[0]:
+    if right is not None:
         lost = [float(r["E1: unserved critical kWh"]) for r in table.rows]
         right.bar(x, lost, width=0.6, color=SERIES[1], edgecolor=SURFACE, linewidth=2)
         for xi, r, v in zip(x, table.rows, lost):
             right.text(xi, v, f"{v:.1f}\n({r['E1: episodes with critical loss']} ep)", ha="center", va="bottom", fontsize=7, color=INK)
         right.set_ylim(0, max(lost + [1.0]) * 1.25)
-    right.set_xticks(x, arms)
-    right.set_title("E1: critical kWh lost without the override", color=INK, fontsize=10, loc="left")
+        right.set_xticks(x, arms)
+        right.set_title("E1: critical kWh lost without the override", color=INK, fontsize=10, loc="left")
     return _save(fig, path, caption)
 
 
@@ -774,13 +923,19 @@ def publish_run(run_dir: Path, out_dir: Path, root: Path = PROJECT_ROOT) -> dict
     }
 
 
-def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequence[Mapping[str, Any]], context: Mapping[str, Any]) -> str:
+def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequence[Mapping[str, Any]], context: Mapping[str, Any], kind: str = "test") -> str:
     regression = context.get("regression") or {}
     llm_usd = sum(r.get("cost_usd") or 0.0 for r in rows)
+    intro = (
+        "The frozen test run of VoltProof Bench. Every reported number comes from these files."
+        if kind == "test"
+        else "E2 (SPEC §6.15): the hard goal set, run on the frozen code plus the additive executor flag. Reported "
+        f"separately from the main test run and never pooled with it. intents_hard.yaml sha256 `{config.get('intents_hard_sha256')}`."
+    )
     lines = [
-        f"# VoltProof Bench test run `{context['run_id']}`",
+        f"# VoltProof Bench {'test run' if kind == 'test' else 'E2 run'} `{context['run_id']}`",
         "",
-        "The frozen test run of VoltProof Bench. Every reported number comes from these files.",
+        intro,
         "",
         "| | |",
         "| --- | --- |",
@@ -788,7 +943,8 @@ def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequenc
         f"| code tag | `test-freeze` (commit `{context.get('commit', '?')}`) |",
         f"| run fingerprint | `{config['fingerprint']}` |",
         f"| code fingerprint at the run | `{config['code_fingerprint']}` |",
-        f"| code fingerprint now | `{context['code_fingerprint_now']}` (differs only by the additive `outage_override` flag, see below) |",
+        f"| code fingerprint now | `{context['code_fingerprint_now']}` "
+        + ("(same as at the run) |" if context["code_fingerprint_now"] == config["code_fingerprint"] else "(differs only by the additive `outage_override` flag, see below) |"),
         f"| plan sha256 | `{config['plan_sha256']}` |",
         f"| episodes | {plan['n_episodes']} x {len(arms_in(rows))} arms = {len(rows)} results |",
         f"| infrastructure errors | {context.get('infra_errors', 0)} |",
@@ -804,8 +960,14 @@ def run_readme(config: Mapping[str, Any], plan: Mapping[str, Any], rows: Sequenc
         "",
         "## Regression check after the freeze",
         "",
-        "One change was made to the frozen code after the run: an additive executor flag `outage_override` (default True, the frozen "
-        "behaviour) used only by the E1 counterfactual. With it in place, all results were re-evaluated from their stored plans "
+        (
+            "One change was made to the frozen code after the run: an additive executor flag `outage_override` (default True, the frozen "
+            "behaviour) used only by the E1 counterfactual. With it in place, all results were re-evaluated from their stored plans "
+            if kind == "test"
+            else "This run used the frozen code plus the additive executor flag `outage_override` (default True, the frozen behaviour; "
+            "used only by E1). Before any spend, the regression check re-evaluated every result of the frozen test run from its stored plans "
+        )
+        + 
         "(baselines recomputed, A2/A3 schedules and declarations from the traces, A4 by re-solving its stored specs, whose tool "
         f"outputs must equal the traced ones exactly): {regression.get('rows_checked', '?')}/{regression.get('rows_stored', '?')} rows, "
         f"passed = {regression.get('passed')}, max |difference| in realized_cost {regression.get('max_abs_diff', {}).get('realized_cost')}, "
@@ -851,27 +1013,40 @@ def report(
     publish: bool = False,
     progress: bool = True,
     references: Callable[[Path, bool], tuple[dict[str, float], dict[str, float]]] = day_references,
+    kind: str = "test",
+    shortfalls: Callable[[Path], dict[str, tuple[list[Any], float]]] | None = None,
 ) -> dict[str, Any]:
-    """`references` gives p̂ and the oracle bound per episode (tests inject them)."""
+    """`references` gives p̂ and the oracle bound per episode (tests inject them). kind "test" is the
+    main run (report in <out>/report, figures bench_*, published to <out>/test-run); kind "e2" is the
+    hard-goal run, reported on its own (<out>/e2, figures e2_*, published to <out>/e2/run)."""
+    if kind not in ("test", "e2"):
+        raise ValueError(f"unknown report kind {kind!r}")
     digest_before = files_digest(run_dir)
     config, plan, rows = load_run(run_dir)
     errors = read_jsonl(run_dir / "errors.jsonl")
     p_hats, bounds = references(run_dir, progress)
     infos = episode_infos(plan, p_hats, bounds)
     e1_path = out_dir / "e1" / "e1_summary.json"
-    e1 = json.loads(e1_path.read_text(encoding="utf-8")) if e1_path.is_file() else None
+    e1 = json.loads(e1_path.read_text(encoding="utf-8")) if kind == "test" and e1_path.is_file() else None
     tables = build_tables(rows, infos, read_traces(run_dir), errors, e1)
+    notes: list[str] = []
+    if kind == "e2":
+        targets = (shortfalls or impossible_shortfalls)(run_dir)
+        tables.insert(3, shortfall_table(rows, infos, targets))
+        notes = e2_notes(plan)
     checks = bound_check(paired(rows), infos)
-    report_dir = out_dir / "report"
+    report_dir = out_dir / ("report" if kind == "test" else "e2")
     write_tables(tables, report_dir)
     write_csv(report_dir / "tables" / "a4_repairs.csv", repair_events(read_traces(run_dir)))
-    caption = f"VoltProof Bench, run {run_dir.name}. Same-day ICON analysis as 'actual' weather; sites and prices illustrative."
-    figures = write_figures(tables, rows, out_dir / "figures", "bench", caption)
+    caption = f"VoltProof Bench{' E2 (hard goals)' if kind == 'e2' else ''}, run {run_dir.name}. Same-day ICON analysis as 'actual' weather; sites and prices illustrative."
+    figures = write_figures(tables, rows, out_dir / "figures", "bench" if kind == "test" else "e2", caption)
     regression_path = out_dir / "test-run" / "regression_check.json"
     regression = json.loads(regression_path.read_text(encoding="utf-8")) if regression_path.is_file() else None
+    title = f"# VoltProof Bench report: `{run_dir.name}`" if kind == "test" else f"# VoltProof Bench E2, hard goals: `{run_dir.name}`"
     header = [
-        f"# VoltProof Bench report: `{run_dir.name}`",
+        title,
         "",
+        *notes,
         f"Generated {datetime.now().isoformat(timespec='seconds')} by `python -m voltproof.bench.report`. "
         f"{plan['n_episodes']} episodes x {len(arms_in(rows))} arms. Oracle-bound check: {checks['checked']} episodes checked, "
         f"{checks['skipped_gap_none']} skipped (A0 gap None), {len(checks['mismatches'])} mismatches, "
@@ -894,7 +1069,8 @@ def report(
     }
     (report_dir / "summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     if publish:
-        published = publish_run(run_dir, out_dir / "test-run")
+        publish_dir = out_dir / ("test-run" if kind == "test" else "e2/run")
+        published = publish_run(run_dir, publish_dir)
         context = {
             "run_id": run_dir.name,
             "code_fingerprint_now": code_fingerprint(),
@@ -906,7 +1082,7 @@ def report(
             "commit": _commit(),
             **published,
         }
-        (out_dir / "test-run" / "README.md").write_text(run_readme(config, plan, rows, context), encoding="utf-8")
+        (publish_dir / "README.md").write_text(run_readme(config, plan, rows, context, kind), encoding="utf-8")
     digest_after = files_digest(run_dir)
     if digest_after != digest_before:
         raise RuntimeError("the run directory changed while the report ran")
@@ -929,10 +1105,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m voltproof.bench.report", description="VoltProof Bench report")
     parser.add_argument("--run", type=Path, default=FROZEN_RUN, help="finished run directory (read only)")
     parser.add_argument("--out", type=Path, default=RESULTS_DIR)
-    parser.add_argument("--publish", action="store_true", help="copy the run files into <out>/test-run/ with a README")
+    parser.add_argument("--publish", action="store_true", help="copy the run files into <out>/test-run/ (or <out>/e2/run/) with a README")
+    parser.add_argument("--kind", choices=("test", "e2"), default="test", help="e2: the hard-goal run (reported separately)")
+    parser.add_argument("--e3", type=Path, help="an e3-* run directory: write the E3 reviewer stress report instead")
     args = parser.parse_args(argv)
-    summary = report(args.run, args.out, publish=args.publish)
-    print(f"report: {args.out / 'report' / 'REPORT.md'}")
+    if args.e3:
+        e3 = e3_report(args.e3, args.out)
+        print(f"E3 report: {args.out / 'e3' / 'REPORT.md'}")
+        for figure in e3["figures"]:
+            print(f"figure: {figure}")
+        return 0
+    summary = report(args.run, args.out, publish=args.publish, kind=args.kind)
+    print(f"report: {args.out / ('report' if args.kind == 'test' else 'e2') / 'REPORT.md'}")
     print(f"bound check passed: {summary['bound_check']['passed']}; regression passed: {summary['regression_passed']}")
     for figure in summary["figures"]:
         print(f"figure: {figure}")

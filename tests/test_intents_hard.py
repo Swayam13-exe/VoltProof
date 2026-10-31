@@ -26,6 +26,11 @@ def filled(intents: ih.HardIntentSet) -> ih.HardIntentSet:
     return intents.model_copy(update={"multilingual": goals})
 
 
+def pending(intents: ih.HardIntentSet) -> ih.HardIntentSet:
+    goals = [g.model_copy(update={lang: PENDING for lang in LANGUAGES}) for g in intents.multilingual]
+    return intents.model_copy(update={"multilingual": goals})
+
+
 def tariff(site):
     return day_builder(site, date(2025, 1, 10))[1]
 
@@ -33,7 +38,8 @@ def tariff(site):
 def test_the_set_has_ten_templates_with_two_phrasings_and_three_multilingual_goals() -> None:
     assert len(INTENTS.templates) == 10 and all(len(t.phrasings) == 2 for t in INTENTS.templates)
     assert [g.template for g in INTENTS.multilingual] == ["hard_negation", "hard_relative_time", "hard_tonight"]
-    assert ih.pending_translations(INTENTS) == [f"{g.id}:{lang}" for g in INTENTS.multilingual for lang in LANGUAGES]
+    assert ih.pending_translations(INTENTS) == []  # translations supplied
+    assert ih.pending_translations(pending(INTENTS)) == [f"{g.id}:{lang}" for g in INTENTS.multilingual for lang in LANGUAGES]
     assert all(g.en == INTENTS.template(g.template).phrasings[0] for g in INTENTS.multilingual)  # the source is phrasing 0
 
 
@@ -86,8 +92,8 @@ def test_phrasings_avoid_full_for_the_impossible_goal_and_the_distractor_names_h
 
 def test_episode_design_counts_phrasings_and_multilingual_pairing() -> None:
     with pytest.raises(TranslationPendingError):
-        ih.build_hard_episodes(INTENTS, SPLITS, SITES, day_builder)
-    plan_only = ih.build_hard_episodes(INTENTS, SPLITS, SITES, day_builder, allow_pending=True)
+        ih.build_hard_episodes(pending(INTENTS), SPLITS, SITES, day_builder)
+    plan_only = ih.build_hard_episodes(pending(INTENTS), SPLITS, SITES, day_builder, allow_pending=True)
     assert len(ih.pending_episodes(plan_only)) == 36
     episodes = ih.build_hard_episodes(filled(INTENTS), SPLITS, SITES, day_builder)
     english = [e for e in episodes if not e.goal.goal_id.startswith("ml_")]
@@ -107,7 +113,6 @@ def test_hard_files_are_site_agnostic() -> None:
     text = ih.HARD_INTENTS_PATH.read_text(encoding="utf-8").lower()
     for site in REAL_SITES.values():
         assert site.site_id not in text and site.country.lower() not in text
-    assert PENDING in ih.HARD_INTENTS_PATH.read_text(encoding="utf-8")
 
 
 def test_unknown_derivation_arguments_are_refused() -> None:

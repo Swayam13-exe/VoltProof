@@ -129,27 +129,27 @@ templates:
       reserve_windows: "{peak_reserves}"
 
 # Multilingual subset: same gold spec as `template`; `en` is the English source sentence (also run, so
-# each language is paired with English on the same goal, day and site). Translations are supplied by
-# the user; the loader refuses a real run while any TRANSLATION_PENDING remains.
+# each language is paired with English on the same goal, day and site). Translations supplied by the
+# user; the loader refuses a real run while any TRANSLATION_PENDING remains.
 multilingual:
   - id: ml_hard_negation
     template: hard_negation
     en: "Don't discharge the battery before 5 PM today."
-    es: "TRANSLATION_PENDING"
-    hi: "TRANSLATION_PENDING"
-    pt: "TRANSLATION_PENDING"
-    de: "TRANSLATION_PENDING"
+    es: "Hoy no descargues la batería antes de las 5 de la tarde."
+    hi: "आज शाम 5 बजे से पहले बैटरी को डिस्चार्ज न करें।"
+    pt: "Hoje, não descarregue a bateria antes das 17h."
+    de: "Entlade die Batterie heute nicht vor 17 Uhr."
   - id: ml_hard_relative_time
     template: hard_relative_time
     en: "For the 4 hours after 3 PM, keep the battery at least 70% charged."
-    es: "TRANSLATION_PENDING"
-    hi: "TRANSLATION_PENDING"
-    pt: "TRANSLATION_PENDING"
-    de: "TRANSLATION_PENDING"
+    es: "Durante las 4 horas después de las 3 de la tarde, mantén la batería cargada al menos al 70%."
+    hi: "दोपहर 3 बजे के बाद के 4 घंटों तक बैटरी को कम से कम 70% चार्ज रखें।"
+    pt: "Nas 4 horas depois das 15h, mantenha a bateria com pelo menos 70% de carga."
+    de: "Halte die Batterie in den 4 Stunden nach 15 Uhr zu mindestens 70% geladen."
   - id: ml_hard_tonight
     template: hard_tonight
     en: "Tonight between 9 and 11, keep at least 60% in the battery."
-    es: "TRANSLATION_PENDING"
-    hi: "TRANSLATION_PENDING"
-    pt: "TRANSLATION_PENDING"
-    de: "TRANSLATION_PENDING"
+    es: "Esta noche, entre las 9 y las 11, mantén al menos un 60% en la batería."
+    hi: "आज रात 9 से 11 बजे के बीच बैटरी में कम से कम 60% चार्ज रखें।"
+    pt: "Hoje à noite, entre as 9 e as 11, mantenha pelo menos 60% na bateria."
+    de: "Halte heute Abend zwischen 9 und 11 mindestens 60% in der Batterie."

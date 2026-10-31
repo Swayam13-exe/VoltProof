@@ -1,0 +1,47 @@
+{
+ "created": "2026-10-31T13:02:34",
+ "plan_only": false,
+ "args": {
+  "split": "test",
+  "arms": [
+   "A0",
+   "A1",
+   "A2",
+   "A3",
+   "A4",
+   "A5",
+   "A6"
+  ],
+  "sites": null,
+  "limit": null,
+  "episodes": null,
+  "pilot": false,
+  "plan_only": false,
+  "concurrency": 2,
+  "resume": false,
+  "run_id": null,
+  "force": false,
+  "seed": 2026,
+  "intents": "hard"
+ },
+ "fingerprint": "2a21a541c78f316d06b98dc340c791b2a4b68f268ec8eb89452c5c72c62365a3",
+ "code_fingerprint": "20abe8704fc57c9aa9132bf53e7da21c2023985f3a00a3ccc5c8813f6e48f55a",
+ "plan_sha256": "64e83b05b71cd941df5a6ce2ad03e562484c0a7e50180dd79dfd4dec9b6fcf87",
+ "intents_hard_sha256": "f09813e0cf3758d92dd3a19bb3ebe5a170e05c151e992930636ab70a43583602",
+ "settings": {
+  "llm_base_url": "https://inference.baseten.co/v1",
+  "llm_model": "meta-models/muse-spark-open-1026",
+  "llm_reasoning_effort": "medium",
+  "llm_max_output_tokens": "8192",
+  "llm_timeout_s": "120.0",
+  "price_input_usd_per_m": "1.25",
+  "price_output_usd_per_m": "4.25",
+  "price_cached_input_usd_per_m": "0.15",
+  "budget_usd_cap": "85.0",
+  "demo_budget_usd_cap": "20.0",
+  "live_mode": "False",
+  "cache_dir": ".cache/llm",
+  "ledger_path": "runs/ledger.jsonl"
+ },
+ "ledger_usd_at_start": 23.699688199999954
+}

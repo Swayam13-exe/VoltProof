@@ -1,0 +1,2099 @@
+{
+ "split": "test-hard",
+ "seed": 2026,
+ "n_episodes": 101,
+ "plan_sha256": "64e83b05b71cd941df5a6ce2ad03e562484c0a7e50180dd79dfd4dec9b6fcf87",
+ "counts": {
+  "site": {
+   "ahmedabad_cold_store": 35,
+   "munich_home": 35,
+   "nairobi_clinic": 31
+  },
+  "template": {
+   "hard_cap_relative": 6,
+   "hard_compound3": 4,
+   "hard_distractor": 6,
+   "hard_impossible": 6,
+   "hard_named_period": 4,
+   "hard_negation": 21,
+   "hard_noon_midnight": 6,
+   "hard_relative_time": 21,
+   "hard_reserve_kwh": 6,
+   "hard_tonight": 21
+  },
+  "language": {
+   "de": 9,
+   "en": 65,
+   "es": 9,
+   "hi": 9,
+   "pt": 9
+  },
+  "set": {
+   "english": 56,
+   "multilingual": 45
+  }
+ },
+ "episodes": [
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_reserve_kwh_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least 40 kWh stored in the battery from 7 PM to 11 PM.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_cap_relative_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 12:00 to 16:00, grid import must stay at or below half of our grid connection.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_negation_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_relative_time_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Starting at 15:00 and for the next four hours, hold 70% or more in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_tonight_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_noon_midnight_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "I want a full battery by midday, and from then until midnight it shouldn't drop under half.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_distractor_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Yesterday the grid was down from 2 to 4 PM, which was a pain, but there is no outage planned today. All I need is at least 40% in the battery at 8 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_compound3_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_compound3",
+   "goal_id": "hard_compound3_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Three things today: the grid is off 11:00-14:00 (the cold room must stay on), no feeding into the grid 14:00-17:00, and 50% or more in the battery 18:00-23:00.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 11,
+      "end_hour": 14
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 23,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "no_export_windows": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_impossible_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 100% the whole day, starting from the very first hour.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_hard_named_period_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_named_period",
+   "goal_id": "hard_named_period_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hold at least 40% in the battery throughout the peak period today.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8,
+      "min_soc_pct": 40.0
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_reserve_kwh_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 19:00 and 23:00 there should always be 40 kWh or more in the battery; otherwise keep costs low.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_cap_relative_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "We share our grid connection with the neighbours from noon to 4 PM, so draw at most half of our connection's limit during that time.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 30.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_negation_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The battery must not discharge until 17:00; after that, use it freely to cut costs.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_relative_time_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_tonight_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 60% or more from 9 to 11 tonight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_noon_midnight_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Have the battery full by noon, then keep it at 50% or more until midnight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_distractor_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Last week the utility cut the power from 14:00 to 16:00 without warning. Nothing like that is announced for today; just make sure the battery holds 40% or more at 20:00.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_compound3_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_compound3",
+   "goal_id": "hard_compound3_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Grid maintenance from 11 AM to 2 PM: keep the cold room running. After that, don't export anything from 2 PM to 5 PM, and hold at least 50% in the battery from 6 PM to 11 PM.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 11,
+      "end_hour": 14
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 23,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "no_export_windows": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_impossible_p1",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "I want the battery at 100% at the end of every hour today, from midnight on.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-06-08_hard_named_period_p0",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-06-08",
+   "template_id": "hard_named_period",
+   "goal_id": "hard_named_period_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "During the peak-price hours, never let the battery drop below 40%.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 6,
+      "end_hour": 8,
+      "min_soc_pct": 40.0
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_reserve_kwh_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep at least 6 kWh stored in the battery from 7 PM to 11 PM.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_cap_relative_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "From 12:00 to 16:00, grid import must stay at or below half of our grid connection.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 7.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_negation_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_relative_time_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Starting at 15:00 and for the next four hours, hold 70% or more in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_tonight_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_noon_midnight_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "I want a full battery by midday, and from then until midnight it shouldn't drop under half.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_distractor_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Yesterday the grid was down from 2 to 4 PM, which was a pain, but there is no outage planned today. All I need is at least 40% in the battery at 8 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_compound3_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_compound3",
+   "goal_id": "hard_compound3_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Three things today: the grid is off 11:00-14:00 (the fridge, router and lights must stay on), no feeding into the grid 14:00-17:00, and 50% or more in the battery 18:00-23:00.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 11,
+      "end_hour": 14
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 23,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "no_export_windows": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_impossible_p0",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep the battery at 100% the whole day, starting from the very first hour.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-02-19_hard_named_period_p1",
+   "site_id": "munich_home",
+   "date": "2025-02-19",
+   "template_id": "hard_named_period",
+   "goal_id": "hard_named_period_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hold at least 40% in the battery throughout the peak period today.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 8,
+      "end_hour": 9,
+      "min_soc_pct": 40.0
+     },
+     {
+      "start_hour": 17,
+      "end_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_reserve_kwh_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Between 19:00 and 23:00 there should always be 6 kWh or more in the battery; otherwise keep costs low.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_cap_relative_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "We share our grid connection with the neighbours from noon to 4 PM, so draw at most half of our connection's limit during that time.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 7.5
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_negation_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "The battery must not discharge until 17:00; after that, use it freely to cut costs.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_relative_time_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_tonight_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Keep the battery at 60% or more from 9 to 11 tonight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_noon_midnight_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Have the battery full by noon, then keep it at 50% or more until midnight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_distractor_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Last week the utility cut the power from 14:00 to 16:00 without warning. Nothing like that is announced for today; just make sure the battery holds 40% or more at 20:00.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_compound3_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_compound3",
+   "goal_id": "hard_compound3_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Grid maintenance from 11 AM to 2 PM: keep the fridge, router and lights running. After that, don't export anything from 2 PM to 5 PM, and hold at least 50% in the battery from 6 PM to 11 PM.",
+   "gold": {
+    "grid_outages": [
+     {
+      "start_hour": 11,
+      "end_hour": 14
+     }
+    ],
+    "reserve_windows": [
+     {
+      "start_hour": 18,
+      "end_hour": 23,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "no_export_windows": [
+     {
+      "start_hour": 14,
+      "end_hour": 17
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_impossible_p1",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "I want the battery at 100% at the end of every hour today, from midnight on.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_hard_named_period_p0",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_named_period",
+   "goal_id": "hard_named_period_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "During the peak-price hours, never let the battery drop below 40%.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 7,
+      "end_hour": 9,
+      "min_soc_pct": 40.0
+     },
+     {
+      "start_hour": 19,
+      "end_hour": 21,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_reserve_kwh_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Between 19:00 and 23:00 there should always be 16 kWh or more in the battery; otherwise keep costs low.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_cap_relative_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "We share our grid connection with the neighbours from noon to 4 PM, so draw at most half of our connection's limit during that time.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_negation_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "The battery must not discharge until 17:00; after that, use it freely to cut costs.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_relative_time_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_tonight_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 60% or more from 9 to 11 tonight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_noon_midnight_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Have the battery full by noon, then keep it at 50% or more until midnight.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_distractor_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Last week the utility cut the power from 14:00 to 16:00 without warning. Nothing like that is announced for today; just make sure the battery holds 40% or more at 20:00.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_hard_impossible_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep the battery at 100% the whole day, starting from the very first hour.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_reserve_kwh_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_reserve_kwh",
+   "goal_id": "hard_reserve_kwh_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Keep at least 16 kWh stored in the battery from 7 PM to 11 PM.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 19,
+      "end_hour": 23,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_cap_relative_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_cap_relative",
+   "goal_id": "hard_cap_relative_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "From 12:00 to 16:00, grid import must stay at or below half of our grid connection.",
+   "gold": {
+    "import_caps": [
+     {
+      "start_hour": 12,
+      "end_hour": 16,
+      "max_kw": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_negation_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_negation",
+   "goal_id": "hard_negation_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_relative_time_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_relative_time",
+   "goal_id": "hard_relative_time_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Starting at 15:00 and for the next four hours, hold 70% or more in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_tonight_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_tonight",
+   "goal_id": "hard_tonight_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_noon_midnight_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_noon_midnight",
+   "goal_id": "hard_noon_midnight_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "I want a full battery by midday, and from then until midnight it shouldn't drop under half.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 12,
+      "end_hour": 24,
+      "min_soc_pct": 50.0
+     }
+    ],
+    "soc_targets": [
+     {
+      "by_hour": 12,
+      "min_soc_pct": 95.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_distractor_p0",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_distractor",
+   "goal_id": "hard_distractor_p0",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Yesterday the grid was down from 2 to 4 PM, which was a pain, but there is no outage planned today. All I need is at least 40% in the battery at 8 PM.",
+   "gold": {
+    "soc_targets": [
+     {
+      "by_hour": 20,
+      "min_soc_pct": 40.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-12-25_hard_impossible_p1",
+   "site_id": "nairobi_clinic",
+   "date": "2025-12-25",
+   "template_id": "hard_impossible",
+   "goal_id": "hard_impossible_p1",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "I want the battery at 100% at the end of every hour today, from midnight on.",
+   "gold": {
+    "min_soc_pct_all_day": 100.0
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_negation_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_negation_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy no descargues la batería antes de las 5 de la tarde.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_negation_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज शाम 5 बजे से पहले बैटरी को डिस्चार्ज न करें।",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_negation_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, não descarregue a bateria antes das 17h.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_negation_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Entlade die Batterie heute nicht vor 17 Uhr.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_relative_time_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_relative_time_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Durante las 4 horas después de las 3 de la tarde, mantén la batería cargada al menos al 70%.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_relative_time_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "दोपहर 3 बजे के बाद के 4 घंटों तक बैटरी को कम से कम 70% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_relative_time_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Nas 4 horas depois das 15h, mantenha a bateria com pelo menos 70% de carga.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_relative_time_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte die Batterie in den 4 Stunden nach 15 Uhr zu mindestens 70% geladen.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_tonight_en",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_tonight_es",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Esta noche, entre las 9 y las 11, mantén al menos un 60% en la batería.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_tonight_hi",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज रात 9 से 11 बजे के बीच बैटरी में कम से कम 60% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_tonight_pt",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje à noite, entre as 9 e as 11, mantenha pelo menos 60% na bateria.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "ahmedabad_cold_store_2025-01-12_ml_hard_tonight_de",
+   "site_id": "ahmedabad_cold_store",
+   "date": "2025-01-12",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte heute Abend zwischen 9 und 11 mindestens 60% in der Batterie.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_negation_en",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_negation_es",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoy no descargues la batería antes de las 5 de la tarde.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_negation_hi",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "आज शाम 5 बजे से पहले बैटरी को डिस्चार्ज न करें।",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_negation_pt",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoje, não descarregue a bateria antes das 17h.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_negation_de",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Entlade die Batterie heute nicht vor 17 Uhr.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_relative_time_en",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_relative_time_es",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Durante las 4 horas después de las 3 de la tarde, mantén la batería cargada al menos al 70%.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_relative_time_hi",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "दोपहर 3 बजे के बाद के 4 घंटों तक बैटरी को कम से कम 70% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_relative_time_pt",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Nas 4 horas depois das 15h, mantenha a bateria com pelo menos 70% de carga.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_relative_time_de",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Halte die Batterie in den 4 Stunden nach 15 Uhr zu mindestens 70% geladen.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_tonight_en",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_tonight_es",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Esta noche, entre las 9 y las 11, mantén al menos un 60% en la batería.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_tonight_hi",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "आज रात 9 से 11 बजे के बीच बैटरी में कम से कम 60% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_tonight_pt",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Hoje à noite, entre as 9 e as 11, mantenha pelo menos 60% na bateria.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "munich_home_2025-08-30_ml_hard_tonight_de",
+   "site_id": "munich_home",
+   "date": "2025-08-30",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": true,
+   "goal": "Halte heute Abend zwischen 9 und 11 mindestens 60% in der Batterie.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_negation_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Don't discharge the battery before 5 PM today.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_negation_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoy no descargues la batería antes de las 5 de la tarde.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_negation_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज शाम 5 बजे से पहले बैटरी को डिस्चार्ज न करें।",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_negation_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje, não descarregue a bateria antes das 17h.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_negation_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_negation",
+   "goal_id": "ml_hard_negation_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Entlade die Batterie heute nicht vor 17 Uhr.",
+   "gold": {
+    "discharge_only_windows": [
+     {
+      "start_hour": 17,
+      "end_hour": 24
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_relative_time_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "For the 4 hours after 3 PM, keep the battery at least 70% charged.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_relative_time_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Durante las 4 horas después de las 3 de la tarde, mantén la batería cargada al menos al 70%.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_relative_time_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "दोपहर 3 बजे के बाद के 4 घंटों तक बैटरी को कम से कम 70% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_relative_time_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Nas 4 horas depois das 15h, mantenha a bateria com pelo menos 70% de carga.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_relative_time_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_relative_time",
+   "goal_id": "ml_hard_relative_time_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte die Batterie in den 4 Stunden nach 15 Uhr zu mindestens 70% geladen.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 15,
+      "end_hour": 19,
+      "min_soc_pct": 70.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_tonight_en",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_en",
+   "language": "en",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Tonight between 9 and 11, keep at least 60% in the battery.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_tonight_es",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_es",
+   "language": "es",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Esta noche, entre las 9 y las 11, mantén al menos un 60% en la batería.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_tonight_hi",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_hi",
+   "language": "hi",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "आज रात 9 से 11 बजे के बीच बैटरी में कम से कम 60% चार्ज रखें।",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_tonight_pt",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_pt",
+   "language": "pt",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Hoje à noite, entre as 9 e as 11, mantenha pelo menos 60% na bateria.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "episode_id": "nairobi_clinic_2025-03-28_ml_hard_tonight_de",
+   "site_id": "nairobi_clinic",
+   "date": "2025-03-28",
+   "template_id": "hard_tonight",
+   "goal_id": "ml_hard_tonight_de",
+   "language": "de",
+   "held_out_template": false,
+   "held_out_site": false,
+   "goal": "Halte heute Abend zwischen 9 und 11 mindestens 60% in der Batterie.",
+   "gold": {
+    "reserve_windows": [
+     {
+      "start_hour": 21,
+      "end_hour": 23,
+      "min_soc_pct": 60.0
+     }
+    ]
+   }
+  }
+ ]
+}

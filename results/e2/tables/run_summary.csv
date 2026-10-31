@@ -1,0 +1,8 @@
+arm,name,results,plan_source,fallbacks,escalations,infra_errors,infra_fallbacks
+A0,rule-based,101,baseline 101,0,0,0,0
+A1,"optimizer, cost only",101,baseline 101,0,0,0,0
+A2,LLM writes schedule,101,"fallback 1, finalized 100",1,0,0,0
+A3,LLM + simulator,101,"finalized 100, log_physics_valid 1",0,0,0,0
+A4,VoltProof,101,finalized 101,0,0,0,0
+A5,"optimizer, gold spec",101,baseline 101,0,0,0,0
+A6,oracle (actual data),101,baseline 101,0,0,0,0

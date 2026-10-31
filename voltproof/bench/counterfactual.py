@@ -301,10 +301,16 @@ def execute_recovered(plan: RecoveredPlan, episode: Episode, *, outage_override:
 
 
 def run_episodes(run_dir: Path) -> list[Episode]:
-    """The run's test episodes, rebuilt; refuses unless they hash to the run's plan."""
+    """The run's test episodes (main or E2 hard set), rebuilt; refuses unless they hash to the run's plan."""
     config = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
-    episodes = build_test_episodes(load_intents(), load_splits(), SITES, seed=config["args"].get("seed", GLOBAL_SEED))
-    digest = plan_document(episodes, "test", config["args"].get("seed", GLOBAL_SEED))["plan_sha256"]
+    seed = config["args"].get("seed", GLOBAL_SEED)
+    if config["args"].get("intents") == "hard":
+        from voltproof.bench.intents_hard import build_hard_episodes, load_hard_intents
+
+        episodes = build_hard_episodes(load_hard_intents(), load_splits(), SITES, seed=seed)
+    else:
+        episodes = build_test_episodes(load_intents(), load_splits(), SITES, seed=seed)
+    digest = plan_document(episodes, "test", seed)["plan_sha256"]
     if digest != config["plan_sha256"]:
         raise RecoveryError(f"rebuilt episodes hash to {digest[:12]}, the run's plan is {config['plan_sha256'][:12]}")
     return episodes
@@ -458,7 +464,7 @@ def write_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as out:
         if not rows:
             return
-        writer = csv.DictWriter(out, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(out, fieldnames=list(dict.fromkeys(key for row in rows for key in row)))
         writer.writeheader()
         writer.writerows(rows)
 
