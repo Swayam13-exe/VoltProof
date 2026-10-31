@@ -245,6 +245,18 @@
     return codes.map((code) => goalWords(code, spec)).join("; ");
   }
 
+  /* The cost comparison with the rule-based battery. When VoltProof costs more only because the
+     rule-based battery missed goals that VoltProof met, the value is neutral and the reason is said. */
+  function costLine(sd, currency, spec, explain) {
+    const diff = sd.cost_difference;
+    if (diff >= 0) return { value: `${money(diff, currency)} cheaper`, tone: "ok", explain };
+    const value = `${money(-diff, currency)} more expensive`;
+    if (sd.agent.goals_met && !sd.rule_based.goals_met) {
+      return { value, tone: "neutral", explain: `Costs more because it met the goal; the rule-based battery was cheaper only by missing: ${missedText(sd.rule_based.goals_missed, spec)}.` };
+    }
+    return { value, tone: "fail", explain };
+  }
+
   function stat(label, value, explain) {
     return make("div", { class: "stat" }, make("p", { class: "stat-label" }, label), make("p", { class: "stat-value" }, value), make("p", { class: "stat-explain" }, explain));
   }
@@ -277,8 +289,7 @@
   function sameDaySection(view) {
     const sd = view.same_day;
     const currency = view.site.currency;
-    const diff = sd.cost_difference;
-    const diffText = diff >= 0 ? `${money(diff, currency)} cheaper` : `${money(-diff, currency)} more expensive`;
+    const cost = costLine(sd, currency, view.spec, "Rule-based cost minus VoltProof's cost, in the site's currency.");
     const goals = (side) => (side.goals_met ? "✓ all goals met" : `✗ missed: ${missedText(side.goals_missed, view.spec)}`);
     return make(
       "section",
@@ -290,7 +301,7 @@
         { class: "stats" },
         stat("Realized cost, VoltProof", money(sd.agent.realized_cost, currency), "What the day actually cost on the same-day weather, counting the energy left in the battery at midnight."),
         stat("Realized cost, rule-based battery", money(sd.rule_based.realized_cost, currency), "The same measure for the rule-based battery on the same day."),
-        stat("Difference", diffText, "Rule-based cost minus VoltProof's cost, in the site's currency."),
+        stat("Difference", cost.value, cost.explain),
         stat("Critical load served", `${pct(sd.agent.critical_served_pct)} vs ${pct(sd.rule_based.critical_served_pct)}`, `Share of the ${view.site.critical_load_name}'s demand that was supplied (VoltProof vs rule-based).`),
         stat("Goals, VoltProof", goals(sd.agent), "Each goal in the spec, checked hour by hour on what was executed."),
         stat("Goals, rule-based battery", goals(sd.rule_based), "The same check for the rule-based battery.")
@@ -309,8 +320,10 @@
     return make("div", { class: "approve-row" }, button, result);
   }
 
+  /* ok: true (good), false (bad), null (no verdict) or a tone name ("ok", "fail", "neutral"). */
   function summaryLine(label, value, ok, explain) {
-    const mark = ok === null ? make("span", { class: "not-run" }, value) : make("span", { class: ok ? "ok" : "fail" }, value);
+    const tone = typeof ok === "string" ? ok : ok === null ? "not-run" : ok ? "ok" : "fail";
+    const mark = make("span", { class: tone }, value);
     return make("li", {}, make("span", { class: "summary-label" }, `${label}: `), mark, make("span", { class: "summary-explain" }, explain));
   }
 
@@ -321,12 +334,12 @@
     }
     const sd = view.same_day;
     const currency = view.site.currency;
-    const diff = sd.cost_difference;
+    const cost = costLine(sd, currency, view.spec, "Realized-cost difference on the same-day weather, counting the energy left in the battery.");
     const review = view.gate.reviews[view.gate.reviews.length - 1];
     const lines = [
       summaryLine("Goal", sd.agent.goals_met ? "✓ met" : `✗ not met (missed ${missedText(sd.agent.goals_missed, view.spec)})`, sd.agent.goals_met, "Checked hour by hour against the spec, on the same-day weather."),
       summaryLine("Critical load served", pct(sd.agent.critical_served_pct), sd.agent.critical_served_pct >= 99.95, `Share of the ${view.site.critical_load_name}'s demand supplied on the same-day weather.`),
-      summaryLine("Cost against the rule-based battery", diff >= 0 ? `${money(diff, currency)} cheaper` : `${money(-diff, currency)} more expensive`, diff >= 0, "Realized-cost difference on the same-day weather, counting the energy left in the battery."),
+      summaryLine("Cost against the rule-based battery", cost.value, cost.tone, cost.explain),
       summaryLine("Physics-verified", view.plan.verified ? "✓ yes" : "✗ no", view.plan.verified, "Within the battery's and the grid's limits with all demand served, on the forecast."),
       summaryLine(
         "Reviewer",

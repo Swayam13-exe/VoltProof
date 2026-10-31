@@ -124,3 +124,12 @@ def test_get_settings_does_not_modify_os_environ(tmp_path: Path) -> None:
     dotenv.write_text("LLM_MODEL=model-from-file\n", encoding="utf-8")
     get_settings(dotenv)
     assert "LLM_MODEL" not in os.environ
+
+
+def test_trusted_proxy_hops_default_range_and_type() -> None:
+    assert load_settings({}).trusted_proxy_hops == 0
+    assert load_settings({"TRUSTED_PROXY_HOPS": "0"}).trusted_proxy_hops == 0
+    assert load_settings({"TRUSTED_PROXY_HOPS": "5"}).trusted_proxy_hops == 5
+    for bad in ("-1", "6", "two"):
+        with pytest.raises(ConfigError, match="TRUSTED_PROXY_HOPS"):
+            load_settings({"TRUSTED_PROXY_HOPS": bad})

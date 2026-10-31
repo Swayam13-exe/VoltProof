@@ -214,6 +214,7 @@ pre.spec {
 .ok { color: var(--good); font-weight: 600; }
 .fail { color: var(--bad); font-weight: 600; }
 .not-run { color: var(--muted); font-weight: 600; }
+.neutral { color: var(--ink); font-weight: 600; }
 
 .explanation { margin: 6px 0; font-size: 1rem; }
 .chart-block { margin: 12px 0 4px; }
