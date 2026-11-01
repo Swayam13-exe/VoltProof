@@ -1,0 +1,29 @@
+{
+  "currency": "EUR",
+  "tariff_kind": "time_of_use",
+  "periods": [
+    {
+      "start_hour": 0,
+      "end_hour": 6,
+      "import_rate": 0.249
+    },
+    {
+      "start_hour": 6,
+      "end_hour": 22,
+      "import_rate": 0.329
+    },
+    {
+      "start_hour": 22,
+      "end_hour": 24,
+      "import_rate": 0.249
+    }
+  ],
+  "export_rate": 0.081,
+  "fixed_charge": 11.9,
+  "meta": {
+    "utility": "Lindenau Energie (fictional)",
+    "layout": "cards and 24-hour bar",
+    "fixed_charge_unit": "per month",
+    "notes": "German labels; rates printed in ct/kWh and decimal commas, truth is in EUR per kWh; the night slot crosses midnight"
+  }
+}

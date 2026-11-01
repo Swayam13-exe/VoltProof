@@ -1,0 +1,19 @@
+{
+  "currency": "KES",
+  "tariff_kind": "flat",
+  "periods": [
+    {
+      "start_hour": 0,
+      "end_hour": 24,
+      "import_rate": 24.5
+    }
+  ],
+  "export_rate": null,
+  "fixed_charge": 1200.0,
+  "meta": {
+    "utility": "Rift Valley Power & Light (fictional)",
+    "layout": "statement",
+    "fixed_charge_unit": "per month",
+    "notes": "VAT and levy are separate lines, not part of the rate; no export agreement"
+  }
+}

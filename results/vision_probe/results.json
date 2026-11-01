@@ -1,0 +1,292 @@
+{
+  "bill_1_tou_inr.png": {
+    "file": "bill_1_tou_inr.png",
+    "image_kb": 124.6,
+    "reply": "{\"currency\":\"INR\",\"tariff_kind\":\"time_of_use\",\"periods\":[{\"start_hour\":0,\"end_hour\":6,\"import_rate\":5.8},{\"start_hour\":6,\"end_hour\":18,\"import_rate\":7.4},{\"start_hour\":18,\"end_hour\":22,\"import_rate\":9.9},{\"start_hour\":22,\"end_hour\":24,\"import_rate\":5.8}],\"export_rate\":2.5,\"fixed_charge\":450.0}",
+    "json": "strict",
+    "latency_s": 7.77,
+    "cost_usd": 0.00556,
+    "tokens_in": 1753,
+    "tokens_out": 793,
+    "tokens_reasoning": 685,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "INR",
+      "tariff_kind": "time_of_use",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 6,
+          "import_rate": 5.8
+        },
+        {
+          "start_hour": 6,
+          "end_hour": 18,
+          "import_rate": 7.4
+        },
+        {
+          "start_hour": 18,
+          "end_hour": 22,
+          "import_rate": 9.9
+        },
+        {
+          "start_hour": 22,
+          "end_hour": 24,
+          "import_rate": 5.8
+        }
+      ],
+      "export_rate": 2.5,
+      "fixed_charge": 450.0
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  },
+  "bill_2_flat_kes.png": {
+    "file": "bill_2_flat_kes.png",
+    "image_kb": 114.5,
+    "reply": "{\"currency\":\"KES\",\"tariff_kind\":\"flat\",\"periods\":[{\"start_hour\":0,\"end_hour\":24,\"import_rate\":24.5}],\"export_rate\":null,\"fixed_charge\":1200}",
+    "json": "strict",
+    "latency_s": 7.31,
+    "cost_usd": 0.0043,
+    "tokens_in": 1753,
+    "tokens_out": 596,
+    "tokens_reasoning": 543,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "KES",
+      "tariff_kind": "flat",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 24,
+          "import_rate": 24.5
+        }
+      ],
+      "export_rate": null,
+      "fixed_charge": 1200
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  },
+  "bill_3_tou_eur.png": {
+    "file": "bill_3_tou_eur.png",
+    "image_kb": 107.0,
+    "reply": "{\"currency\":\"EUR\",\"tariff_kind\":\"time_of_use\",\"periods\":[{\"start_hour\":0,\"end_hour\":6,\"import_rate\":0.249},{\"start_hour\":6,\"end_hour\":22,\"import_rate\":0.329},{\"start_hour\":22,\"end_hour\":24,\"import_rate\":0.249}],\"export_rate\":0.081,\"fixed_charge\":11.9}",
+    "json": "strict",
+    "latency_s": 6.58,
+    "cost_usd": 0.0044,
+    "tokens_in": 1753,
+    "tokens_out": 620,
+    "tokens_reasoning": 528,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "EUR",
+      "tariff_kind": "time_of_use",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 6,
+          "import_rate": 0.249
+        },
+        {
+          "start_hour": 6,
+          "end_hour": 22,
+          "import_rate": 0.329
+        },
+        {
+          "start_hour": 22,
+          "end_hour": 24,
+          "import_rate": 0.249
+        }
+      ],
+      "export_rate": 0.081,
+      "fixed_charge": 11.9
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  },
+  "bill_1_tou_inr_photo.jpg": {
+    "file": "bill_1_tou_inr_photo.jpg",
+    "image_kb": 122.3,
+    "reply": "{\"currency\":\"INR\",\"tariff_kind\":\"time_of_use\",\"periods\":[{\"start_hour\":0,\"end_hour\":6,\"import_rate\":5.8},{\"start_hour\":6,\"end_hour\":18,\"import_rate\":7.4},{\"start_hour\":18,\"end_hour\":22,\"import_rate\":9.9},{\"start_hour\":22,\"end_hour\":24,\"import_rate\":5.8}],\"export_rate\":2.5,\"fixed_charge\":450.0}",
+    "json": "strict",
+    "latency_s": 6.47,
+    "cost_usd": 0.00454,
+    "tokens_in": 2107,
+    "tokens_out": 448,
+    "tokens_reasoning": 339,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "INR",
+      "tariff_kind": "time_of_use",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 6,
+          "import_rate": 5.8
+        },
+        {
+          "start_hour": 6,
+          "end_hour": 18,
+          "import_rate": 7.4
+        },
+        {
+          "start_hour": 18,
+          "end_hour": 22,
+          "import_rate": 9.9
+        },
+        {
+          "start_hour": 22,
+          "end_hour": 24,
+          "import_rate": 5.8
+        }
+      ],
+      "export_rate": 2.5,
+      "fixed_charge": 450.0
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  },
+  "bill_2_flat_kes_photo.jpg": {
+    "file": "bill_2_flat_kes_photo.jpg",
+    "image_kb": 110.6,
+    "reply": "{\"currency\":\"KES\",\"tariff_kind\":\"flat\",\"periods\":[{\"start_hour\":0,\"end_hour\":24,\"import_rate\":24.5}],\"export_rate\":null,\"fixed_charge\":1200.0}",
+    "json": "strict",
+    "latency_s": 6.72,
+    "cost_usd": 0.00384,
+    "tokens_in": 2107,
+    "tokens_out": 383,
+    "tokens_reasoning": 328,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "KES",
+      "tariff_kind": "flat",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 24,
+          "import_rate": 24.5
+        }
+      ],
+      "export_rate": null,
+      "fixed_charge": 1200.0
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  },
+  "bill_3_tou_eur_photo.jpg": {
+    "file": "bill_3_tou_eur_photo.jpg",
+    "image_kb": 114.6,
+    "reply": "{\"currency\":\"EUR\",\"tariff_kind\":\"time_of_use\",\"periods\":[{\"start_hour\":0,\"end_hour\":6,\"import_rate\":0.249},{\"start_hour\":6,\"end_hour\":22,\"import_rate\":0.329},{\"start_hour\":22,\"end_hour\":24,\"import_rate\":0.249}],\"export_rate\":0.081,\"fixed_charge\":11.9}",
+    "json": "strict",
+    "latency_s": 7.53,
+    "cost_usd": 0.00479,
+    "tokens_in": 2190,
+    "tokens_out": 483,
+    "tokens_reasoning": 391,
+    "finish_reason": "stop",
+    "cache_hit": false,
+    "answer": {
+      "currency": "EUR",
+      "tariff_kind": "time_of_use",
+      "periods": [
+        {
+          "start_hour": 0,
+          "end_hour": 6,
+          "import_rate": 0.249
+        },
+        {
+          "start_hour": 6,
+          "end_hour": 22,
+          "import_rate": 0.329
+        },
+        {
+          "start_hour": 22,
+          "end_hour": 24,
+          "import_rate": 0.249
+        }
+      ],
+      "export_rate": 0.081,
+      "fixed_charge": 11.9
+    },
+    "score": {
+      "fields": {
+        "currency": true,
+        "tariff_kind": true,
+        "periods": true,
+        "export_rate": true,
+        "fixed_charge": true
+      },
+      "all_correct": true,
+      "hours_correct": 24,
+      "wrong_hours": [],
+      "boundary_off_by_one": false,
+      "periods_well_formed": true
+    }
+  }
+}
