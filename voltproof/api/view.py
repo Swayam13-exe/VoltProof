@@ -212,8 +212,13 @@ def plan_view(plan: Plan, day: DayData, site: Site, tariff: Tariff) -> dict[str,
 
 
 def _side(execution: ExecutionResult, spec: IntentSpec, day: DayData, site: Site) -> dict[str, Any]:
+    """One side of the comparison. Shed non-critical load is reported here but is not in realized_cost
+    (the frozen metric counts it only in realized_total_cost); the page uses it to explain a dearer plan
+    that kept the whole site running while the rule-based battery switched other load off."""
     capacity = site.battery.capacity_kwh
     satisfied, violations = gold_check(execution, spec, site)
+    shed = execution.flows.unserved_noncritical_kw
+    outages = outage_hours(spec)
     return {
         "soc_pct": _r([100.0 * e / capacity for e in execution.soc_kwh], 1),
         "battery_kw": _r(execution.battery_kw, 3),
@@ -221,7 +226,8 @@ def _side(execution: ExecutionResult, spec: IntentSpec, day: DayData, site: Site
         "grid_export_kw": _r(execution.flows.grid_export_kw, 3),
         "realized_cost": _r(trajectory_total_cost(execution, spec, day, site).net_money, 2),
         "unserved_critical_kwh": _r(execution.unserved_critical_kwh, 3),
-        "unserved_noncritical_kwh": _r(execution.unserved_noncritical_kwh, 3),
+        "non_critical_shed_kwh": _r(execution.unserved_noncritical_kwh, 3),
+        "non_critical_shed_outage_kwh": _r(sum(shed[t] for t in sorted(outages)), 3) if outages else None,
         "critical_served_pct": _r(critical_served_pct(execution, day), 1),
         "goals_met": satisfied,
         "goals_missed": sorted({v.rule for v in violations}),

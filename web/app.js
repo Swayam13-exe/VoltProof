@@ -38,8 +38,12 @@
     return value === null || value === undefined ? "-" : `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
   }
 
+  function amount(value) {
+    return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
   function kwh(value) {
-    return `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })} kWh`;
+    return `${amount(value)} kWh`;
   }
 
   function status(text, warn = false) {
@@ -245,16 +249,54 @@
     return codes.map((code) => goalWords(code, spec)).join("; ");
   }
 
+  /* Non-critical ("other") load left unserved. Realized cost does not count it, so a plan that keeps
+     the whole site running through an outage can cost more than a rule-based battery that switched
+     other load off. */
+  const SHED_SHOWN_KWH = 0.01;
+  const SHED_EXPLAINS_KWH = 0.1;
+
+  function shed(side) {
+    return Number(side.non_critical_shed_kwh || 0);
+  }
+
+  function shedWords(side) {
+    const total = shed(side);
+    const outage = side.non_critical_shed_outage_kwh;
+    if (outage === null || outage === undefined || outage < SHED_SHOWN_KWH) return `${kwh(total)} of other load`;
+    if (Math.abs(total - outage) < SHED_SHOWN_KWH) return `${kwh(total)} of other load during the outage`;
+    return `${kwh(total)} of other load (${kwh(outage)} of it during the outage)`;
+  }
+
   /* The cost comparison with the rule-based battery. When VoltProof costs more only because the
-     rule-based battery missed goals that VoltProof met, the value is neutral and the reason is said. */
+     rule-based battery missed goals that VoltProof met, or switched off other load that VoltProof
+     kept on, the value is neutral and the reason is said. */
   function costLine(sd, currency, spec, explain) {
     const diff = sd.cost_difference;
     if (diff >= 0) return { value: `${money(diff, currency)} cheaper`, tone: "ok", explain };
     const value = `${money(-diff, currency)} more expensive`;
-    if (sd.agent.goals_met && !sd.rule_based.goals_met) {
+    const metOnly = sd.agent.goals_met && !sd.rule_based.goals_met;
+    if (shed(sd.rule_based) - shed(sd.agent) >= SHED_EXPLAINS_KWH - 1e-9) {
+      const kept = shed(sd.agent) < SHED_SHOWN_KWH ? "the whole site" : "more of the site";
+      const off = `switched off ${shedWords(sd.rule_based)}`;
+      if (metOnly) {
+        return { value, tone: "neutral", explain: `Costs more because it met the goal and kept ${kept} running; the rule-based battery missed: ${missedText(sd.rule_based.goals_missed, spec)}, and ${off}.` };
+      }
+      return { value, tone: "neutral", explain: `Costs more because it kept ${kept} running; the rule-based battery ${off}.` };
+    }
+    if (metOnly) {
       return { value, tone: "neutral", explain: `Costs more because it met the goal; the rule-based battery was cheaper only by missing: ${missedText(sd.rule_based.goals_missed, spec)}.` };
     }
     return { value, tone: "fail", explain };
+  }
+
+  /* The summary card's "Other load kept on" line, or null when neither side switched any load off. */
+  function otherLoadLine(sd) {
+    const mine = shed(sd.agent);
+    const theirs = shed(sd.rule_based);
+    if (mine < SHED_SHOWN_KWH && theirs < SHED_SHOWN_KWH) return null;
+    const explain = theirs < SHED_SHOWN_KWH ? "The rule-based battery kept all of it on." : `Rule-based battery switched off ${shedWords(sd.rule_based)}.`;
+    if (mine < SHED_SHOWN_KWH) return { value: "all of it", tone: "ok", explain };
+    return { value: `all but ${kwh(mine)}`, tone: mine <= theirs ? "neutral" : "fail", explain };
   }
 
   function stat(label, value, explain) {
@@ -303,6 +345,7 @@
         stat("Realized cost, rule-based battery", money(sd.rule_based.realized_cost, currency), "The same measure for the rule-based battery on the same day."),
         stat("Difference", cost.value, cost.explain),
         stat("Critical load served", `${pct(sd.agent.critical_served_pct)} vs ${pct(sd.rule_based.critical_served_pct)}`, `Share of the ${view.site.critical_load_name}'s demand that was supplied (VoltProof vs rule-based).`),
+        stat("Other load switched off", `${amount(shed(sd.agent))} vs ${amount(shed(sd.rule_based))} kWh`, `Demand other than the ${view.site.critical_load_name} that went unsupplied (VoltProof vs rule-based). In an outage the rule-based battery keeps the ${view.site.critical_load_name} on first and switches other load off when its charge runs short. Realized cost does not count it.`),
         stat("Goals, VoltProof", goals(sd.agent), "Each goal in the spec, checked hour by hour on what was executed."),
         stat("Goals, rule-based battery", goals(sd.rule_based), "The same check for the rule-based battery.")
       ),
@@ -336,9 +379,11 @@
     const currency = view.site.currency;
     const cost = costLine(sd, currency, view.spec, "Realized-cost difference on the same-day weather, counting the energy left in the battery.");
     const review = view.gate.reviews[view.gate.reviews.length - 1];
+    const other = otherLoadLine(sd);
     const lines = [
       summaryLine("Goal", sd.agent.goals_met ? "✓ met" : `✗ not met (missed ${missedText(sd.agent.goals_missed, view.spec)})`, sd.agent.goals_met, "Checked hour by hour against the spec, on the same-day weather."),
       summaryLine("Critical load served", pct(sd.agent.critical_served_pct), sd.agent.critical_served_pct >= 99.95, `Share of the ${view.site.critical_load_name}'s demand supplied on the same-day weather.`),
+      other ? summaryLine("Other load kept on", other.value, other.tone, other.explain) : null,
       summaryLine("Cost against the rule-based battery", cost.value, cost.tone, cost.explain),
       summaryLine("Physics-verified", view.plan.verified ? "✓ yes" : "✗ no", view.plan.verified, "Within the battery's and the grid's limits with all demand served, on the forecast."),
       summaryLine(
@@ -348,7 +393,7 @@
         "A separate AI call judged whether the spec captures the goal."
       ),
     ];
-    return make("section", { class: "summary", "aria-label": "Result" }, make("h3", { class: "summary-title" }, "Result"), make("ul", { class: "summary-list" }, lines));
+    return make("section", { class: "summary", "aria-label": "Result" }, make("h3", { class: "summary-title" }, "Result"), make("ul", { class: "summary-list" }, lines.filter(Boolean)));
   }
 
   function agentMessage(view) {

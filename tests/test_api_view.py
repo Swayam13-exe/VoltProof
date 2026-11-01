@@ -7,6 +7,7 @@ synthetic site, no held-out site. The committed web/replays/*.json are checked f
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -15,8 +16,10 @@ from tests.test_counterfactual import a4_llm, episode, write_run
 from voltproof.agents.voltproof import run_a4
 from voltproof.api import replays as rp
 from voltproof.api import view as vw
-from voltproof.bench.episode import baseline_results, evaluate
-from voltproof.models import HOURS
+from voltproof.bench.episode import baseline_results, evaluate, processed_day_builder
+from voltproof.core.optimizer import solve
+from voltproof.data.sites import SITES
+from voltproof.models import HOURS, IntentSpec
 
 SERIES = ("battery_kw", "soc_pct", "charge_kw", "discharge_kw", "grid_import_kw", "grid_export_kw", "curtail_kw", "pv_forecast_kw", "load_forecast_kw", "import_price_per_kwh")
 KEYS = {"schema_version", "kind", "label", "checked_against", "meta", "site", "day", "goal", "checklist", "spec", "assumptions", "spec_assumptions", "explanation", "coverage", "gate", "trace", "plan", "same_day"}
@@ -54,6 +57,24 @@ def test_view_model_shows_the_accepted_plan_and_the_same_day_comparison(recorded
     assert view["same_day"]["rule_based"]["realized_cost"] == round(a0.realized_cost, 2)
     assert not any(k in e["data"] for e in view["trace"] for k in vw.TRACE_DROP if e["kind"] == "llm_call")
     assert rp.dumps(view) == rp.dumps(live_view(ep, run))  # deterministic
+
+
+def test_same_day_reports_non_critical_load_shed() -> None:
+    """Ahmedabad 2025-12-17, grid off 14-17: VoltProof serves the whole site; the rule-based battery
+    sheds 41.12 kWh of other load in the outage, which realized cost does not count (results/notes/shed_load.md)."""
+    site = SITES["ahmedabad_cold_store"]
+    day, _ = processed_day_builder()(site, date(2025, 12, 17))
+    outage = IntentSpec.model_validate({"grid_outages": [{"start_hour": 14, "end_hour": 17}]})
+    sd = vw.same_day_view(solve(day, site, outage, use="forecast"), day, site)
+    agent, rule = sd["agent"], sd["rule_based"]
+    assert agent["non_critical_shed_kwh"] == 0.0 and agent["non_critical_shed_outage_kwh"] == 0.0
+    assert rule["non_critical_shed_kwh"] == pytest.approx(41.12, abs=0.005) and rule["non_critical_shed_outage_kwh"] == rule["non_critical_shed_kwh"]
+    assert (agent["realized_cost"], rule["realized_cost"], sd["cost_difference"]) == (2419.51, 2097.22, -322.29)  # unchanged
+    assert agent["goals_met"] and rule["goals_met"] and rule["critical_served_pct"] == 100.0
+    committed = json.loads((rp.REPLAY_DIR / "ahmedabad-outage-hi.json").read_text(encoding="utf-8"))["same_day"]
+    assert committed["agent"]["non_critical_shed_kwh"] == 0.0 and committed["rule_based"]["non_critical_shed_outage_kwh"] == rule["non_critical_shed_outage_kwh"]
+    no_outage = vw.same_day_view(solve(day, site, IntentSpec(), use="forecast"), day, site)
+    assert no_outage["rule_based"]["non_critical_shed_outage_kwh"] is None and no_outage["rule_based"]["non_critical_shed_kwh"] == 0.0
 
 
 def test_the_plan_shown_must_equal_the_logged_plan(recorded) -> None:
