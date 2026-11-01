@@ -1,0 +1,25 @@
+# Allow-list: the build context holds only what the Dockerfile copies (see Dockerfile).
+*
+!requirements.txt
+!LICENSE
+!voltproof/
+!web/
+!data/splits.json
+!data/processed/
+!results/report/summary.json
+!results/e2/summary.json
+!results/e3/summary.json
+!results/e4/summary.json
+
+# never, even inside an allowed folder
+**/.env
+**/.env.*
+**/*.key
+**/.cache
+**/runs
+**/__pycache__
+**/*.pyc
+.git
+.venv
+tests
+data/raw
