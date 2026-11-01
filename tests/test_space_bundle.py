@@ -38,7 +38,7 @@ def test_bundle_has_the_dockerfile_the_space_readme_and_every_copied_path(bundle
     files = {f.as_posix() for f in bundle.build(out)}
     assert {"Dockerfile", "README.md", "requirements.txt", "web/index.html", "web/replays/index.json", "voltproof/api/app.py", "data/splits.json"} <= files
     readme = (out / "README.md").read_text(encoding="utf-8")
-    assert readme.startswith("---\ntitle: VoltProof AI\nsdk: docker\napp_port: 7860\n---\n")
+    assert readme.startswith("---\ntitle: VoltProof AI\nsdk: docker\napp_port: 7860\nlicense: mit\n---\n")
     assert (out / "Dockerfile").read_bytes() == (ROOT / "Dockerfile").read_bytes()
     for source in dockerfile_sources():  # everything the image copies is in the bundle
         assert source in files or any(f.startswith(f"{source}/") for f in files), source

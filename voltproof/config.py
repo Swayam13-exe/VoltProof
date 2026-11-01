@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -38,8 +39,12 @@ DEFAULTS: Mapping[str, str] = MappingProxyType(
         "DEMO_BUDGET_USD_CAP": "10",
         "LIVE_MODE": "false",
         "TRUSTED_PROXY_HOPS": "0",
+        "CLIENT_IP_SOURCE": "xff",
+        "LIVE_RUNS_PER_HOUR": "40",
+        "DEBUG_CLIENT": "false",
     }
 )
+CLIENT_IP_SOURCE_RE = re.compile(r"^(xff|none|header:[!#$%&'*+.^_`|~0-9A-Za-z-]+)$")  # header names are RFC 9110 tokens
 ENV_VARS = (API_KEY_VAR, *DEFAULTS)
 
 _TRUE_WORDS = frozenset({"true", "1", "yes", "on"})
@@ -92,6 +97,9 @@ class Settings:
     demo_budget_usd_cap: float
     live_mode: bool
     trusted_proxy_hops: int = 0  # demo app: X-Forwarded-For entries added by trusted proxies (0: use the peer address)
+    client_ip_source: str = "xff"  # demo app: "xff", "header:<Name>" or "none" (no per-visitor limit)
+    live_runs_per_hour: int = 40  # demo app: live runs per hour for all visitors together
+    debug_client: bool = False  # demo app: enables GET /api/debug/client
     cache_dir: Path = DEFAULT_CACHE_DIR
     ledger_path: Path = DEFAULT_LEDGER_PATH
 
@@ -150,6 +158,12 @@ class _Reader:
             self.errors.append(f"{name} must not be empty")
         return text
 
+    def client_ip_source(self, name: str) -> str:
+        text = self.text(name)
+        if not CLIENT_IP_SOURCE_RE.match(text):
+            self.errors.append(f"{name}={text!r} must be xff, none or header:<Name>")
+        return text
+
     def reasoning_effort(self, name: str) -> str | None:
         text = self.text(name).lower()
         if not text:
@@ -179,6 +193,9 @@ def load_settings(environ: Mapping[str, str]) -> Settings:
         demo_budget_usd_cap=read.number("DEMO_BUDGET_USD_CAP", float, low=0, low_inclusive=False),
         live_mode=read.boolean("LIVE_MODE"),
         trusted_proxy_hops=read.number("TRUSTED_PROXY_HOPS", int, low=0, high=5),
+        client_ip_source=read.client_ip_source("CLIENT_IP_SOURCE"),
+        live_runs_per_hour=read.number("LIVE_RUNS_PER_HOUR", int, low=1, high=1000),
+        debug_client=read.boolean("DEBUG_CLIENT"),
     )
     if 0 < settings.budget_usd_cap < settings.demo_budget_usd_cap:
         read.errors.append(

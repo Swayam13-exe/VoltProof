@@ -6,8 +6,11 @@
 - `ObservingLLM` wraps the client and emits the steps while the agent works (tool calls, compact tool
   results, the reviewer's verdict); model reasoning text is never emitted. The authoritative record is
   the trace `run_a4` returns, which the final view is built from.
-- `Limits` (in memory only): 10 live runs per hour per IP, 150 a day, 2 at once. IPs are dictionary
-  keys in memory; they are never logged or written anywhere.
+- `Limits` (in memory only): a global cap per hour for all visitors (LIVE_RUNS_PER_HOUR, checked
+  first), 10 live runs per hour per visitor, 150 a day, 2 at once. The visitor key comes from
+  `client_ip` (CLIENT_IP_SOURCE: X-Forwarded-For, one named header, or none for global caps only). Keys
+  are dictionary keys in memory, pruned after an hour and capped at 10,000; they are never logged or
+  written anywhere.
 - `LiveState`: an account error (missing or rejected key, HTTP 401/402/403) switches live runs off until
   restart; a 429 that outlasts the retries pauses them for 10 minutes, after which a fresh client is
   built (the old one latched after the fatal error).
@@ -37,7 +40,12 @@ from voltproof.models import DayData, Site, Tariff
 log = logging.getLogger("voltproof.live")
 
 PER_IP_PER_HOUR = 10
+LIVE_RUNS_PER_HOUR_DEFAULT = 40
 DAILY_RUNS = 150
+MAX_VISITOR_KEYS = 10_000  # beyond this, a new visitor counts against the global caps only
+MAX_HEADER_CHARS = 200  # a longer X-Forwarded-For or named-header value is ignored
+MAX_XFF_ENTRY_CHARS = 64  # a longer X-Forwarded-For entry is invalid
+HOUR_S = 3600.0
 MAX_CONCURRENT = 2
 UPSTREAM_PAUSE_S = 600.0
 RUN_TTL_S = 3600.0
@@ -52,45 +60,66 @@ Clock = Callable[[], float]
 
 @dataclass(frozen=True)
 class Refusal:
-    reason: str  # rate_limit | daily_cap | busy
+    reason: str  # hourly_cap | rate_limit | daily_cap | busy
     retry_after_s: int | None = None
 
 
-class Limits:
-    """10 per hour per IP, 150 per UTC day, 2 at once; in memory, thread-safe."""
+def _drop_older_than_an_hour(stamps: deque[float], now: float) -> None:
+    while stamps and stamps[0] <= now - HOUR_S:
+        stamps.popleft()
 
-    def __init__(self, clock: Clock = time.time, per_ip: int = PER_IP_PER_HOUR, daily: int = DAILY_RUNS, concurrent: int = MAX_CONCURRENT) -> None:
-        self.clock, self.per_ip, self.daily, self.concurrent = clock, per_ip, daily, concurrent
+
+class Limits:
+    """LIVE_RUNS_PER_HOUR for everyone, 10 per hour per visitor, 150 per UTC day, 2 at once; in memory,
+    thread-safe. A visitor key of None (CLIENT_IP_SOURCE=none, or a full visitor table) means global
+    caps only. A refused request is never recorded as a run start."""
+
+    def __init__(
+        self,
+        clock: Clock = time.time,
+        per_ip: int = PER_IP_PER_HOUR,
+        daily: int = DAILY_RUNS,
+        concurrent: int = MAX_CONCURRENT,
+        hourly: int = LIVE_RUNS_PER_HOUR_DEFAULT,
+        max_keys: int = MAX_VISITOR_KEYS,
+    ) -> None:
+        self.clock, self.per_ip, self.daily, self.concurrent, self.hourly, self.max_keys = clock, per_ip, daily, concurrent, hourly, max_keys
         self._lock = threading.Lock()
         self._by_ip: dict[str, deque[float]] = {}
+        self._hour: deque[float] = deque()
         self._day: str | None = None
         self._today = 0
         self._running = 0
 
     def _prune(self, now: float) -> None:
+        _drop_older_than_an_hour(self._hour, now)
         for ip in list(self._by_ip):
-            stamps = self._by_ip[ip]
-            while stamps and stamps[0] <= now - 3600.0:
-                stamps.popleft()
-            if not stamps:
+            _drop_older_than_an_hour(self._by_ip[ip], now)
+            if not self._by_ip[ip]:
                 del self._by_ip[ip]
         day = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
         if day != self._day:
             self._day, self._today = day, 0
 
-    def admit(self, ip: str) -> Refusal | None:
+    def admit(self, ip: str | None) -> Refusal | None:
         with self._lock:
             now = self.clock()
             self._prune(now)
-            stamps = self._by_ip.get(ip, deque())
-            if len(stamps) >= self.per_ip:
-                return Refusal("rate_limit", int(stamps[0] + 3600.0 - now) + 1)
+            if len(self._hour) >= self.hourly:
+                return Refusal("hourly_cap", int(self._hour[0] + HOUR_S - now) + 1)
+            stamps = self._by_ip.get(ip) if ip is not None else None
+            if stamps is not None and len(stamps) >= self.per_ip:
+                return Refusal("rate_limit", int(stamps[0] + HOUR_S - now) + 1)
             if self._today >= self.daily:
                 return Refusal("daily_cap")
             if self._running >= self.concurrent:
                 return Refusal("busy")
-            stamps.append(now)
-            self._by_ip[ip] = stamps
+            self._hour.append(now)
+            if ip is not None:
+                if stamps is not None:
+                    stamps.append(now)
+                elif len(self._by_ip) < self.max_keys:  # a full table: this visitor counts globally only
+                    self._by_ip[ip] = deque([now])
             self._today += 1
             self._running += 1
             return None
@@ -99,20 +128,47 @@ class Limits:
         with self._lock:
             self._running = max(0, self._running - 1)
 
-    def remaining(self, ip: str) -> dict[str, int]:
+    def remaining(self, ip: str | None) -> dict[str, int]:
+        """this_hour: what this caller can still start this hour; everyone_this_hour: for all visitors."""
         with self._lock:
             self._prune(self.clock())
-            return {"this_hour": self.per_ip - len(self._by_ip.get(ip, ())), "today": self.daily - self._today}
+            everyone = max(0, self.hourly - len(self._hour))
+            mine = everyone if ip is None else min(everyone, self.per_ip - len(self._by_ip.get(ip, ())))
+            return {"this_hour": mine, "everyone_this_hour": everyone, "today": self.daily - self._today}
+
+    def visitor_keys(self) -> int:
+        """How many visitors the table holds now (after pruning)."""
+        with self._lock:
+            self._prune(self.clock())
+            return len(self._by_ip)
 
 
-def client_ip(peer: str | None, forwarded_for: str | None, trusted_hops: int) -> str:
-    """The client's address: the peer, or the forwarded-for entry the trusted proxy added (counted
-    from the right, so a client cannot choose it)."""
-    if trusted_hops > 0 and forwarded_for:
-        parts = [p.strip() for p in forwarded_for.split(",") if p.strip()]
-        if len(parts) >= trusted_hops:
-            return parts[-trusted_hops]
-    return peer or "unknown"
+def _header(headers: Mapping[str, str], name: str) -> str | None:
+    return headers.get(name.lower())
+
+
+def client_ip(peer: str | None, headers: Mapping[str, str], source: str = "xff", trusted_hops: int = 0) -> str | None:
+    """The visitor key for the per-visitor limit, or None for global caps only (source "none").
+
+    - "xff": the X-Forwarded-For entry the trusted proxies added, counted from the right so a client
+      cannot choose it (trusted_hops 0: the peer address)
+    - "header:<Name>": that one header's value, set by the host's proxy
+    Anything the client could have written instead (fewer entries than hops, a missing or empty header,
+    a value over 200 characters, an entry over 64) falls back to the peer address. `headers` is looked
+    up by lower-case name (Starlette's Headers, or a plain dict in tests)."""
+    fallback = peer or "unknown"
+    if source == "none":
+        return None
+    if source.startswith("header:"):
+        value = (_header(headers, source.removeprefix("header:")) or "").strip()
+        return value if value and len(value) <= MAX_HEADER_CHARS else fallback
+    forwarded_for = _header(headers, "x-forwarded-for")
+    if trusted_hops <= 0 or not forwarded_for or len(forwarded_for) > MAX_HEADER_CHARS:
+        return fallback
+    parts = [p.strip() for p in forwarded_for.split(",") if p.strip()]
+    if len(parts) < trusted_hops or any(len(p) > MAX_XFF_ENTRY_CHARS for p in parts):
+        return fallback
+    return parts[-trusted_hops]
 
 
 # --- live on / off / paused ---------------------------------------------------------------------------

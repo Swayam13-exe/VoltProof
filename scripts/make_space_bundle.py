@@ -42,6 +42,7 @@ SPACE_README = """---
 title: VoltProof AI
 sdk: docker
 app_port: 7860
+license: mit
 ---
 
 VoltProof AI: tell a solar-and-battery site what you need in plain words; an AI writes the rules, an optimizer plans, and a physics check verifies the plan.

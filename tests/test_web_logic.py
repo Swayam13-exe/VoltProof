@@ -24,9 +24,14 @@ HARNESS = r"""
 const fs = require("fs");
 const src = fs.readFileSync(process.argv[1], "utf8");  // node -e: argv[1] is the first argument
 const slice = (from, to) => src.slice(src.indexOf(from), src.indexOf(to));
-const code = slice("function money(", "function status(") + slice("function hourText(", "function stat(");
-const helpers = new Function(code + "; return { costLine, missedText, otherLoadLine };")();
+const code = slice("function money(", "function status(") + slice("function hourText(", "function stat(") + slice("function reasonText(", "async function fallBack(");
+const helpers = new Function(code + "; return { costLine, missedText, otherLoadLine, reasonText, liveNote };")();
 const out = {};
+if (process.argv[2] === "--notes") {
+  const cases = JSON.parse(process.argv[3]);
+  console.log(JSON.stringify({ reasons: cases.reasons.map(([r, b]) => helpers.reasonText(r, b)), notes: cases.notes.map((s) => helpers.liveNote(s)) }));
+  process.exit(0);
+}
 for (const file of process.argv.slice(2)) {
   const view = JSON.parse(fs.readFileSync(file, "utf8"));
   out[file.split(/[\\/]/).pop()] = {
@@ -96,8 +101,33 @@ def test_other_load_line(tmp_path: Path) -> None:
     both = variant(tmp_path, "both_shed.json", lambda sd: sd["agent"].update(non_critical_shed_kwh=5.0, non_critical_shed_outage_kwh=5.0))
     lines = run(SHED_DAY, "ahmedabad-outage-en.json", both)
     kept = lines[SHED_DAY]["other"]
-    assert kept["value"] == "all of it" and kept["tone"] == "ok"
+    assert kept["value"] == "✓ all of it" and kept["tone"] == "ok"
     assert re.fullmatch(r"Rule-based battery switched off 41[.,]12 kWh of other load during the outage\.", kept["explain"])
     assert lines["ahmedabad-outage-en.json"]["other"] is None  # neither side switched anything off: no line
     partial = lines["both_shed.json"]["other"]
     assert partial["value"] == "all but 5 kWh" and partial["tone"] == "neutral"
+
+
+def test_limit_reasons_and_the_live_note() -> None:
+    cases = {
+        "reasons": [["hourly_cap", {"retry_after_s": 1500}], ["hourly_cap", None], ["rate_limit", {"retry_after_s": 61}]],
+        "notes": [
+            {"live": True, "per_visitor_limit": False, "runs_left_this_hour": 37},
+            {"live": True, "per_visitor_limit": True, "runs_left_this_hour": 9},
+            {"live": True, "runs_left_this_hour": 9},  # an older server without the field: per visitor
+            {"live": False, "reason": "live_mode_off"},
+            None,
+        ],
+    }
+    result = subprocess.run([NODE, "-e", HARNESS, str(WEB_DIR / "app.js"), "--notes", json.dumps(cases)], capture_output=True, text=True, encoding="utf-8")
+    assert result.returncode == 0, result.stderr
+    out = json.loads(result.stdout)
+    assert out["reasons"] == [
+        "this hour's live runs for all visitors are used up; try again in about 25 min",
+        "this hour's live runs for all visitors are used up",
+        "you have used this hour's 10 live runs; try again in about 2 min",
+    ]
+    shared, mine, old, off, unreachable = out["notes"]
+    assert shared == "Live AI on: 37 live runs left this hour (shared by all visitors)."
+    assert mine == old == "Live AI on: 9 live runs left for you this hour."
+    assert off.startswith("Live AI unavailable (the live AI is switched off here)") and unreachable.startswith("Live AI not available here")

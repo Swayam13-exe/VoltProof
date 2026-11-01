@@ -133,3 +133,20 @@ def test_trusted_proxy_hops_default_range_and_type() -> None:
     for bad in ("-1", "6", "two"):
         with pytest.raises(ConfigError, match="TRUSTED_PROXY_HOPS"):
             load_settings({"TRUSTED_PROXY_HOPS": bad})
+
+
+def test_client_ip_source_live_runs_per_hour_and_debug_client() -> None:
+    s = load_settings({})
+    assert (s.client_ip_source, s.live_runs_per_hour, s.debug_client) == ("xff", 40, False)
+    for good in ("xff", "none", "header:X-Real-IP", "header:Fly-Client-IP"):
+        assert load_settings({"CLIENT_IP_SOURCE": good}).client_ip_source == good
+    for bad in ("", "ip", "header:", "header:Bad Name", "header:X-Real-IP,X-Other", "XFF"):
+        with pytest.raises(ConfigError, match="CLIENT_IP_SOURCE"):
+            load_settings({"CLIENT_IP_SOURCE": bad})
+    assert load_settings({"LIVE_RUNS_PER_HOUR": "60"}).live_runs_per_hour == 60
+    for bad in ("0", "1001", "forty"):
+        with pytest.raises(ConfigError, match="LIVE_RUNS_PER_HOUR"):
+            load_settings({"LIVE_RUNS_PER_HOUR": bad})
+    assert load_settings({"DEBUG_CLIENT": "true"}).debug_client is True
+    with pytest.raises(ConfigError, match="DEBUG_CLIENT"):
+        load_settings({"DEBUG_CLIENT": "maybe"})

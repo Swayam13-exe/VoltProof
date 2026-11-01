@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.datastructures import Headers
 
 from tests.fakes_data import TOU_TEMPLATE
 from tests.fakes_llm import agent_day, agent_site
@@ -67,10 +68,11 @@ class Blocking:
         raise BudgetExceeded("released")
 
 
-def make(settings: Settings, client_factory, *, live: bool = True, hops: int = 1, clock: Clock | None = None, limits: Limits | None = None):
-    s = dataclasses.replace(settings, live_mode=live, trusted_proxy_hops=hops)
+def make(settings: Settings, client_factory, *, live: bool = True, hops: int = 1, clock: Clock | None = None, limits: Limits | None = None, **overrides: Any):
+    """`limits=None` lets the app build its own from the settings (LIVE_RUNS_PER_HOUR)."""
+    s = dataclasses.replace(settings, live_mode=live, trusted_proxy_hops=hops, **overrides)
     clock = clock or Clock()
-    app = create_app(settings=s, make_client=client_factory, clock=clock, sites={SITE.site_id: SITE}, splits=SPLITS, day_builder=build, limits=limits or Limits(clock))
+    app = create_app(settings=s, make_client=client_factory, clock=clock, sites={SITE.site_id: SITE}, splits=SPLITS, day_builder=build, limits=limits)
     return TestClient(app), app, clock
 
 
@@ -228,8 +230,158 @@ def test_an_account_error_switches_live_runs_off_until_restart(settings: Setting
     assert refused.status_code == 503 and refused.json()["reason"] == "live_off"
 
 
+def xff(value: str) -> dict[str, str]:
+    return {"x-forwarded-for": value}
+
+
 def test_client_ip_uses_the_hop_the_trusted_proxy_added() -> None:
-    assert client_ip("10.0.0.1", "1.1.1.1, 2.2.2.2", 1) == "2.2.2.2"  # a client can only prepend entries
-    assert client_ip("10.0.0.1", "1.1.1.1, 2.2.2.2", 0) == "10.0.0.1"
-    assert client_ip("10.0.0.1", None, 1) == "10.0.0.1"
-    assert client_ip(None, None, 0) == "unknown"
+    assert client_ip("10.0.0.1", xff("1.1.1.1, 2.2.2.2"), "xff", 1) == "2.2.2.2"  # a client can only prepend entries
+    assert client_ip("10.0.0.1", xff("6.6.6.6, 1.1.1.1, 2.2.2.2"), "xff", 1) == "2.2.2.2"  # a fake prefix changes nothing
+    assert client_ip("10.0.0.1", xff("1.1.1.1, 2.2.2.2"), "xff", 2) == "1.1.1.1"
+    assert client_ip("10.0.0.1", xff("1.1.1.1, , 2.2.2.2,"), "xff", 2) == "1.1.1.1"  # blank entries dropped
+    assert client_ip("10.0.0.1", xff("1.1.1.1, 2.2.2.2"), "xff", 0) == "10.0.0.1"
+    assert client_ip("10.0.0.1", {}, "xff", 1) == "10.0.0.1"
+    assert client_ip(None, {}, "xff", 0) == "unknown"
+
+
+def test_client_ip_falls_back_to_the_peer_never_to_a_client_entry() -> None:
+    assert client_ip("10.0.0.1", xff("2.2.2.2"), "xff", 2) == "10.0.0.1"  # more hops than entries
+    assert client_ip("10.0.0.1", xff(""), "xff", 1) == "10.0.0.1"
+    assert client_ip("10.0.0.1", {"x-real-ip": "3.3.3.3"}, "header:X-Real-IP") == "3.3.3.3"
+    assert client_ip("10.0.0.1", {"x-real-ip": "3.3.3.3", **xff("9.9.9.9")}, "header:X-Real-IP", 1) == "3.3.3.3"  # XFF ignored
+    for missing in ({}, {"x-real-ip": ""}, {"x-real-ip": "   "}):
+        assert client_ip("10.0.0.1", missing, "header:X-Real-IP") == "10.0.0.1"
+    assert client_ip("10.0.0.1", Headers({"X-Real-IP": "3.3.3.3"}), "header:x-real-ip") == "3.3.3.3"  # case-insensitive
+    assert client_ip("10.0.0.1", xff("1.1.1.1"), "none", 1) is None and client_ip("10.0.0.1", {}, "none") is None
+
+
+def test_client_ip_ignores_overlong_values_and_entries() -> None:
+    long_value = ", ".join(["203.0.113.7"] * 20)  # 260 characters
+    assert len(long_value) > 200
+    assert client_ip("10.0.0.1", xff(long_value), "xff", 1) == "10.0.0.1"
+    assert client_ip("10.0.0.1", {"x-real-ip": "a" * 201}, "header:X-Real-IP") == "10.0.0.1"
+    assert client_ip("10.0.0.1", {"x-real-ip": "a" * 200}, "header:X-Real-IP") == "a" * 200
+    assert client_ip("10.0.0.1", xff(f"{'b' * 65}, 2.2.2.2"), "xff", 1) == "10.0.0.1"  # any entry over 64 is invalid
+    assert client_ip("10.0.0.1", xff(f"1.1.1.1, {'c' * 65}"), "xff", 1) == "10.0.0.1"
+    assert client_ip("10.0.0.1", xff(f"{'d' * 64}, 2.2.2.2"), "xff", 2) == "d" * 64
+
+
+# --- the limits themselves ---------------------------------------------------------------------------------
+
+
+def test_the_global_hourly_cap_is_checked_before_the_per_visitor_limit() -> None:
+    clock = Clock()
+    limits = Limits(clock, per_ip=1, hourly=2, concurrent=10)
+    assert limits.admit("a") is None and limits.admit("b") is None
+    refused = limits.admit("a")  # over both its own limit and the global cap: the global cap answers
+    assert refused is not None and refused.reason == "hourly_cap" and refused.retry_after_s == 3601
+    assert limits.admit(None).reason == "hourly_cap"
+    assert limits.remaining(None) == {"this_hour": 0, "everyone_this_hour": 0, "today": 148}
+    clock.now += 1800
+    assert limits.admit("c").retry_after_s == 1801
+    clock.now += 1800
+    assert limits.admit("a") is None  # an hour later both caps have room again
+    assert limits.remaining("a") == {"this_hour": 0, "everyone_this_hour": 1, "today": 147}
+
+
+def test_a_refused_request_is_never_recorded_as_a_run_start() -> None:
+    clock = Clock()
+    limits = Limits(clock, per_ip=2, hourly=3, daily=4, concurrent=1)
+
+    def refuse(key: str | None, reason: str) -> None:
+        before = (limits.remaining(key), limits.remaining(None), limits.remaining("other"), limits.visitor_keys())
+        refusal = limits.admit(key)
+        assert refusal is not None and refusal.reason == reason
+        assert (limits.remaining(key), limits.remaining(None), limits.remaining("other"), limits.visitor_keys()) == before
+
+    assert limits.admit("a") is None
+    refuse("b", "busy")  # one at once
+    refuse("new-visitor", "busy")  # and a refused new visitor is not added to the table
+    limits.release()
+    assert limits.admit("a") is None
+    limits.release()
+    refuse("a", "rate_limit")
+    assert limits.admit("b") is None
+    limits.release()
+    refuse("c", "hourly_cap")
+    clock.now += 3600
+    assert limits.admit("c") is None  # the 4th run today
+    limits.release()
+    refuse("d", "daily_cap")
+
+
+def test_the_visitor_table_is_bounded_and_empties_after_an_hour() -> None:
+    clock = Clock()
+    limits = Limits(clock, hourly=20_000, daily=20_000, concurrent=1)
+    for i in range(15_000):
+        assert limits.admit(f"v{i}") is None
+        limits.release()
+    assert limits.visitor_keys() == 10_000  # the first 10,000; later visitors count globally only
+    assert limits.remaining("v14999") == {"this_hour": 10, "everyone_this_hour": 5_000, "today": 5_000}  # untracked: min(global, 10)
+    capped = Limits(clock, hourly=3, concurrent=1, max_keys=2)
+    for key in ("x1", "x2", "x3"):  # x3 is beyond the table but still counts against the global cap
+        assert capped.admit(key) is None
+        capped.release()
+    assert capped.visitor_keys() == 2 and capped.admit("x4").reason == "hourly_cap"
+    clock.now += 3600
+    assert limits.remaining("v0")["this_hour"] == 10 and limits.visitor_keys() == 0
+    assert capped.visitor_keys() == 0 and capped.admit("x4") is None
+
+
+# --- the app with each CLIENT_IP_SOURCE, the global cap and the debug switch ---------------------------------
+
+
+def test_the_app_refuses_over_the_global_hourly_cap(settings: Settings) -> None:
+    client, _, clock = make(settings, lambda s: Raising(BudgetExceeded("cap")), live_runs_per_hour=2)
+    for ip in ("203.0.113.1", "203.0.113.2"):
+        wait(client, post(client, ip=ip).json()["run_id"])
+        clock.now += 1
+    refused = post(client, ip="203.0.113.3")
+    assert refused.status_code == 429 and refused.json()["reason"] == "hourly_cap" and int(refused.headers["retry-after"]) > 0
+    status = client.get("/api/status", headers={"x-forwarded-for": "203.0.113.3"}).json()
+    assert status["runs_left_this_hour"] == 0 and status["runs_left_everyone_this_hour"] == 0 and status["per_visitor_limit"] is True
+
+
+def test_the_app_keys_visitors_on_a_named_header(settings: Settings) -> None:
+    client, _, _ = make(settings, lambda s: Raising(BudgetExceeded("cap")), limits=Limits(Clock(), per_ip=1, concurrent=10), client_ip_source="header:X-Real-IP")
+
+    def run(headers: dict[str, str]) -> int:
+        response = client.post("/api/plan", json={"site": SITE.site_id, "day": DAY.isoformat(), "goal": GOAL}, headers=headers)
+        if response.status_code == 200:
+            wait(client, response.json()["run_id"])
+        return response.status_code
+
+    assert run({"X-Real-IP": "198.51.100.7", "x-forwarded-for": "1.1.1.1"}) == 200
+    assert run({"X-Real-IP": "198.51.100.7", "x-forwarded-for": "2.2.2.2"}) == 429  # a fake XFF does not help
+    assert run({"X-Real-IP": "198.51.100.8"}) == 200
+    assert run({}) == 200  # no header: the peer address ("testclient") is the key
+    assert run({"X-Real-IP": ""}) == 429  # an empty header is the same peer bucket
+
+
+def test_with_source_none_only_the_global_caps_apply(settings: Settings) -> None:
+    clock = Clock()
+    client, _, _ = make(settings, lambda s: Raising(BudgetExceeded("cap")), clock=clock, limits=Limits(clock, concurrent=20), client_ip_source="none")
+    assert client.get("/api/status").json()["per_visitor_limit"] is False
+    for _ in range(11):  # more than the per-visitor 10, from one address
+        wait(client, post(client, ip="203.0.113.5").json()["run_id"])
+    status = client.get("/api/status", headers={"x-forwarded-for": "203.0.113.9"}).json()
+    assert status["runs_left_this_hour"] == status["runs_left_everyone_this_hour"] == 40 - 11
+
+
+def test_the_debug_endpoint_is_off_by_default_and_shows_only_address_headers(settings: Settings, caplog: pytest.LogCaptureFixture) -> None:
+    client, _, _ = make(settings, lambda s: a4_llm())
+    assert client.get("/api/debug/client").status_code == 404
+    client, _, _ = make(settings, lambda s: a4_llm(), hops=2, debug_client=True)
+    with caplog.at_level(logging.DEBUG):
+        response = client.get(
+            "/api/debug/client",
+            headers={"x-forwarded-for": "6.6.6.6, 198.51.100.4, 10.1.2.3", "X-Real-IP": "198.51.100.4", "Fly-Client-IP": "198.51.100.5", "Cookie": "session=secret", "Authorization": "Bearer secret"},
+        )
+    body = response.json()
+    assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+    assert set(body) == {"peer", "x_forwarded_for", "x_forwarded_for_count", "headers", "client_ip", "client_ip_source", "trusted_proxy_hops"}
+    assert body["x_forwarded_for"] == ["6.6.6.6", "198.51.100.4", "10.1.2.3"] and body["x_forwarded_for_count"] == 3
+    assert body["headers"] == {"X-Real-IP": "198.51.100.4", "Fly-Client-IP": "198.51.100.5"}  # nothing else, not Cookie or Authorization
+    assert body["client_ip"] == "198.51.100.4" and body["client_ip_source"] == "xff" and body["trusted_proxy_hops"] == 2
+    assert "secret" not in response.text
+    assert not any(ip in r.getMessage() for r in caplog.records for ip in ("198.51.100.4", "6.6.6.6", "10.1.2.3"))

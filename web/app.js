@@ -295,7 +295,7 @@
     const theirs = shed(sd.rule_based);
     if (mine < SHED_SHOWN_KWH && theirs < SHED_SHOWN_KWH) return null;
     const explain = theirs < SHED_SHOWN_KWH ? "The rule-based battery kept all of it on." : `Rule-based battery switched off ${shedWords(sd.rule_based)}.`;
-    if (mine < SHED_SHOWN_KWH) return { value: "all of it", tone: "ok", explain };
+    if (mine < SHED_SHOWN_KWH) return { value: "✓ all of it", tone: "ok", explain };
     return { value: `all but ${kwh(mine)}`, tone: mine <= theirs ? "neutral" : "fail", explain };
   }
 
@@ -459,6 +459,7 @@
   function reasonText(reason, body) {
     const minutes = body && body.retry_after_s ? Math.max(1, Math.ceil(body.retry_after_s / 60)) : null;
     switch (reason) {
+      case "hourly_cap": return `this hour's live runs for all visitors are used up${minutes ? `; try again in about ${minutes} min` : ""}`;
       case "rate_limit": return `you have used this hour's 10 live runs${minutes ? `; try again in about ${minutes} min` : ""}`;
       case "daily_cap": return "today's live runs are used up";
       case "busy": return "two live runs are already in progress; try again in a minute";
@@ -470,6 +471,14 @@
       case "network": return "the live AI could not be reached";
       default: return "the live run failed";
     }
+  }
+
+  /* The one-line live status under the goal box (status: /api/status, or null when unreachable). */
+  function liveNote(live) {
+    if (!live) return "Live AI not available here: typed goals show a recorded run instead.";
+    if (!live.live) return `Live AI unavailable (${reasonText(live.reason)}${live.paused_until ? `, until ${new Date(live.paused_until).toLocaleTimeString()}` : ""}): typed goals show a recorded run instead.`;
+    if (live.per_visitor_limit === false) return `Live AI on: ${live.runs_left_this_hour} live runs left this hour (shared by all visitors).`;
+    return `Live AI on: ${live.runs_left_this_hour} live runs left for you this hour.`;
   }
 
   async function fallBack(reason, body, started) {
@@ -602,10 +611,7 @@
     } catch (_err) {
       state.live = null;
     }
-    const note = $("live-note");
-    if (!state.live) note.textContent = "Live AI not available here: typed goals show a recorded run instead.";
-    else if (!state.live.live) note.textContent = `Live AI unavailable (${reasonText(state.live.reason)}${state.live.paused_until ? `, until ${new Date(state.live.paused_until).toLocaleTimeString()}` : ""}): typed goals show a recorded run instead.`;
-    else note.textContent = `Live AI on: ${state.live.runs_left_this_hour} live runs left for you this hour.`;
+    $("live-note").textContent = liveNote(state.live);
   }
 
   function updateCount() {

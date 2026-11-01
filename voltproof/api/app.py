@@ -8,9 +8,11 @@ content-security policy: scripts only from this origin and the pinned Chart.js f
 inline script or style, connections only to this origin. Frames: only this origin and Hugging Face
 (a Space shows the app inside its page).
 
-Live runs (typed goals) run the frozen A4 unchanged (see live.py) behind: LIVE_MODE, the per-IP,
-daily and concurrency limits, and the demo budget cap; anything else returns a reason the page turns
-into a labelled replay. The uvicorn access log stays off, and nothing here logs a client address.
+Live runs (typed goals) run the frozen A4 unchanged (see live.py) behind: LIVE_MODE, the global
+hourly, per-visitor, daily and concurrency limits, and the demo budget cap; anything else returns a
+reason the page turns into a labelled replay. The uvicorn access log stays off, and nothing here logs
+a client address. DEBUG_CLIENT=true adds GET /api/debug/client, which shows the caller its own address
+headers (to choose CLIENT_IP_SOURCE on a new host); otherwise that path is a 404.
 """
 
 from __future__ import annotations
@@ -63,7 +65,9 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
-REFUSAL_STATUS = {"rate_limit": 429, "daily_cap": 429, "busy": 429}
+REFUSAL_STATUS = {"hourly_cap": 429, "rate_limit": 429, "daily_cap": 429, "busy": 429}
+# What /api/debug/client shows besides X-Forwarded-For (only these, and only when present)
+DEBUG_CLIENT_HEADERS = ("X-Real-IP", "Forwarded", "CF-Connecting-IP", "True-Client-IP", "X-Envoy-External-Address", "Fly-Client-IP")
 
 
 class PlanRequest(BaseModel):
@@ -140,7 +144,7 @@ def create_app(
     build = day_builder or processed_day_builder()
     factory = make_client or (lambda s: LLMClient(s))
     state = LiveState(settings.live_mode, lambda: factory(settings), clock)
-    limits = limits or Limits(clock)
+    limits = limits or Limits(clock, hourly=settings.live_runs_per_hour)
     store = RunStore(clock)
     workers = ThreadPoolExecutor(max_workers=limits.concurrent, thread_name_prefix="live")
 
@@ -150,9 +154,9 @@ def create_app(
     def demo_spend() -> float:
         return read_ledger_totals(settings.ledger_path).demo_usd
 
-    def caller(request: Request) -> str:
+    def caller(request: Request) -> str | None:
         peer = request.client.host if request.client else None
-        return client_ip(peer, request.headers.get("x-forwarded-for"), settings.trusted_proxy_hops)
+        return client_ip(peer, request.headers, settings.client_ip_source, settings.trusted_proxy_hops)
 
     def site_or_422(site_id: str) -> Site:
         if site_id not in sites:
@@ -173,7 +177,33 @@ def create_app(
     @app.get("/api/status")
     def status(request: Request) -> dict[str, Any]:
         remaining = limits.remaining(caller(request))
-        return {**state.status(), "runs_left_this_hour": remaining["this_hour"], "runs_left_today": remaining["today"], "demo_cap_usd": settings.demo_budget_usd_cap}
+        return {
+            **state.status(),
+            "per_visitor_limit": settings.client_ip_source != "none",
+            "runs_left_this_hour": remaining["this_hour"],
+            "runs_left_everyone_this_hour": remaining["everyone_this_hour"],
+            "runs_left_today": remaining["today"],
+            "demo_cap_usd": settings.demo_budget_usd_cap,
+        }
+
+    if settings.debug_client:
+
+        @app.get("/api/debug/client")
+        def debug_client(request: Request) -> JSONResponse:
+            """Diagnosis only (DEBUG_CLIENT=true): the caller's own address headers, returned to the
+            caller and never logged."""
+            raw = request.headers.get("x-forwarded-for")
+            entries = [p.strip() for p in raw.split(",")] if raw else []
+            body = {
+                "peer": request.client.host if request.client else None,
+                "x_forwarded_for": entries,
+                "x_forwarded_for_count": len(entries),
+                "headers": {name: request.headers[name] for name in DEBUG_CLIENT_HEADERS if name in request.headers},
+                "client_ip": caller(request),
+                "client_ip_source": settings.client_ip_source,
+                "trusted_proxy_hops": settings.trusted_proxy_hops,
+            }
+            return JSONResponse(body, headers={"Cache-Control": "no-store"})
 
     @app.get("/api/sites")
     def api_sites() -> list[dict[str, Any]]:
