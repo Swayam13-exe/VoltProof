@@ -34,7 +34,7 @@ def test_policy_allows_no_inline_code_and_only_the_pinned_chart_library() -> Non
     assert "script-src 'self' https://cdnjs.cloudflare.com" in CONTENT_SECURITY_POLICY and "connect-src 'self'" in CONTENT_SECURITY_POLICY
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     sources = re.findall(r'<script[^>]*src="([^"]+)"', html)
-    assert sources == ["theme.js", CHART_JS, "charts.js", "app.js", "landing.js"]
+    assert sources == ["theme.js", CHART_JS, "charts.js", "dayplayer.js", "app.js", "landing.js"]
     assert '<script src="theme.js"></script>' in html.split("</head>")[0]  # synchronous in <head>: no theme flash
     assert re.search(rf'src="{re.escape(CHART_JS)}" integrity="sha512-[A-Za-z0-9+/=]+" crossorigin="anonymous"', html)
     assert not re.search(r"<script(?![^>]*src=)[^>]*>", html)  # no inline script
@@ -43,7 +43,7 @@ def test_policy_allows_no_inline_code_and_only_the_pinned_chart_library() -> Non
 
 
 def test_the_page_never_inserts_html() -> None:
-    for name in ("theme.js", "app.js", "charts.js", "landing.js"):
+    for name in ("theme.js", "app.js", "charts.js", "dayplayer.js", "landing.js"):
         source = (WEB_DIR / name).read_text(encoding="utf-8")
         code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)  # comments may mention the rule itself
         code = re.sub(r"^\s*//.*$", "", code, flags=re.M)

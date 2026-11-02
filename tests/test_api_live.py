@@ -101,6 +101,7 @@ def test_status_sites_days_and_static_endpoints(settings: Settings) -> None:
     benchmark = client.get("/api/benchmark").json()
     assert set(benchmark) == {"main", "e2", "e3", "e4", "code"}
     assert benchmark["code"]["max_repairs"] == 2 and "voltproof/agents/voltproof.py" in benchmark["code"]["max_repairs_source"]
+    assert (benchmark["code"]["spec_match_pct_points"], benchmark["code"]["spec_match_kw"]) == (1.0, 0.1) and "voltproof/core/metrics.py" in benchmark["code"]["spec_match_source"]
     assert {"run_summary", "goal_satisfaction", "goal_satisfaction_bootstrap", "outage_safety", "a4_spec_by_language"} <= set(benchmark["main"])
     names = {r["arm"]: r["name"] for r in benchmark["main"]["run_summary"]}  # the page's arm names and numbers come from here
     assert names["A2"] == "LLM writes schedule" and names["A4"] == "VoltProof"

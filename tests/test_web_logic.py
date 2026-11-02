@@ -146,26 +146,33 @@ def test_limit_reasons_and_the_live_note() -> None:
     assert off.startswith("Live AI unavailable (the live AI is switched off here)") and unreachable.startswith("Live AI not available here")
 
 
-# --- the landing page's pure functions (web/landing.js), on the committed replays -------------------------
+# --- pure functions of the day player (web/dayplayer.js), the landing page (web/landing.js) and Try it ----
 
-LANDING = r"""
+PURE = r"""
 const fs = require("fs");
 const path = require("path");
-const src = fs.readFileSync(process.argv[1], "utf8");
-const code = src.slice(src.indexOf("/* --- pure: begin"), src.indexOf("/* --- pure: end"));
-const f = new Function(code + "; return { HERO_PAIRS, HOUR_MS, DAY_MS, SITE_MS, heroPicks, heroClock, heroTime, hourFlows, specCodes, hourWindows, timelineRules, ruleResults, focusHour, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames, hourText };")();
+const read = (name) => fs.readFileSync(path.join(process.argv[1], name), "utf8");
+const block = (src, from, to) => src.slice(src.indexOf(from), src.indexOf(to));
+const day = block(read("dayplayer.js"), "/* --- pure: begin", "/* --- pure: end");
+const landing = block(read("landing.js"), "/* --- pure: begin", "/* --- pure: end");
+const app = read("app.js");
+const tryCode = block(app, "function money(", "function status(") + block(app, "function hourText(", "function stat(") + block(app, "function reasonText(", "async function fallBack(");
+const D = new Function(day + "; return { DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
+const L = new Function(landing + "; return { HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
+const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, runButtonState, pipelineStart, pipelineStep, traceEvents, comparisonRows, csvRows, csvText, costLine };")(D);
 const dir = process.argv[2];
 const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
 const views = Object.fromEntries(index.chips.map((c) => [c.id, JSON.parse(fs.readFileSync(path.join(dir, c.file), "utf8"))]));
 const out = {};
-for (const [key, expr] of Object.entries(JSON.parse(process.argv[3]))) out[key] = new Function("f", "views", "index", `return (${expr});`)(f, views, index);
+for (const [key, expr] of Object.entries(JSON.parse(process.argv[3]))) out[key] = new Function("D", "L", "T", "views", "index", `return (${expr});`)(D, L, T, views, index);
 console.log(JSON.stringify(out));
 """
 
 
-def landing(**exprs: str) -> dict:
-    """Evaluate JS expressions over landing.js's pure functions `f`, the replays `views` and `index`."""
-    result = subprocess.run([NODE, "-e", LANDING, str(WEB_DIR / "landing.js"), str(REPLAYS), json.dumps(exprs)], capture_output=True, text=True, encoding="utf-8")
+def pure(**exprs: str) -> dict:
+    """Evaluate JS expressions over the pure functions: D (day player), L (landing), T (Try it), the
+    committed replays `views` and their `index`."""
+    result = subprocess.run([NODE, "-e", PURE, str(WEB_DIR), str(REPLAYS), json.dumps(exprs)], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
 
@@ -174,18 +181,21 @@ def replay(chip_id: str) -> dict:
     return json.loads((REPLAYS / f"{chip_id}.json").read_text(encoding="utf-8"))
 
 
+def chips() -> list[dict]:
+    return json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
+
+
 def hero_ids() -> list[str]:
-    return landing(picks="f.heroPicks(index.chips).map((c) => c.id)")["picks"]
+    return pure(picks="L.heroPicks(index.chips).map((c) => c.id)")["picks"]
 
 
 def test_hero_plays_nairobi_english_then_ahmedabad_hindi_then_the_held_out_site_in_spanish() -> None:
     """The third day is the held-out household site; it is named only through landing.js and the
     replay index, never in tests (test_days guards that)."""
-    out = landing(pairs="f.HERO_PAIRS", picks="f.heroPicks(index.chips).map((c) => c && c.id)", missing='f.heroPicks(index.chips, [["nairobi_clinic", "en"], ["nowhere", "xx"]]).map((c) => c && c.id)')
+    out = pure(pairs="L.HERO_PAIRS", picks="L.heroPicks(index.chips).map((c) => c && c.id)", missing='L.heroPicks(index.chips, [["nairobi_clinic", "en"], ["nowhere", "xx"]]).map((c) => c && c.id)')
     pairs = out["pairs"]
     assert pairs[:2] == [["nairobi_clinic", "en"], ["ahmedabad_cold_store", "hi"]] and pairs[2][1] == "es"
-    chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
-    third = [c for c in chips if [c["site_id"], c["language"]] == pairs[2]]
+    third = [c for c in chips() if [c["site_id"], c["language"]] == pairs[2]]
     assert len(third) == 1 and third[0]["site"]["site_type"] == "household"
     assert out["picks"] == ["nairobi-outage-reserve-en", "ahmedabad-outage-hi", third[0]["id"]]  # an everyday goal before a hard one
     assert out["missing"] == ["nairobi-outage-reserve-en", None]  # a missing pair is skipped, never replaced
@@ -193,9 +203,16 @@ def test_hero_plays_nairobi_english_then_ahmedabad_hindi_then_the_held_out_site_
         assert replay(pick)["same_day"]["agent"]["goals_met"] and replay(pick)["plan"]["verified"]
 
 
+def test_short_site_names_for_the_phone_buttons() -> None:
+    ids = hero_ids()
+    names = [replay(i)["site"]["name"] for i in ids]
+    out = pure(short=f"{json.dumps(names)}.map(D.shortSiteName)")
+    assert out["short"][:2] == ["Nairobi", "Ahmedabad"]
+    assert out["short"][2] == re.findall(r"\b[A-Z][\w-]*", names[2])[-1] and out["short"][2] in names[2]
+
+
 def test_translated_goals_carry_their_english_source() -> None:
-    chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
-    for chip in chips:
+    for chip in chips():
         goal = replay(chip["id"])["goal"]
         if goal["language"] == "en":
             assert goal["english"] is None
@@ -207,24 +224,24 @@ def test_translated_goals_carry_their_english_source() -> None:
     assert f"{cap:g} kW" in spanish["text"] and f"{cap:g} kW" in spanish["english"]  # filled with the same value
 
 
-def test_hero_clock_steps_through_the_hours_and_back() -> None:
-    out = landing(
-        consts="[f.HOUR_MS, f.DAY_MS, f.SITE_MS]",
-        frames="[0, 349, 350, 23 * 350, 8400, 9999, 10000, 2 * 10000 + 15 * 350, 30000, -1].map((t) => { const c = f.heroClock(t, 3); return [c.index, c.hour]; })",
-        none="f.heroClock(100, 0)",
-        times="[[0, 0], [1, 15], [2, 24]].map(([i, h]) => f.heroTime(i, h))",
-        roundtrip="[0, 1, 2].every((i) => [...Array(25).keys()].every((h) => { const c = f.heroClock(f.heroTime(i, h), 3); return c.index === i && c.hour === h; }))",
-        hours="[0, 9, 23].map(f.hourText)",
+def test_play_clock_paces_14_s_per_day_then_holds_3_s_on_the_checked_rules() -> None:
+    out = pure(
+        consts="[D.DAY_MS, D.HOLD_MS, D.SITE_MS]",
+        loop="[0, 583, 584, 13999, 14000, 16999, 17000, 2 * 17000 + 7000, 51000, -1].map((t) => { const c = D.playClock(t, 3); return [c.index, c.hour]; })",
+        once="[0, 7000, 13999, 14000, 99999].map((t) => { const c = D.playClock(t, 1, false); return [c.index, c.hour, c.done]; })",
+        none="D.playClock(100, 0)",
+        roundtrip="[0, 1, 2].every((i) => [...Array(25).keys()].every((h) => { const c = D.playClock(D.playTime(i, h), 3); return c.index === i && c.hour === h; }))",
+        hours="[0, 9, 23].map(D.hourText)",
     )
-    assert out["consts"] == [350, 8400, 10000]
-    assert out["frames"] == [[0, 0], [0, 0], [0, 1], [0, 23], [0, 24], [0, 24], [1, 0], [2, 15], [0, 0], [2, 24]]
-    assert out["none"] is None and out["times"] == [0, 15250, 28400] and out["roundtrip"] is True
-    assert out["hours"] == ["00:00", "09:00", "23:00"]
+    assert out["consts"] == [14000, 3000, 17000]
+    assert out["loop"] == [[0, 0], [0, 0], [0, 1], [0, 23], [0, 24], [0, 24], [1, 0], [2, 12], [0, 0], [2, 24]]
+    assert out["once"] == [[0, 0, False], [0, 12, False], [0, 23, False], [0, 24, True], [0, 24, True]]  # Try it plays once, ends on the rules
+    assert out["none"] is None and out["roundtrip"] is True and out["hours"] == ["00:00", "09:00", "23:00"]
 
 
 def test_the_playhead_drives_the_diagram_with_the_replay_values() -> None:
     ids = hero_ids()
-    out = landing(flows=f"{json.dumps(ids)}.map((id) => [...Array(25).keys()].map((h) => f.hourFlows(views[id], h)))")
+    out = pure(flows=f"{json.dumps(ids)}.map((id) => [...Array(25).keys()].map((h) => D.hourFlows(views[id], h)))")
     for chip_id, flows in zip(ids, out["flows"]):
         view = replay(chip_id)
         sd, run_, plan = view["same_day"], view["same_day"]["agent"], view["plan"]
@@ -243,26 +260,55 @@ def test_the_playhead_drives_the_diagram_with_the_replay_values() -> None:
         assert flows[24]["end"] is True and flows[24]["socEnd"] == run_["soc_pct"][23]
 
 
-def test_rules_are_drawn_on_the_timeline_and_checked() -> None:
+def test_rules_are_drawn_exactly_where_the_checker_tests_them() -> None:
+    """For every rule in the three hero replays, the timeline's x-range equals what the checker checks:
+    a charge floor at the instants soc[i] is tested (the end of hour i, i.e. (i+1):00; the initial
+    charge at 0:00), an outage or import cap over the hours its rows cover."""
+    from voltproof.core.spec import INITIAL, soft_rows
+    from voltproof.data.sites import SITES
+    from voltproof.models import IntentSpec
+
+    ids = hero_ids()
+    out = pure(bands=f"{json.dumps(ids)}.map((id) => D.ruleBands(views[id]))")
+    checked_any = {"floor": 0, "cap": 0, "outage": 0}
+    for chip_id, bands in zip(ids, out["bands"]):
+        view = replay(chip_id)
+        spec = IntentSpec.model_validate(view["spec"])
+        rows = soft_rows(spec, SITES[view["site"]["site_id"]])
+        capacity = SITES[view["site"]["site_id"]].battery.capacity_kwh
+        want_floor: dict[int, float] = {}
+        for row in rows:
+            if row.kind == "soc_min":
+                instant = 0 if row.hour == INITIAL else row.hour + 1
+                want_floor[instant] = max(want_floor.get(instant, 0.0), round(100.0 * row.bound / capacity, 1))
+        drawn_floor = {t: f["pct"] for f in bands["floors"] for t in range(f["from"], f["to"] + 1)}
+        assert drawn_floor == want_floor, chip_id
+        want_cap = {row.hour for row in rows if row.kind == "import_max"}
+        assert {h for c in bands["caps"] for h in range(c["from"], c["to"])} == want_cap, chip_id
+        want_outage = {h for w in spec.grid_outages for h in w.hours()}
+        assert {h for o in bands["outages"] for h in range(o["from"], o["to"])} == want_outage, chip_id
+        checked_any["floor"] += len(want_floor)
+        checked_any["cap"] += len(want_cap)
+        checked_any["outage"] += len(want_outage)
+    assert all(checked_any.values()), checked_any  # each kind actually occurs in the hero days
+    nairobi = out["bands"][0]
+    assert nairobi["floors"] == [{"kind": "floor", "from": 12, "to": 20, "pct": 40}]  # "12:00-20:00", not 11:00
+
+
+def test_rule_results_focus_hour_and_listed_rules() -> None:
     nairobi, ahmedabad, third = hero_ids()
     three = json.dumps([nairobi, ahmedabad, third])
-    out = landing(
-        rules=f"{three}.map((id) => f.timelineRules(views[id]))",
-        focus=f"{three}.map((id) => f.focusHour(views[id]))",
-        results=f'[f.ruleResults(views["{nairobi}"].spec, []), f.ruleResults(views["{nairobi}"].spec, ["RESERVE"]), f.ruleResults({{no_export_windows: [{{}}]}}, [])]',
-        codes="[{grid_outages: [{start_hour: 9, end_hour: 12}], reserve_windows: [{}]}, {import_caps: [{}], no_export_windows: []}, {end_of_day_min_soc_pct: 0}, {}, null].map(f.specCodes)",
-        windows="f.hourWindows([14, 9, 10, 11, 10])",
+    out = pure(
+        focus=f"{three}.map((id) => D.focusHour(views[id]))",
+        results=f'[D.ruleResults(views["{nairobi}"].spec, []), D.ruleResults(views["{nairobi}"].spec, ["RESERVE"]), D.ruleResults({{no_export_windows: [{{}}]}}, [])]',
+        listed='D.ruleBands({plan: {goals: {initial_required_soc_pct: null, required_soc_pct: Array(24).fill(null), import_cap_kw: Array(24).fill(null), outage_hours: []}}, spec: {no_export_windows: [{}]}}).listed',
+        codes="[{grid_outages: [{start_hour: 9, end_hour: 12}], reserve_windows: [{}]}, {import_caps: [{}], no_export_windows: []}, {end_of_day_min_soc_pct: 0}, {}, null].map(D.specCodes)",
+        windows="D.hourWindows([14, 9, 10, 11, 10])",
     )
-    n, a, t = out["rules"]
-    required = replay(nairobi)["plan"]["goals"]["required_soc_pct"]
-    assert n["outages"] == [[9, 12]] and n["importCap"] == [] and n["listed"] == []
-    assert [f["hour"] for f in n["floor"]] == [h for h, v in enumerate(required) if v is not None] and {f["pct"] for f in n["floor"]} == {40}
-    assert a["outages"] == [[14, 17]] and a["floor"] == [] and a["importCap"] == []
-    assert t["outages"] == [] and [c["hour"] for c in t["importCap"]] == [13, 14, 15, 16] and {c["kw"] for c in t["importCap"]} == {7}
-    assert out["focus"] == [10, 15, 14]  # mid-outage, mid-outage, middle of the import cap
+    assert out["focus"] == [10, 15, 14]  # mid-outage, mid-outage, inside the import cap
     assert out["results"][0] == [{"code": "OUTAGE_DEFICIT", "met": True}, {"code": "RESERVE", "met": True}]
     assert out["results"][1][1] == {"code": "RESERVE", "met": False}
-    assert out["results"][2] == [{"code": "NO_EXPORT", "met": True}]  # listed in words, not drawn
+    assert out["results"][2] == [{"code": "NO_EXPORT", "met": True}] and out["listed"] == ["NO_EXPORT"]  # named in words, not drawn
     assert out["codes"] == [["OUTAGE_DEFICIT", "RESERVE"], ["IMPORT_CAP"], ["END_SOC"], [], []]
     assert out["windows"] == [[9, 12], [14, 15]]
 
@@ -271,9 +317,8 @@ def test_dot_grid_counts_reproduce_the_printed_rates_and_the_episode_records() -
     main = json.loads((WEB_DIR.parent / "results" / "report" / "summary.json").read_text(encoding="utf-8"))["tables"]
     outage = {r["arm"]: r for r in main["outage_safety"]}
     cases = [[outage["A2"]["plan physics valid"], outage["A2"]["episodes"]], [outage["A4"]["plan physics valid"], outage["A4"]["episodes"]], ["12.3%", 45], ["50%", 0]]
-    out = landing(counts=f"{json.dumps(cases)}.map(([rate, n]) => f.dotCount(rate, n))")
+    out = pure(counts=f"{json.dumps(cases)}.map(([rate, n]) => L.dotCount(rate, n))")
     assert out["counts"] == [{"passed": 8, "failed": 37}, {"passed": 45, "failed": 0}, None, None]
-    # the same counts straight from the per-episode records of the frozen test run
     rows = [json.loads(line) for line in (WEB_DIR.parent / "results" / "test-run" / "episodes.jsonl").read_text(encoding="utf-8").splitlines()]
     outage_rows = [r for r in rows if r["spec_name"] in ("outage_critical", "outage_then_reserve")]
     for arm, expected in (("A2", 8), ("A4", 45)):
@@ -282,13 +327,13 @@ def test_dot_grid_counts_reproduce_the_printed_rates_and_the_episode_records() -
 
 
 def test_source_lines_and_parsers() -> None:
-    out = landing(
-        sources='[f.sourceLine("results/report/summary.json", "goal_satisfaction"), f.sourceLine("web/replays/x.json")]',
-        leading='["98.8% (257/260)", "17.8%", "+8.5 pts [+5.0, +11.9]", "n/a"].map(f.leadingNumber)',
-        shares='["98.8% (257/260)", "100.0%", "n/a"].map(f.parseShare)',
-        deltas='["+8.5 pts [+5.0, +11.9]", "-1.2 pts [-3.0, +0.4]", "x"].map(f.parseDelta)',
-        names='f.armNames([{arm: "A2", name: "LLM writes schedule"}, {arm: "A4", name: "VoltProof"}])',
-        row='f.rowFor([{arm: "A2", v: 1}, {arm: "A4", v: 2}], "arm", "A4")',
+    out = pure(
+        sources='[L.sourceLine("results/report/summary.json", "goal_satisfaction"), L.sourceLine("web/replays/x.json")]',
+        leading='["98.8% (257/260)", "17.8%", "+8.5 pts [+5.0, +11.9]", "n/a"].map(L.leadingNumber)',
+        shares='["98.8% (257/260)", "100.0%", "n/a"].map(L.parseShare)',
+        deltas='["+8.5 pts [+5.0, +11.9]", "-1.2 pts [-3.0, +0.4]", "x"].map(L.parseDelta)',
+        names='L.armNames([{arm: "A2", name: "LLM writes schedule"}, {arm: "A4", name: "VoltProof"}])',
+        row='L.rowFor([{arm: "A2", v: 1}, {arm: "A4", v: 2}], "arm", "A4")',
     )
     assert out["sources"] == ["Source: results/report/summary.json · goal_satisfaction", "Source: web/replays/x.json"]
     assert out["leading"] == ["98.8%", "17.8%", "+8.5", None]
@@ -312,9 +357,92 @@ def test_the_numbers_the_landing_page_shows_parse_from_the_committed_results() -
     assert [r["exact match"] for r in main["a4_spec_by_language"] if r["group"].startswith("multilingual:")] == ["100.0%"] * 5
 
 
+# --- Try it ----------------------------------------------------------------------------------------------
+
+
+def test_the_main_button_offers_exactly_one_thing() -> None:
+    chip = next(c for c in chips() if c["id"] == "nairobi-outage-reserve-en")
+    other_day = next(c for c in chips() if c["site_id"] == chip["site_id"] and c["date"] != chip["date"])
+    site, day = json.dumps(chip["site_id"]), json.dumps(chip["date"])
+    rec = f"T.recordedFor(index.chips, {site}, {day})"
+    live_on = '{live: true, runs_left_this_hour: 7, per_visitor_limit: true}'
+    out = pure(
+        empty=f'T.runButtonState("   ", {rec}, {live_on})',
+        recorded=f"T.runButtonState({json.dumps('  ' + chip['goal'] + ' ')}, {rec}, null)",
+        edited=f"T.runButtonState({json.dumps(chip['goal'] + ' please')}, {rec}, {live_on})",
+        other_day=f"T.runButtonState({json.dumps(other_day['goal'])}, {rec}, {live_on})",
+        shared=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 30, per_visitor_limit: false}})',
+        off=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: false, reason: "live_mode_off"}})',
+        unreachable=f'T.runButtonState("Keep 50% tonight", {rec}, null)',
+        used_up=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 0}})',
+    )
+    assert out["empty"] == {"mode": "empty", "label": "Plan my day", "disabled": True, "hint": "Type a goal or pick one below."}
+    assert out["recorded"]["mode"] == "recorded" and out["recorded"]["label"] == "Play recorded run (free)" and out["recorded"]["chip"]["id"] == chip["id"]
+    assert not out["recorded"]["disabled"]  # a recorded goal plays even with live runs off
+    assert out["edited"]["mode"] == "live" and out["edited"]["label"] == "Run live (7 left this hour)" and not out["edited"]["disabled"]
+    assert out["other_day"]["mode"] == "live"  # a recorded goal of another day is typed text here
+    assert out["shared"]["label"] == "Run live (30 left this hour)" and "shared by all visitors" in out["shared"]["hint"]
+    for key in ("off", "unreachable", "used_up"):
+        assert out[key]["mode"] == "unavailable" and out[key]["disabled"] is True and out[key]["label"] == "Live runs unavailable: play a recorded run"
+    assert "the live AI is switched off here" in out["off"]["hint"] and out["off"]["hint"].endswith("Pick a recorded goal below.")
+
+
+def test_pipeline_stages_light_up_from_the_recorded_trace() -> None:
+    finals = pure(
+        finals='index.chips.map((c) => { let s = T.pipelineStart(); for (const e of [...T.traceEvents(views[c.id]), {kind: "end", data: {status: "done"}}, {kind: "replayed", data: {ok: true}}]) s = T.pipelineStep(s, e); return s; })',
+        stages="T.PIPELINE_STAGES.map(([k]) => k)",
+        repair='(() => { let s = T.pipelineStart(); const seen = []; for (const e of [{kind: "tool_call", name: "set_checklist", data: {}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p1", valid: false}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: false, failed_checks: [{check: "verified_plan"}]}}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p2"}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "review", data: {approved: true}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: true}}}]) { s = T.pipelineStep(s, e); seen.push([s.rules, s.physics, s.repairs]); } return {final: s, seen}; })()',
+        live_review='(() => { let s = T.pipelineStart(); s = T.pipelineStep(s, {kind: "review", name: undefined, data: {approved: false}}); s = T.pipelineStep(s, {kind: "tool_result", name: "finalize", data: {name: "finalize", result: {accepted: false, failed_checks: ["review"]}}}); return s; })()',
+        solve_error='T.pipelineStep(T.pipelineStep(T.pipelineStart(), {kind: "tool_call", name: "solve_plan", data: {}}), {kind: "tool_result", name: "solve_plan", data: {result: {error: "invalid spec"}}})',
+        unavailable='T.pipelineStep(T.pipelineStart(), {kind: "end", data: {status: "unavailable", reason: "budget"}}).replay',
+    )
+    assert finals["stages"] == ["rules", "review", "optimizer", "physics", "replay"]
+    for state in finals["finals"]:  # every recorded run: all five stages done, no repair
+        assert {k: state[k] for k in finals["stages"]} == dict.fromkeys(finals["stages"], "done") and state["repairs"] == 0
+    repair = finals["repair"]
+    assert repair["seen"][4] == ["active", "fail", 1]  # the failed check sends it back to the AI
+    assert repair["final"]["physics"] == "done" and repair["final"]["repairs"] == 1 and repair["final"]["failed"] == ["verified_plan"]
+    assert finals["live_review"]["review"] == "fail" and finals["live_review"]["repairs"] == 1 and finals["live_review"]["failed"] == ["review"]
+    assert finals["solve_error"]["optimizer"] == "fail" and finals["solve_error"]["rules"] == "active"
+    assert finals["unavailable"] == "fail"
+
+
+def test_csv_rows_are_the_executed_plan_hour_by_hour() -> None:
+    view = replay("ahmedabad-outage-hi")
+    out = pure(rows='T.csvRows(views["ahmedabad-outage-hi"])', text='T.csvText([["a", "b,c"], [1, "say \\"x\\""]])')
+    rows = out["rows"]
+    assert rows[0] == ["hour", "solar kW", "load kW", "battery kW (+ charging, - discharging)", "battery % (end of hour)", "grid import kW", "grid export kW"]
+    assert len(rows) == 25
+    sd, run_ = view["same_day"], view["same_day"]["agent"]
+    for h in range(24):
+        assert rows[h + 1] == [f"{h}:00", sd["pv_actual_kw"][h], sd["load_actual_kw"][h], run_["battery_kw"][h], run_["soc_pct"][h], run_["grid_import_kw"][h], run_["grid_export_kw"][h]]
+    assert out["text"] == 'a,"b,c"\r\n1,"say ""x"""\r\n'
+
+
+def test_comparison_panel_on_the_ahmedabad_hindi_day() -> None:
+    out = pure(c='T.comparisonRows(views["ahmedabad-outage-hi"], D.specCodes(views["ahmedabad-outage-hi"].spec))')["c"]
+    assert out["rules"] == [{"label": "critical load during the outage: from 14:00 to 17:00", "agent": True, "rule": True}]
+    cost, other, critical = out["facts"]
+    assert cost["label"] == "Cost on the same-day weather" and re.search(r"2[,.]?419[.,]51", cost["agent"]) and re.search(r"2[,.]?097[.,]22", cost["rule"])
+    assert other["label"] == "Other load switched off" and other["agent"] == "0 kWh" and re.fullmatch(r"41[.,]12 kWh", other["rule"])
+    assert critical["agent"] == "100%" and critical["rule"] == "100%" and "cold room" in critical["label"]
+    assert re.fullmatch(r"₹\s?322[.,]29 more expensive", out["cost"]["value"]) and out["cost"]["tone"] == "neutral"
+    assert "kept the whole site running" in out["cost"]["explain"]
+
+
+def test_one_day_player_component_serves_the_hero_and_try_it() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    order = re.findall(r'<script[^>]*src="([^"]+)"', html)
+    assert order.index("dayplayer.js") < order.index("app.js") < order.index("landing.js")
+    app, landing_js, day = ((WEB_DIR / n).read_text(encoding="utf-8") for n in ("app.js", "landing.js", "dayplayer.js"))
+    assert "VPDay.mount(" in app and "VPDay.mount(" in landing_js and "function mount(" in day
+    for name in ("function flowDiagram", "function timeline(", "function hourFlows", "function ruleBands"):
+        assert name in day and name not in app and name not in landing_js, name  # drawn once, in dayplayer.js
+
+
 def test_every_page_script_parses() -> None:
     """The other tests load only slices of the scripts; a syntax error elsewhere (say, a comment closed
     early by a glob in its text) would stop the whole page, so check every script parses."""
-    for name in ("theme.js", "app.js", "charts.js", "landing.js"):
+    for name in ("theme.js", "app.js", "charts.js", "dayplayer.js", "landing.js"):
         result = subprocess.run([NODE, "--check", str(WEB_DIR / name)], capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, f"{name}: {result.stderr}"

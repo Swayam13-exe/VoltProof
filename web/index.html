@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="styles.css">
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="charts.js"></script>
+  <script defer src="dayplayer.js"></script>
   <script defer src="app.js"></script>
   <script defer src="landing.js"></script>
 </head>
@@ -43,11 +44,13 @@
     <section id="top" class="hero" aria-labelledby="hero-title">
       <div class="hero-head">
         <h1 id="hero-title">A battery plan you can check before it runs.</h1>
-        <p class="subtitle">An AI operator for solar + battery sites. You say the goal in your own language; it plans the day and checks the plan before anything runs.</p>
-        <div class="cta">
-          <a class="button primary" href="#try">Try it</a>
-          <a class="button secondary" href="#evidence">See the evidence</a>
-          <span class="built">Built with Muse Spark Open</span>
+        <div class="hero-side">
+          <p class="subtitle">An AI operator for solar + battery sites. You say the goal in your own language; it plans the day and checks the plan before anything runs.</p>
+          <div class="cta">
+            <a class="button primary" href="#try">Try it</a>
+            <a class="button secondary" href="#evidence">See the evidence</a>
+            <span class="built">Built with Muse Spark Open</span>
+          </div>
         </div>
       </div>
 
@@ -56,8 +59,7 @@
           <h2 id="day-title" class="day-title">The day</h2>
           <p id="day-note" class="day-note">Recorded run, replayed on the same-day weather.</p>
         </div>
-        <div id="site-switch" class="site-switch" role="group" aria-label="Recorded days"></div>
-        <div id="day-body" class="day-body">
+        <div id="day-mount" class="day-mount">
           <p class="hint">The recorded days load here.</p>
         </div>
         <p id="day-live" class="visually-hidden" aria-live="polite"></p>
@@ -81,25 +83,22 @@
     <section id="how" class="section" aria-labelledby="how-title">
       <div class="section-inner">
         <h2 id="how-title" class="reveal">The AI proposes. Deterministic tools decide.</h2>
-        <p class="lead reveal">Every typed goal goes through the same line. Point at or focus a step for one more sentence.</p>
+        <p class="lead reveal">Every typed goal goes through the same line, and nothing runs until the checks pass.</p>
         <ol class="pipeline reveal" aria-label="How a goal becomes a checked plan">
-          <li class="pipe-node pipe-user" tabindex="0">
+          <li class="pipe-node pipe-user">
             <span class="pipe-name">Your goal</span>
-            <span class="pipe-line">In your own words and language.</span>
-            <span class="pipe-more">An outage, a reserve to keep, a price window to avoid.</span>
+            <span class="pipe-line">In your own words and language: an outage, a reserve, a price window.</span>
           </li>
           <li class="pipe-zone pipe-ai" aria-label="AI zone">
             <span class="zone-label">AI</span>
             <ol class="zone-nodes">
-              <li class="pipe-node" tabindex="0">
+              <li class="pipe-node">
                 <span class="pipe-name">Muse Spark Open writes the rules</span>
-                <span class="pipe-line">Exact, checkable rules, not a schedule.</span>
-                <span class="pipe-more">Hours, levels and limits the optimizer can check, plus the assumptions it made.</span>
+                <span class="pipe-line">Exact, checkable rules with their hours and levels, not a schedule.</span>
               </li>
-              <li class="pipe-node" tabindex="0">
+              <li class="pipe-node">
                 <span class="pipe-name">A separate AI review checks them</span>
-                <span class="pipe-line">Do the rules say what you asked?</span>
-                <span class="pipe-more">It sees only your goal, the site and the rules, and raises any mismatch.</span>
+                <span class="pipe-line">It sees only the goal, the site and the rules, and flags any mismatch.</span>
               </li>
             </ol>
           </li>
@@ -107,20 +106,18 @@
           <li class="pipe-zone pipe-tools" aria-label="Deterministic tools">
             <span class="zone-label">Tools</span>
             <ol class="zone-nodes">
-              <li class="pipe-node" tabindex="0">
+              <li class="pipe-node">
                 <span class="pipe-name">Optimizer plans the day</span>
-                <span class="pipe-line">The cheapest plan that meets every rule.</span>
-                <span class="pipe-more">A linear program over the day's forecast, hour by hour.</span>
+                <span class="pipe-line">The cheapest hour-by-hour plan that meets every rule.</span>
               </li>
-              <li class="pipe-node pipe-gate" tabindex="0">
+              <li class="pipe-node pipe-gate">
                 <span class="pipe-name">Physics checker</span>
-                <span class="pipe-line"><span class="gate-pass">pass → run</span> · <span class="gate-fail">fail → back to the AI</span></span>
-                <span id="repair-note" class="pipe-more">Battery limits, the grid connection and every rule are checked before anything runs.</span>
+                <span class="pipe-line"><span class="gate-pass">pass → run</span> · <span class="gate-fail">fail → back to the AI<span id="repair-count"></span></span></span>
+                <span id="repair-source" class="source"></span>
               </li>
-              <li class="pipe-node" tabindex="0">
+              <li class="pipe-node">
                 <span class="pipe-name">Replay on the same-day weather</span>
-                <span class="pipe-line">Next to a rule-based battery.</span>
-                <span class="pipe-more">The plan runs on what the weather model says happened, so the comparison is fair.</span>
+                <span class="pipe-line">Run on what the weather model says happened, next to a rule-based battery.</span>
               </li>
             </ol>
           </li>
@@ -128,13 +125,13 @@
       </div>
     </section>
 
-    <!-- 4. Try it: the existing tool, unchanged in behaviour -->
+    <!-- 4. Try it: one goal box, one button, the pipeline, the day -->
     <section id="try" class="section try" aria-labelledby="try-title">
       <div class="section-inner">
         <h2 id="try-title">Try it</h2>
-        <p class="lead">Recorded goals replay instantly and cost nothing. A typed goal runs the AI live when live runs are available.</p>
+        <p class="lead">Pick a site, type a goal or pick a recorded one, and press the button. Recorded goals replay free; a typed goal runs the AI live when live runs are available.</p>
 
-        <div id="setup" class="panel" tabindex="-1">
+        <div id="setup" class="panel try-panel" tabindex="-1">
           <fieldset class="sites">
             <legend>1. Choose a site</legend>
             <div id="site-list" class="site-list"></div>
@@ -146,27 +143,29 @@
             <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
           </div>
 
-          <div class="field">
-            <h3 class="field-title" id="chips-title">3. Try a recorded goal</h3>
-            <p class="hint" id="chips-hint">Recorded runs of the agent, replayed for free. Goals in several languages.</p>
-            <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
-          </div>
-
           <form id="goal-form" class="field goal-form" novalidate>
-            <label for="goal">Or type your own goal</label>
-            <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count"></textarea>
+            <label for="goal">3. Your goal, in any language</label>
+            <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count run-hint"></textarea>
             <div class="goal-meta">
               <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
               <p id="goal-count" class="hint count" aria-live="polite">0 / 500</p>
             </div>
+            <div class="run-row">
+              <button type="submit" id="run-button" class="primary big" disabled>Plan my day</button>
+              <p id="run-hint" class="hint run-hint">Type a goal or pick one below.</p>
+            </div>
             <p id="live-note" class="hint"></p>
-            <button type="submit" class="primary">Plan my day</button>
+            <h3 class="field-title" id="chips-title">Recorded goals for this site</h3>
+            <p class="hint" id="chips-hint">Picking one fills the box. Goals in several languages.</p>
+            <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
           </form>
 
+          <ol id="try-pipeline" class="try-pipeline" aria-label="Progress" hidden></ol>
+          <p id="try-repairs" class="hint try-repairs"></p>
           <p id="status" class="status" role="status" aria-live="polite"></p>
         </div>
 
-        <section id="conversation" class="conversation" aria-label="Conversation with the agent"></section>
+        <section id="conversation" class="result" aria-label="Result"></section>
       </div>
     </section>
 
