@@ -37,6 +37,8 @@ def test_bundle_has_the_dockerfile_the_space_readme_and_every_copied_path(bundle
     out = tmp_path / "space"
     files = {f.as_posix() for f in bundle.build(out)}
     assert {"Dockerfile", "README.md", "requirements.txt", "web/index.html", "web/replays/index.json", "voltproof/api/app.py", "data/splits.json"} <= files
+    for script in ("theme.js", "charts.js", "dayplayer.js", "app.js", "landing.js", "styles.css"):  # every file the page loads
+        assert f"web/{script}" in files, script
     readme = (out / "README.md").read_text(encoding="utf-8")
     assert readme.startswith("---\ntitle: VoltProof AI\nsdk: docker\napp_port: 7860\nlicense: mit\n---\n")
     assert (out / "Dockerfile").read_bytes() == (ROOT / "Dockerfile").read_bytes()

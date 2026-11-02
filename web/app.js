@@ -14,7 +14,6 @@
   const $ = (id) => document.getElementById(id);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const MAX_GOAL = 500;
-  const RECORDED_STEP_MS = 220; // recorded runs: stages light up quickly (the label says it is a replay)
 
   const CHECK_NAMES = {
     verified_plan: "Plan verified: physics checked, and every shortfall stated",
@@ -63,23 +62,27 @@
     return `${site.country} · ${tariff} · ${site.battery_kwh} kWh battery · ${site.pv_kwp} kWp solar`;
   }
 
+  const TARIFF_TAGS = { time_of_use: "TOU", hourly_dynamic: "hourly", flat: "flat" };
+
+  /* The sites as the hero's switcher buttons (same CSS), and one line of facts about the chosen one. */
   function renderSites() {
-    const list = $("site-list");
-    list.replaceChildren(
+    $("site-list").replaceChildren(
       ...state.sites.map((site) => {
-        const input = make("input", { type: "radio", name: "site", value: site.site_id, id: `site-${site.site_id}` });
-        input.checked = site.site_id === state.siteId;
-        input.addEventListener("change", () => selectSite(site.site_id));
-        return make(
-          "label",
-          { class: "site-card", for: `site-${site.site_id}` },
-          input,
-          make("span", { class: "site-card-head" }, VPDay.siteIcon(site.site_type, "site-card-icon"), make("span", { class: "site-name" }, site.name)),
-          make("span", { class: "site-facts" }, siteFacts(site)),
-          make("span", { class: "site-facts" }, `Critical load: ${site.critical_load_name} (${site.critical_load_kw} kW)`)
+        const button = make(
+          "button",
+          { type: "button", class: "site-btn", "aria-pressed": String(site.site_id === state.siteId), "aria-label": `${site.name} (${siteFacts(site)})` },
+          VPDay.siteIcon(site.site_type, "site-icon"),
+          make("span", { class: "site-name" }, make("span", { class: "name-full" }, site.name), make("span", { class: "name-short" }, VPDay.shortSiteName(site.name))),
+          make("span", { class: "site-lang", lang: "en" }, TARIFF_TAGS[site.tariff_kind] || site.tariff_kind)
         );
+        button.addEventListener("click", () => {
+          if (site.site_id !== state.siteId) selectSite(site.site_id);
+        });
+        return button;
       })
     );
+    const site = state.sites.find((s) => s.site_id === state.siteId);
+    $("site-facts").textContent = site ? `${siteFacts(site)} · critical load: ${site.critical_load_name} (${site.critical_load_kw} kW)` : "";
   }
 
   function renderDays() {
@@ -113,10 +116,15 @@
           make("span", { class: "chip-tag", lang: "en" }, tag),
           chip.goal
         );
+        button.dataset.chip = chip.id;
         button.addEventListener("click", () => fillFromChip(chip));
         return make("li", {}, button);
       })
     );
+  }
+
+  function markChips() {
+    for (const button of $("chips").querySelectorAll(".chip")) button.setAttribute("aria-pressed", String(button.dataset.chip === state.chipId));
   }
 
   function selectSite(siteId) {
@@ -135,7 +143,7 @@
     select.value = chip.date;
     $("goal").value = chip.goal;
     updateCount();
-    renderChips();
+    markChips();
     updateButton();
   }
 
@@ -224,41 +232,56 @@
 
   /* --- try pure: begin (no DOM; tested in tests/test_web_logic.py) ----------------------------- */
 
+  /* The stages in the order the agent really runs them (SPEC §6.10): the AI writes the rules, the
+     optimizer plans, the physics and coverage checks run, and only then the independent AI reviewer;
+     a failed check or a rejection sends the run back to the AI. [key, label, short label, who] */
   const PIPELINE_STAGES = [
-    ["rules", "AI writes the rules"],
-    ["review", "AI review"],
-    ["optimizer", "Optimizer plans the day"],
-    ["physics", "Physics check"],
-    ["replay", "Replay on the same-day weather"],
+    ["rules", "AI writes the rules", "Rules", "ai"],
+    ["optimizer", "Optimizer plans the day", "Optimizer", "tool"],
+    ["checks", "Physics and coverage checks", "Checks", "tool"],
+    ["review", "Independent AI review", "Review", "ai"],
+    ["accepted", "Accepted", "Accepted", "tool"],
+    ["replay", "Replay on the same-day weather", "Replay", "tool"],
   ];
   const PIPELINE_TOOLS = new Set(["set_checklist", "solve_plan", "finalize"]);
+  const STAGE_DONE_MS = 700; // recorded runs: a stage finishing holds this long
+  const STAGE_ACTIVE_MS = 200; // and a stage starting this long
 
   /* Recorded goals for the chosen site and day. */
   function recordedFor(chips, siteId, day) {
     return chips.filter((c) => c.site_id === siteId && c.date === day);
   }
 
+  /* How long the recorded runs took (index.json latency_s), whole seconds: {min, max} or null. */
+  function recordedTiming(chips) {
+    const seconds = chips.map((c) => Number(c.latency_s)).filter((s) => s > 0);
+    return seconds.length ? { min: Math.floor(Math.min(...seconds)), max: Math.ceil(Math.max(...seconds)), runs: seconds.length } : null;
+  }
+
   /* What the one main button offers for this text: a free replay when it is a recorded goal of this
      site and day, a live run when it is typed and live runs are available, nothing when empty. */
-  function runButtonState(text, recorded, live) {
+  function runButtonState(text, recorded, live, timing) {
     const goal = String(text || "").trim();
-    if (!goal) return { mode: "empty", label: "Plan my day", disabled: true, hint: "Type a goal or pick one below." };
+    if (!goal) return { mode: "empty", label: "Plan my day", disabled: true, hint: "Type a goal above or pick a recorded one." };
     const chip = recorded.find((c) => c.goal.trim() === goal) || null;
     if (chip) return { mode: "recorded", label: "Play recorded run (free)", disabled: false, hint: "A recorded run of the agent for this goal, replayed at no cost.", chip };
     const left = live && live.live ? Number(live.runs_left_this_hour) : 0;
     if (live && live.live && left > 0) {
-      return { mode: "live", label: `Run live (${left} left this hour)`, disabled: false, hint: live.per_visitor_limit === false ? "Runs the AI on your goal now; live runs are shared by all visitors." : "Runs the AI on your goal now; it usually takes 10 to 30 seconds." };
+      const took = timing ? ` The ${timing.runs} recorded runs took ${timing.min}-${timing.max} s (web/replays/index.json).` : "";
+      const shared = live.per_visitor_limit === false ? " Live runs are shared by all visitors." : "";
+      return { mode: "live", label: `Run live (${left} left this hour)`, disabled: false, hint: `Runs the AI on your goal now.${took}${shared}` };
     }
-    const why = !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason) : "no live runs are left this hour";
-    return { mode: "unavailable", label: "Live runs unavailable: play a recorded run", disabled: true, hint: `Live runs unavailable (${why}). Pick a recorded goal below.` };
+    const why = !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason, null, live) : "no live runs are left this hour";
+    return { mode: "unavailable", label: "Live runs unavailable: play a recorded run", disabled: true, hint: `Live runs unavailable (${why}). Pick a recorded goal above.` };
   }
 
   function pipelineStart() {
-    return { rules: "idle", review: "idle", optimizer: "idle", physics: "idle", replay: "idle", repairs: 0, failed: [] };
+    return { rules: "idle", optimizer: "idle", checks: "idle", review: "idle", accepted: "idle", replay: "idle", repairs: 0, failed: [] };
   }
 
   /* One agent event -> the stages it moves. Events are {kind, name, data}: live events from the
-     stream, or the recorded trace (traceEvents). A failed check sends the run back to the AI (a repair). */
+     stream, or the recorded trace (traceEvents). The reviewer only runs once the checks pass, so its
+     verdict also closes the checks; a failed check or a rejection is a repair, back to the AI. */
   function pipelineStep(previous, event) {
     const s = { ...previous, failed: [...previous.failed] };
     const result = (event.data && event.data.result) || {};
@@ -267,23 +290,29 @@
       else if (event.name === "solve_plan") {
         s.rules = "done";
         s.optimizer = "active";
-      } else if (event.name === "finalize") s.physics = "active";
+      } else if (event.name === "finalize") s.checks = "active";
     } else if (event.kind === "tool_result") {
       if (event.name === "solve_plan") {
         s.optimizer = result.error ? "fail" : "done";
         if (result.error) s.rules = "active";
       } else if (event.name === "finalize") {
         const failed = (result.failed_checks || []).map((f) => (typeof f === "string" ? f : f && f.check)).filter(Boolean);
-        if (result.accepted) s.physics = "done";
-        else if (failed.length) {
+        if (result.accepted) {
+          s.checks = "done";
+          if (s.review !== "done") s.review = "done";
+          s.accepted = "done";
+        } else if (failed.length) {
           s.repairs += 1;
           s.failed = failed;
-          s.physics = "fail";
-          if (failed.includes("review")) s.review = "fail";
+          if (failed.includes("review")) {
+            s.checks = "done";
+            s.review = "fail";
+          } else s.checks = "fail";
           if (!result.escalated) s.rules = "active";
         }
       }
     } else if (event.kind === "review") {
+      s.checks = "done"; // the reviewer runs only after the checks passed
       s.review = event.data && event.data.approved === false ? "fail" : "done";
     } else if (event.kind === "end") {
       s.replay = event.data && event.data.status === "done" ? "active" : "fail";
@@ -293,11 +322,31 @@
     return s;
   }
 
+  /* The states a run passes through, each with how long to hold it when replaying a recorded run. */
+  function pipelineFrames(events, doneMs = STAGE_DONE_MS, activeMs = STAGE_ACTIVE_MS) {
+    let state = pipelineStart();
+    return events.map((event) => {
+      const next = pipelineStep(state, event);
+      const done = PIPELINE_STAGES.some(([k]) => next[k] === "done" && state[k] !== "done");
+      const active = PIPELINE_STAGES.some(([k]) => next[k] === "active" && state[k] !== "active");
+      state = next;
+      return { state: next, delayMs: done ? doneMs : active ? activeMs : 0 };
+    });
+  }
+
   /* The recorded trace as pipeline events (only the steps the stages show). */
   function traceEvents(view) {
     return (view.trace || [])
       .filter((e) => e.kind === "review" || ((e.kind === "tool_call" || e.kind === "tool_result") && PIPELINE_TOOLS.has(e.name)))
       .map((e) => ({ kind: e.kind, name: e.name, data: e.data || {} }));
+  }
+
+  /* The operator's approval of a result (UI only: nothing is sent anywhere). */
+  function approvalState(view, approved) {
+    if (!view || !view.plan) return { show: false };
+    if (!view.plan.verified) return { show: true, state: "unverified", text: "Not verified: this plan would not be sent to the battery.", button: null };
+    if (approved) return { show: true, state: "approved", text: "Approved by you. Marked as sent to the battery (demo: no device is controlled).", button: null };
+    return { show: true, state: "waiting", text: "Verified - waiting for your approval", button: "Approve plan" };
   }
 
   /* The comparison panel: each rule met or missed on both sides, then cost, other load, critical load. */
@@ -343,7 +392,7 @@
   /* --- the main button and the pipeline strip ------------------------------------------------------ */
 
   function currentButtonState() {
-    return runButtonState($("goal").value, recordedFor(state.chips, state.siteId, $("day").value), state.live);
+    return runButtonState($("goal").value, recordedFor(state.chips, state.siteId, $("day").value), state.live, recordedTiming(state.chips));
   }
 
   function updateButton() {
@@ -356,7 +405,7 @@
     const chipId = s.chip ? s.chip.id : null;
     if (chipId !== state.chipId) {
       state.chipId = chipId;
-      renderChips();
+      markChips();
     }
   }
 
@@ -364,20 +413,24 @@
     const strip = $("try-pipeline");
     strip.hidden = false;
     strip.dataset.kind = kind || strip.dataset.kind || "";
-    for (const [stage, label] of PIPELINE_STAGES) {
+    for (const [stage, label, , who] of PIPELINE_STAGES) {
       const item = strip.querySelector(`[data-stage="${stage}"]`);
       const value = p[stage];
-      item.className = `stage ${value}`;
-      item.querySelector(".stage-state").textContent = { idle: "waiting", active: "working", done: "done", fail: stage === "physics" ? "failed: back to the AI" : "failed" }[value];
-      item.setAttribute("aria-label", `${label}: ${item.querySelector(".stage-state").textContent}`);
+      item.className = `stage ${who} ${value}`;
+      const words = { idle: "waiting", active: "working", done: "done", fail: stage === "review" ? "rejected: back to the AI" : stage === "checks" ? "failed: back to the AI" : "failed" }[value];
+      item.querySelector(".stage-state").textContent = words;
+      item.setAttribute("aria-label", `${label}: ${words}`);
     }
-    const repairs = $("try-repairs");
-    repairs.textContent = p.repairs ? `Repairs: ${p.repairs}. The checks failed (${p.failed.map((c) => CHECK_NAMES[c] || c).join("; ")}), so the AI fixed its rules and resubmitted.` : "";
+    $("try-repairs").textContent = p.repairs ? `Repairs: ${p.repairs}. ${p.failed.map((c) => CHECK_NAMES[c] || c).join("; ")}: not passed, so the AI fixed its rules and resubmitted.` : "";
   }
 
   function buildPipeline() {
     $("try-pipeline").replaceChildren(
-      ...PIPELINE_STAGES.map(([stage, label]) => make("li", { class: "stage idle", "data-stage": stage }, make("span", { class: "stage-dot", "aria-hidden": "true" }), make("span", { class: "stage-name" }, label), make("span", { class: "stage-state" }, "waiting")))
+      ...PIPELINE_STAGES.map(([stage, label, short, who]) =>
+        make("li", { class: `stage ${who} idle`, "data-stage": stage },
+          make("span", { class: "stage-dot", "aria-hidden": "true" }),
+          make("span", { class: "stage-name" }, make("span", { class: "label-full" }, label), make("span", { class: "label-short", "aria-hidden": "true" }, short)),
+          make("span", { class: "stage-state" }, "waiting")))
     );
   }
 
@@ -534,13 +587,34 @@
       return;
     }
     const player = make("div", { class: "try-player day-panel", "aria-label": "The result, hour by hour", role: "region" });
-    parts.push(player, comparisonPanel(view), rulesSection(view), stepsFold(view), chartsFold(view), csvButton(view));
+    parts.push(player, approvalBlock(view), comparisonPanel(view), rulesSection(view), stepsFold(view), chartsFold(view), csvButton(view));
     $("conversation").replaceChildren(...parts.filter(Boolean));
-    VPDay.mount(player, [{ view, file: file || null, language: view.goal.language || null }], { id: "try", loop: false });
+    VPDay.mount(player, [{ view, file: file || null, language: view.goal.language || null }], { id: "try", loop: false, showGoal: false, cost: "none" });
   }
 
-  function emptyResult() {
-    $("conversation").replaceChildren(make("p", { class: "result-empty" }, "Your result plays here, hour by hour: the energy flows, the rules drawn on the day, and the rules checked."));
+  /* "Verified - waiting for your approval", then the operator approves (UI only, SPEC §6.13). */
+  function approvalBlock(view) {
+    const first = approvalState(view, false);
+    if (!first.show) return null;
+    const text = make("p", { class: "approval-text", role: "status", tabindex: "-1" }, first.text);
+    const block = make("div", { class: `approval ${first.state}` }, text);
+    if (first.button) {
+      const button = make("button", { type: "button", class: "button primary" }, first.button);
+      button.addEventListener("click", () => {
+        const done = approvalState(view, true);
+        block.className = `approval ${done.state}`;
+        text.textContent = done.text;
+        button.remove();
+        text.focus(); // keyboard users land on the confirmation
+      });
+      block.append(button);
+    }
+    return block;
+  }
+
+  function emptyResult(working = false) {
+    // a new run clears the last result, including its approval
+    $("conversation").replaceChildren(make("p", { class: "result-empty" }, working ? "Working: the result appears when the run finishes." : "Your result plays here, hour by hour: the energy flows, the rules drawn on the day, and the rules checked."));
   }
 
   /* --- recorded runs --------------------------------------------------------------------------------- */
@@ -557,8 +631,8 @@
     const token = ++state.playToken;
     if (!keepUrl) history.replaceState(null, "", `#replay=${encodeURIComponent(chip.id)}`);
     status(notice ? "" : `Playing a recorded run (${chip.site_name}, ${chip.date}).`);
-    let p = pipelineStart();
-    setPipeline(p, "recorded");
+    setPipeline(pipelineStart(), "recorded");
+    emptyResult(true);
     let view;
     try {
       view = await loadReplay(chip);
@@ -566,24 +640,24 @@
       status(`Could not load the recorded run: ${err.message}`, true);
       return;
     }
-    for (const event of [...traceEvents(view), { kind: "end", data: { status: view.plan ? "done" : "unavailable" } }]) {
+    const frames = pipelineFrames([...traceEvents(view), { kind: "end", data: { status: view.plan ? "done" : "unavailable" } }, { kind: "replayed", data: { ok: Boolean(view.plan) } }]);
+    for (const frame of frames.slice(0, -1)) {
       if (token !== state.playToken) return;
-      p = pipelineStep(p, event);
-      setPipeline(p);
-      if (!reducedMotion) await sleep(RECORDED_STEP_MS);
+      setPipeline(frame.state);
+      if (!reducedMotion && frame.delayMs) await sleep(frame.delayMs);
     }
     if (token !== state.playToken) return;
     renderResult(view, { notice, file: `web/replays/${chip.file}` });
-    setPipeline(pipelineStep(p, { kind: "replayed", data: { ok: Boolean(view.plan) } }));
+    setPipeline(frames[frames.length - 1].state);
   }
 
   /* --- typed goals: live API, with a recorded run as the fallback --------------------------------- */
 
-  function reasonText(reason, body) {
+  function reasonText(reason, body, live) {
     const minutes = body && body.retry_after_s ? Math.max(1, Math.ceil(body.retry_after_s / 60)) : null;
     switch (reason) {
       case "hourly_cap": return `this hour's live runs for all visitors are used up${minutes ? `; try again in about ${minutes} min` : ""}`;
-      case "rate_limit": return `you have used this hour's 10 live runs${minutes ? `; try again in about ${minutes} min` : ""}`;
+      case "rate_limit": return `you have used this hour's ${live && live.per_visitor_per_hour ? `${live.per_visitor_per_hour} ` : ""}live runs${minutes ? `; try again in about ${minutes} min` : ""}`;
       case "daily_cap": return "today's live runs are used up";
       case "busy": return "two live runs are already in progress; try again in a minute";
       case "budget": return "the demo's AI budget is used up";
@@ -598,8 +672,8 @@
 
   /* The one-line live status under the goal box (status: /api/status, or null when unreachable). */
   function liveNote(live) {
-    if (!live) return "Live AI not available here: pick a recorded goal below to play a recorded run.";
-    if (!live.live) return `Live AI unavailable (${reasonText(live.reason)}${live.paused_until ? `, until ${new Date(live.paused_until).toLocaleTimeString()}` : ""}): pick a recorded goal below to play a recorded run.`;
+    if (!live) return "Live AI not available here: pick a recorded goal above to play a recorded run.";
+    if (!live.live) return `Live AI unavailable (${reasonText(live.reason, null, live)}${live.paused_until ? `, until ${new Date(live.paused_until).toLocaleTimeString()}` : ""}): pick a recorded goal above to play a recorded run.`;
     if (live.per_visitor_limit === false) return `Live AI on: ${live.runs_left_this_hour} live runs left this hour (shared by all visitors).`;
     return `Live AI on: ${live.runs_left_this_hour} live runs left for you this hour.`;
   }
@@ -608,7 +682,7 @@
     const day = $("day").value;
     const mine = state.chips.filter((c) => c.site_id === state.siteId);
     const fallback = mine.find((c) => c.date === day) || mine[0];
-    const notice = `Live run unavailable: ${reasonText(reason, body)}. Showing a recorded run for this site instead, labelled "replay (recorded run)". Your goal was not ${started ? "completed" : "run"}.`;
+    const notice = `Live run unavailable: ${reasonText(reason, body, state.live)}. Showing a recorded run for this site instead, labelled "replay (recorded run)". Your goal was not ${started ? "completed" : "run"}.`;
     status(notice, true);
     if (fallback) await playRecorded(fallback, { notice });
     refreshLive();

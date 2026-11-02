@@ -404,7 +404,9 @@ const VPDay = (() => {
     );
   }
 
-  function resultBlock(example, mutedCost) {
+  /* cost: "full" (value and explanation), "muted" (the hero's quiet line) or "none" (the page shows it
+     elsewhere, as Try it does in its comparison panel). */
+  function resultBlock(example, cost) {
     const page = window.VPPage;
     const view = example.view;
     const sd = view.same_day;
@@ -414,15 +416,16 @@ const VPDay = (() => {
       return { item: make("li", { class: "check-item pending" }, mark, make("span", {}, page.goalWords(code, view.spec), state)), mark, state, met };
     });
     const listed = ruleBands(view).listed;
-    const cost = page.costLine(sd, view.site.currency, view.spec, "Realized cost on the same-day weather, counting the energy left in the battery.");
-    const value = mutedCost ? make("span", { class: "cost-value" }, cost.value) : make("strong", { class: cost.tone }, cost.value);
+    const line = page.costLine(sd, view.site.currency, view.spec, "Realized cost on the same-day weather, counting the energy left in the battery.");
+    const muted = cost === "muted";
+    const value = muted ? make("span", { class: "cost-value" }, line.value) : make("strong", { class: line.tone }, line.value);
     const block = make(
       "div",
       { class: "result-variant", "aria-hidden": "true" },
       make("p", { class: "result-title" }, "The rules, checked on the day"),
       items.length ? make("ul", { class: "checklist" }, items.map((i) => i.item)) : make("p", { class: "hint" }, "No rules besides the lowest cost."),
       listed.length ? make("p", { class: "hint" }, "Not drawn on the timeline: ", listed.map((code) => page.goalWords(code, view.spec)).join("; "), ".") : null,
-      make("p", { class: `cost-line${mutedCost ? " muted" : ""}` }, value, cost.same ? ". " : " than the rule-based battery. ", cost.explain),
+      cost === "none" ? null : make("p", { class: `cost-line${muted ? " muted" : ""}` }, value, line.same ? ". " : " than the rule-based battery. ", line.explain),
       example.file ? make("p", { class: "source" }, `Source: ${example.file}`) : null
     );
     function reveal(show) {
@@ -447,13 +450,14 @@ const VPDay = (() => {
 
   /* examples: [{view, file (source path or null), language}]; options:
      id (unique per page), switcher (site buttons), loop (cycle forever, else one pass), live (an
-     aria-live element announcing each new goal), mutedCost (the hero's quiet cost line). */
+     aria-live element announcing each new goal), showGoal (the goal quote; off when the page shows the
+     goal already), cost (see resultBlock). */
   function mount(host, examples, options) {
-    const { id, switcher = false, loop = true, live = null, mutedCost = false } = options || {};
+    const { id, switcher = false, loop = true, live = null, showGoal = true, cost = "full" } = options || {};
     const still = reduceMotion.matches;
     examples.forEach((e) => {
       e.goal = goalBlock(e);
-      e.result = resultBlock(e, mutedCost);
+      e.result = resultBlock(e, cost);
     });
     let flow = flowDiagram(phone.matches ? "compact" : "wide", id);
     const flowSlot = make("div", { class: "flow-slot" }, flow.root);
@@ -463,7 +467,7 @@ const VPDay = (() => {
     const readout = make("p", { id: `${id}-readout`, class: "scrub-readout" });
     const body = make("div", { class: "day-body" },
       make("div", { class: "day-col" },
-        make("div", { class: "day-goal" }, make("div", { class: "stack" }, examples.map((e) => e.goal))),
+        showGoal ? make("div", { class: "day-goal" }, make("div", { class: "stack" }, examples.map((e) => e.goal))) : null,
         make("figure", { class: "day-flow" }, flowSlot, make("figcaption", { class: "flow-caption" }, "Energy this hour: line width follows kW, arrows show the direction. The red dot marks the critical load."))),
       make("div", { class: "day-col" },
         make("div", { class: "day-timeline" }, timelineSlot, legendSlot, make("div", { class: "scrub" }, make("label", { for: `${id}-hour` }, "Hour of the day"), range, readout)),

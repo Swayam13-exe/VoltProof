@@ -5,6 +5,7 @@ landing page's day player, rule drawing and dot counts. Skipped where Node is no
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -29,7 +30,7 @@ const helpers = new Function(code + "; return { costLine, missedText, otherLoadL
 const out = {};
 if (process.argv[2] === "--notes") {
   const cases = JSON.parse(process.argv[3]);
-  console.log(JSON.stringify({ reasons: cases.reasons.map(([r, b]) => helpers.reasonText(r, b)), notes: cases.notes.map((s) => helpers.liveNote(s)) }));
+  console.log(JSON.stringify({ reasons: cases.reasons.map(([r, b, l]) => helpers.reasonText(r, b, l)), notes: cases.notes.map((s) => helpers.liveNote(s)) }));
   process.exit(0);
 }
 for (const file of process.argv.slice(2)) {
@@ -123,7 +124,7 @@ def test_other_load_line(tmp_path: Path) -> None:
 
 def test_limit_reasons_and_the_live_note() -> None:
     cases = {
-        "reasons": [["hourly_cap", {"retry_after_s": 1500}], ["hourly_cap", None], ["rate_limit", {"retry_after_s": 61}]],
+        "reasons": [["hourly_cap", {"retry_after_s": 1500}], ["hourly_cap", None], ["rate_limit", {"retry_after_s": 61}, {"per_visitor_per_hour": 10}], ["rate_limit", None, None]],
         "notes": [
             {"live": True, "per_visitor_limit": False, "runs_left_this_hour": 37},
             {"live": True, "per_visitor_limit": True, "runs_left_this_hour": 9},
@@ -138,7 +139,8 @@ def test_limit_reasons_and_the_live_note() -> None:
     assert out["reasons"] == [
         "this hour's live runs for all visitors are used up; try again in about 25 min",
         "this hour's live runs for all visitors are used up",
-        "you have used this hour's 10 live runs; try again in about 2 min",
+        "you have used this hour's 10 live runs; try again in about 2 min",  # the limit comes from /api/status
+        "you have used this hour's live runs",
     ]
     shared, mine, old, off, unreachable = out["notes"]
     assert shared == "Live AI on: 37 live runs left this hour (shared by all visitors)."
@@ -159,7 +161,7 @@ const app = read("app.js");
 const tryCode = block(app, "function money(", "function status(") + block(app, "function hourText(", "function stat(") + block(app, "function reasonText(", "async function fallBack(");
 const D = new Function(day + "; return { DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
 const L = new Function(landing + "; return { HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
-const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, runButtonState, pipelineStart, pipelineStep, traceEvents, comparisonRows, csvRows, csvText, costLine };")(D);
+const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine };")(D);
 const dir = process.argv[2];
 const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
 const views = Object.fromEntries(index.chips.map((c) => [c.id, JSON.parse(fs.readFileSync(path.join(dir, c.file), "utf8"))]));
@@ -365,46 +367,107 @@ def test_the_main_button_offers_exactly_one_thing() -> None:
     other_day = next(c for c in chips() if c["site_id"] == chip["site_id"] and c["date"] != chip["date"])
     site, day = json.dumps(chip["site_id"]), json.dumps(chip["date"])
     rec = f"T.recordedFor(index.chips, {site}, {day})"
-    live_on = '{live: true, runs_left_this_hour: 7, per_visitor_limit: true}'
+    live_on = "{live: true, runs_left_this_hour: 7, per_visitor_limit: true}"
+    timing = "T.recordedTiming(index.chips)"
     out = pure(
-        empty=f'T.runButtonState("   ", {rec}, {live_on})',
-        recorded=f"T.runButtonState({json.dumps('  ' + chip['goal'] + ' ')}, {rec}, null)",
-        edited=f"T.runButtonState({json.dumps(chip['goal'] + ' please')}, {rec}, {live_on})",
-        other_day=f"T.runButtonState({json.dumps(other_day['goal'])}, {rec}, {live_on})",
-        shared=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 30, per_visitor_limit: false}})',
-        off=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: false, reason: "live_mode_off"}})',
-        unreachable=f'T.runButtonState("Keep 50% tonight", {rec}, null)',
-        used_up=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 0}})',
+        empty=f'T.runButtonState("   ", {rec}, {live_on}, {timing})',
+        recorded=f"T.runButtonState({json.dumps('  ' + chip['goal'] + ' ')}, {rec}, null, {timing})",
+        edited=f"T.runButtonState({json.dumps(chip['goal'] + ' please')}, {rec}, {live_on}, {timing})",
+        untimed=f"T.runButtonState({json.dumps(chip['goal'] + ' please')}, {rec}, {live_on}, null)",
+        other_day=f"T.runButtonState({json.dumps(other_day['goal'])}, {rec}, {live_on}, {timing})",
+        shared=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 30, per_visitor_limit: false}}, null)',
+        off=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: false, reason: "live_mode_off"}}, null)',
+        unreachable=f'T.runButtonState("Keep 50% tonight", {rec}, null, null)',
+        used_up=f'T.runButtonState("Keep 50% tonight", {rec}, {{live: true, runs_left_this_hour: 0}}, null)',
+        timing=timing,
     )
-    assert out["empty"] == {"mode": "empty", "label": "Plan my day", "disabled": True, "hint": "Type a goal or pick one below."}
+    assert out["empty"] == {"mode": "empty", "label": "Plan my day", "disabled": True, "hint": "Type a goal above or pick a recorded one."}
     assert out["recorded"]["mode"] == "recorded" and out["recorded"]["label"] == "Play recorded run (free)" and out["recorded"]["chip"]["id"] == chip["id"]
     assert not out["recorded"]["disabled"]  # a recorded goal plays even with live runs off
     assert out["edited"]["mode"] == "live" and out["edited"]["label"] == "Run live (7 left this hour)" and not out["edited"]["disabled"]
+    # no hand-typed duration: the hint quotes the recorded runs' own latency, from the index
+    latencies = [c["latency_s"] for c in chips()]
+    assert out["timing"] == {"min": math.floor(min(latencies)), "max": math.ceil(max(latencies)), "runs": len(latencies)}
+    assert f"The {len(latencies)} recorded runs took {math.floor(min(latencies))}-{math.ceil(max(latencies))} s (web/replays/index.json)." in out["edited"]["hint"]
+    assert out["untimed"]["hint"] == "Runs the AI on your goal now."
     assert out["other_day"]["mode"] == "live"  # a recorded goal of another day is typed text here
     assert out["shared"]["label"] == "Run live (30 left this hour)" and "shared by all visitors" in out["shared"]["hint"]
     for key in ("off", "unreachable", "used_up"):
         assert out[key]["mode"] == "unavailable" and out[key]["disabled"] is True and out[key]["label"] == "Live runs unavailable: play a recorded run"
-    assert "the live AI is switched off here" in out["off"]["hint"] and out["off"]["hint"].endswith("Pick a recorded goal below.")
+    assert "the live AI is switched off here" in out["off"]["hint"] and out["off"]["hint"].endswith("Pick a recorded goal above.")
 
 
-def test_pipeline_stages_light_up_from_the_recorded_trace() -> None:
-    finals = pure(
-        finals='index.chips.map((c) => { let s = T.pipelineStart(); for (const e of [...T.traceEvents(views[c.id]), {kind: "end", data: {status: "done"}}, {kind: "replayed", data: {ok: true}}]) s = T.pipelineStep(s, e); return s; })',
+STAGES = ["rules", "optimizer", "checks", "review", "accepted", "replay"]
+
+
+def test_recorded_traces_run_in_the_order_the_strip_and_the_diagram_show() -> None:
+    """SPEC §6.10: the reviewer runs only after the checks pass. In every recorded trace the plan is
+    solved, then finalize runs the checks, then the reviewer, then the plan is accepted."""
+    for chip in chips():
+        trace = replay(chip["id"])["trace"]
+        at = lambda kind, name=None: next(i for i, e in enumerate(trace) if e["kind"] == kind and (name is None or e["name"] == name))
+        solved = at("tool_result", "solve_plan")
+        checks = at("tool_call", "finalize")
+        review = at("review")
+        accepted = next(i for i, e in enumerate(trace) if e["kind"] == "tool_result" and e["name"] == "finalize" and e["data"]["result"].get("accepted"))
+        assert solved < checks < review < accepted, chip["id"]
+    out = pure(
         stages="T.PIPELINE_STAGES.map(([k]) => k)",
-        repair='(() => { let s = T.pipelineStart(); const seen = []; for (const e of [{kind: "tool_call", name: "set_checklist", data: {}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p1", valid: false}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: false, failed_checks: [{check: "verified_plan"}]}}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p2"}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "review", data: {approved: true}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: true}}}]) { s = T.pipelineStep(s, e); seen.push([s.rules, s.physics, s.repairs]); } return {final: s, seen}; })()',
-        live_review='(() => { let s = T.pipelineStart(); s = T.pipelineStep(s, {kind: "review", name: undefined, data: {approved: false}}); s = T.pipelineStep(s, {kind: "tool_result", name: "finalize", data: {name: "finalize", result: {accepted: false, failed_checks: ["review"]}}}); return s; })()',
+        who="T.PIPELINE_STAGES.map(([, , , w]) => w)",
+        order='index.chips.map((c) => { const done = []; for (const f of T.pipelineFrames([...T.traceEvents(views[c.id]), {kind: "end", data: {status: "done"}}, {kind: "replayed", data: {ok: true}}])) for (const [k] of T.PIPELINE_STAGES) if (f.state[k] === "done" && !done.includes(k)) done.push(k); return done; })',
+    )
+    assert out["stages"] == STAGES and out["who"] == ["ai", "tool", "tool", "ai", "tool", "tool"]
+    for order in out["order"]:  # every recorded run finishes its stages in exactly the order shown
+        assert order == STAGES
+
+
+def test_how_it_works_shows_the_same_stages_in_the_same_order() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    how = html[html.index('<section id="how"'):html.index('<section id="try"')]
+    names = re.findall(r'<span class="pipe-name">([^<]+)</span>', how)
+    stages = re.findall(r'<li class="pipe-node (ai|tool)" data-stage="([a-z]+)">', how)
+    labels = pure(labels="T.PIPELINE_STAGES.map(([k, label, , who]) => [k, label, who])")["labels"]
+    assert names == ["Your goal", *[label for _, label, _ in labels]]
+    assert [(k, who) for who, k in stages] == [(k, who) for k, _, who in labels]
+    assert "The AI writes the rules. Tools make and check the plan. A second AI can only say no." in how
+    assert "goes back to the AI" in how and 'id="repair-count"' in how  # the repair limit is filled from MAX_REPAIRS
+
+
+def test_pipeline_states_repairs_and_pacing() -> None:
+    out = pure(
+        repair='(() => { const seen = []; for (const f of T.pipelineFrames([{kind: "tool_call", name: "set_checklist", data: {}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p1", valid: false}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: false, failed_checks: [{check: "verified_plan"}]}}}, {kind: "tool_call", name: "solve_plan", data: {}}, {kind: "tool_result", name: "solve_plan", data: {result: {plan_id: "p2"}}}, {kind: "tool_call", name: "finalize", data: {}}, {kind: "review", data: {approved: true}}, {kind: "tool_result", name: "finalize", data: {result: {accepted: true}}}])) seen.push(f.state); return seen; })()',
+        rejected='(() => { let s = T.pipelineStart(); s = T.pipelineStep(s, {kind: "tool_call", name: "finalize", data: {}}); s = T.pipelineStep(s, {kind: "review", data: {approved: false}}); return T.pipelineStep(s, {kind: "tool_result", name: "finalize", data: {name: "finalize", result: {accepted: false, failed_checks: ["review"]}}}); })()',
         solve_error='T.pipelineStep(T.pipelineStep(T.pipelineStart(), {kind: "tool_call", name: "solve_plan", data: {}}), {kind: "tool_result", name: "solve_plan", data: {result: {error: "invalid spec"}}})',
         unavailable='T.pipelineStep(T.pipelineStart(), {kind: "end", data: {status: "unavailable", reason: "budget"}}).replay',
+        totals='index.chips.map((c) => T.pipelineFrames([...T.traceEvents(views[c.id]), {kind: "end", data: {status: "done"}}, {kind: "replayed", data: {ok: true}}]).reduce((t, f) => t + f.delayMs, 0))',
+        still='T.pipelineFrames([...T.traceEvents(views["ahmedabad-outage-hi"]), {kind: "end", data: {status: "done"}}, {kind: "replayed", data: {ok: true}}], 0, 0).reduce((t, f) => t + f.delayMs, 0)',
     )
-    assert finals["stages"] == ["rules", "review", "optimizer", "physics", "replay"]
-    for state in finals["finals"]:  # every recorded run: all five stages done, no repair
-        assert {k: state[k] for k in finals["stages"]} == dict.fromkeys(finals["stages"], "done") and state["repairs"] == 0
-    repair = finals["repair"]
-    assert repair["seen"][4] == ["active", "fail", 1]  # the failed check sends it back to the AI
-    assert repair["final"]["physics"] == "done" and repair["final"]["repairs"] == 1 and repair["final"]["failed"] == ["verified_plan"]
-    assert finals["live_review"]["review"] == "fail" and finals["live_review"]["repairs"] == 1 and finals["live_review"]["failed"] == ["review"]
-    assert finals["solve_error"]["optimizer"] == "fail" and finals["solve_error"]["rules"] == "active"
-    assert finals["unavailable"] == "fail"
+    failed = out["repair"][4]  # the failed check: back to the AI, one repair
+    assert (failed["rules"], failed["checks"], failed["repairs"], failed["failed"]) == ("active", "fail", 1, ["verified_plan"])
+    final = out["repair"][-1]
+    assert all(final[k] == "done" for k in STAGES[:5]) and final["repairs"] == 1
+    rejected = out["rejected"]  # a rejection by the reviewer: the checks had passed, the review failed
+    assert (rejected["checks"], rejected["review"], rejected["repairs"], rejected["rules"]) == ("done", "fail", 1, "active")
+    assert out["solve_error"]["optimizer"] == "fail" and out["solve_error"]["rules"] == "active"
+    assert out["unavailable"] == "fail"
+    assert all(4000 <= t <= 5000 for t in out["totals"]), out["totals"]  # about 0.7 s a stage, 4-5 s in all
+    assert out["still"] == 0  # reduced motion: all at once
+
+
+def test_operator_approval_states() -> None:
+    out = pure(
+        waiting='T.approvalState(views["ahmedabad-outage-hi"], false)',
+        approved='T.approvalState(views["ahmedabad-outage-hi"], true)',
+        unverified='T.approvalState({plan: {verified: false}}, false)',
+        none="T.approvalState({plan: null}, false)",
+    )
+    assert out["waiting"] == {"show": True, "state": "waiting", "text": "Verified - waiting for your approval", "button": "Approve plan"}
+    assert out["approved"] == {"show": True, "state": "approved", "text": "Approved by you. Marked as sent to the battery (demo: no device is controlled).", "button": None}
+    assert out["unverified"]["state"] == "unverified" and out["unverified"]["button"] is None
+    assert out["none"] == {"show": False}
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert "approvalBlock(view)" in app and "text.focus()" in app  # the confirmation takes keyboard focus
+    assert 'emptyResult(true);' in app  # a new run clears the last result and its approval
 
 
 def test_csv_rows_are_the_executed_plan_hour_by_hour() -> None:
@@ -428,6 +491,25 @@ def test_comparison_panel_on_the_ahmedabad_hindi_day() -> None:
     assert critical["agent"] == "100%" and critical["rule"] == "100%" and "cold room" in critical["label"]
     assert re.fullmatch(r"₹\s?322[.,]29 more expensive", out["cost"]["value"]) and out["cost"]["tone"] == "neutral"
     assert "kept the whole site running" in out["cost"]["explain"]
+
+
+def test_try_it_result_hides_the_goal_and_the_cost_line_the_hero_keeps_them() -> None:
+    app, landing_js, day = ((WEB_DIR / n).read_text(encoding="utf-8") for n in ("app.js", "landing.js", "dayplayer.js"))
+    assert '{ id: "try", loop: false, showGoal: false, cost: "none" }' in app
+    assert '{ id: "hero", switcher: true, loop: true, live: $("day-live"), cost: "muted" }' in landing_js
+    assert 'showGoal ? make("div", { class: "day-goal" }' in day and 'cost === "none" ? null' in day
+
+
+def test_try_it_order_goal_chips_button_strip() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    tool = html[html.index('<section id="try"'):html.index('<section id="evidence"')]
+    order = [tool.index(marker) for marker in ('id="goal"', "Or pick a recorded goal", 'id="chips"', 'id="run-button"', 'id="try-pipeline"', 'id="conversation"')]
+    assert order == sorted(order)
+    assert 'class="button primary"' in tool[tool.index('id="run-button"') - 60:tool.index('id="run-button"') + 60]  # the hero's button style
+    assert not re.search(r">\s*\d\.\s", tool)  # no numbered "1. 2. 3." labels
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    fill = app[app.index("function fillFromChip("):app.index("/* --- missed goals")]
+    assert "markChips();" in fill and "renderChips();" not in fill  # a chip click does not rebuild the list (no jump)
 
 
 def test_one_day_player_component_serves_the_hero_and_try_it() -> None:

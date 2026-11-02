@@ -79,85 +79,89 @@
       </div>
     </section>
 
-    <!-- 3. How it works: one pipeline, AI zone and tool zone -->
+    <!-- 3. How it works: the real order of the pipeline; AI steps and tool steps look different -->
     <section id="how" class="section" aria-labelledby="how-title">
       <div class="section-inner">
         <h2 id="how-title" class="reveal">The AI proposes. Deterministic tools decide.</h2>
-        <p class="lead reveal">Every typed goal goes through the same line, and nothing runs until the checks pass.</p>
+        <p class="lead reveal">The AI writes the rules. Tools make and check the plan. A second AI can only say no.</p>
         <ol class="pipeline reveal" aria-label="How a goal becomes a checked plan">
           <li class="pipe-node pipe-user">
             <span class="pipe-name">Your goal</span>
-            <span class="pipe-line">In your own words and language: an outage, a reserve, a price window.</span>
+            <span class="pipe-line">In your own words and language.</span>
           </li>
-          <li class="pipe-zone pipe-ai" aria-label="AI zone">
-            <span class="zone-label">AI</span>
-            <ol class="zone-nodes">
-              <li class="pipe-node">
-                <span class="pipe-name">Muse Spark Open writes the rules</span>
-                <span class="pipe-line">Exact, checkable rules with their hours and levels, not a schedule.</span>
-              </li>
-              <li class="pipe-node">
-                <span class="pipe-name">A separate AI review checks them</span>
-                <span class="pipe-line">It sees only the goal, the site and the rules, and flags any mismatch.</span>
-              </li>
-            </ol>
+          <li class="pipe-node ai" data-stage="rules">
+            <span class="pipe-who">AI · Muse Spark Open</span>
+            <span class="pipe-name">AI writes the rules</span>
+            <span class="pipe-line">Exact, checkable rules: hours, levels and limits.</span>
           </li>
-          <li class="pipe-boundary" aria-label="Boundary: the AI proposes, the tools decide"><span>AI proposes</span><span class="boundary-bar" aria-hidden="true"></span><span>tools decide</span></li>
-          <li class="pipe-zone pipe-tools" aria-label="Deterministic tools">
-            <span class="zone-label">Tools</span>
-            <ol class="zone-nodes">
-              <li class="pipe-node">
-                <span class="pipe-name">Optimizer plans the day</span>
-                <span class="pipe-line">The cheapest hour-by-hour plan that meets every rule.</span>
-              </li>
-              <li class="pipe-node pipe-gate">
-                <span class="pipe-name">Physics checker</span>
-                <span class="pipe-line"><span class="gate-pass">pass → run</span> · <span class="gate-fail">fail → back to the AI<span id="repair-count"></span></span></span>
-                <span id="repair-source" class="source"></span>
-              </li>
-              <li class="pipe-node">
-                <span class="pipe-name">Replay on the same-day weather</span>
-                <span class="pipe-line">Run on what the weather model says happened, next to a rule-based battery.</span>
-              </li>
-            </ol>
+          <li class="pipe-node tool" data-stage="optimizer">
+            <span class="pipe-who">Tool</span>
+            <span class="pipe-name">Optimizer plans the day</span>
+            <span class="pipe-line">The cheapest hour-by-hour plan that meets every rule.</span>
+          </li>
+          <li class="pipe-node tool" data-stage="checks">
+            <span class="pipe-who">Tool</span>
+            <span class="pipe-name">Physics and coverage checks</span>
+            <span class="pipe-line">Battery and grid limits hold, and every part of the goal has a rule.</span>
+          </li>
+          <li class="pipe-node ai" data-stage="review">
+            <span class="pipe-who">AI · separate call</span>
+            <span class="pipe-name">Independent AI review</span>
+            <span class="pipe-line">Sees only the goal, the site and the rules; can approve or send back.</span>
+          </li>
+          <li class="pipe-node tool" data-stage="accepted">
+            <span class="pipe-who">Tool</span>
+            <span class="pipe-name">Accepted</span>
+            <span class="pipe-line">Only now does the plan count, and you approve it before it is sent.</span>
+          </li>
+          <li class="pipe-node tool" data-stage="replay">
+            <span class="pipe-who">Tool</span>
+            <span class="pipe-name">Replay on the same-day weather</span>
+            <span class="pipe-line">Run on what the weather model says happened, next to a rule-based battery.</span>
           </li>
         </ol>
+        <p class="pipe-loop reveal"><span class="loop-mark" aria-hidden="true">↺</span> Any failed check or a rejection goes back to the AI<span id="repair-count"></span>. <span id="repair-source" class="source"></span></p>
+        <ul class="pipe-key reveal" aria-label="Legend">
+          <li><span class="pipe-swatch ai" aria-hidden="true"></span>AI step</li>
+          <li><span class="pipe-swatch tool" aria-hidden="true"></span>deterministic tool</li>
+        </ul>
       </div>
     </section>
 
-    <!-- 4. Try it: one goal box, one button, the pipeline, the day -->
-    <section id="try" class="section try" aria-labelledby="try-title">
+    <!-- 4. Try it: one panel like the hero's; goal, recorded goals, one button, the pipeline, the day -->
+    <section id="try" class="section" aria-labelledby="try-title">
       <div class="section-inner">
-        <h2 id="try-title">Try it</h2>
-        <p class="lead">Pick a site, type a goal or pick a recorded one, and press the button. Recorded goals replay free; a typed goal runs the AI live when live runs are available.</p>
+        <h2 id="try-title">Say the goal. Check the plan.</h2>
+        <p class="lead">Type a goal in any language, or pick a recorded one, and press the button. Recorded goals replay free; typed goals run the AI live when live runs are available.</p>
 
-        <div id="setup" class="panel try-panel" tabindex="-1">
-          <fieldset class="sites">
-            <legend>1. Choose a site</legend>
-            <div id="site-list" class="site-list"></div>
-          </fieldset>
-
-          <div class="field">
-            <label for="day">2. Day</label>
-            <select id="day" aria-describedby="day-hint"></select>
-            <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
-          </div>
-
-          <form id="goal-form" class="field goal-form" novalidate>
-            <label for="goal">3. Your goal, in any language</label>
-            <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count run-hint"></textarea>
-            <div class="goal-meta">
-              <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
-              <p id="goal-count" class="hint count" aria-live="polite">0 / 500</p>
+        <div id="setup" class="day-panel try-panel" tabindex="-1">
+          <div class="try-top">
+            <div class="try-sites" role="group" aria-labelledby="site-label">
+              <p class="try-label" id="site-label">Site</p>
+              <div id="site-list" class="site-switch"></div>
+              <p id="site-facts" class="hint"></p>
             </div>
+            <div class="try-day">
+              <label for="day">Day</label>
+              <select id="day" aria-describedby="day-hint"></select>
+            </div>
+          </div>
+          <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
+
+          <form id="goal-form" class="goal-form" novalidate>
+            <label for="goal">Your goal, in any language</label>
+            <div class="goal-box">
+              <textarea id="goal" name="goal" rows="4" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count run-hint"></textarea>
+              <p id="goal-count" class="count" aria-live="polite">0 / 500</p>
+            </div>
+            <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
+            <p class="try-label" id="chips-title">Or pick a recorded goal</p>
+            <ul id="chips" class="chips" aria-labelledby="chips-title"></ul>
             <div class="run-row">
-              <button type="submit" id="run-button" class="primary big" disabled>Plan my day</button>
-              <p id="run-hint" class="hint run-hint">Type a goal or pick one below.</p>
+              <button type="submit" id="run-button" class="button primary" disabled>Plan my day</button>
+              <p id="run-hint" class="hint run-hint">Type a goal above or pick a recorded one.</p>
             </div>
             <p id="live-note" class="hint"></p>
-            <h3 class="field-title" id="chips-title">Recorded goals for this site</h3>
-            <p class="hint" id="chips-hint">Picking one fills the box. Goals in several languages.</p>
-            <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
           </form>
 
           <ol id="try-pipeline" class="try-pipeline" aria-label="Progress" hidden></ol>
@@ -177,6 +181,7 @@
         <div id="evidence-numbers" class="big-numbers reveal">
           <p class="hint">The benchmark numbers load from the app server (/api/benchmark).</p>
         </div>
+        <p id="evidence-footnote" class="footnote reveal"></p>
         <figure id="evidence-chart" class="bar-figure reveal" aria-labelledby="evidence-chart-title">
           <figcaption id="evidence-chart-title" class="chart-heading">Goals met, by approach</figcaption>
         </figure>
@@ -189,7 +194,7 @@
 
     <!-- 6. Honest limits -->
     <section id="limits" class="section" aria-labelledby="limits-title">
-      <div class="section-inner narrow reveal">
+      <div class="section-inner reveal">
         <h2 id="limits-title">What this demo is, and is not.</h2>
         <ul class="limits">
           <li><strong>Synthetic sites.</strong> Sites, tariffs, prices and loads are illustrative, not real customer data. No real device is controlled.</li>

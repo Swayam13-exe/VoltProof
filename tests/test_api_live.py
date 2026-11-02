@@ -93,6 +93,7 @@ def test_status_sites_days_and_static_endpoints(settings: Settings) -> None:
     client, _, _ = make(settings, lambda s: a4_llm())
     status = client.get("/api/status", headers={"x-forwarded-for": "203.0.113.5"}).json()
     assert status["live"] is True and status["runs_left_this_hour"] == 10 and status["runs_left_today"] == 150 and status["demo_cap_usd"] == settings.demo_budget_usd_cap
+    assert status["per_visitor_per_hour"] == 10  # the refusal text reads the limit from here
     assert [c["site_id"] for c in client.get("/api/sites").json()] == [SITE.site_id]
     days = client.get("/api/days", params={"site": SITE.site_id}).json()
     assert [(d["date"], d["split"]) for d in days] == [(DAY.isoformat(), "dev")]

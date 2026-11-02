@@ -152,6 +152,7 @@ def index_entry(chip: Chip, view: Mapping[str, Any]) -> dict[str, Any]:
         "goal": view["goal"]["text"],
         "source_run": chip.run,
         "episode_id": chip.episode_id,
+        "latency_s": round(view["meta"]["latency_s"], 1) if view["meta"].get("latency_s") is not None else None,  # how long the run took
     }
 
 

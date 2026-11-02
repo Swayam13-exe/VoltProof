@@ -190,6 +190,7 @@ def create_app(
         return {
             **state.status(),
             "per_visitor_limit": settings.client_ip_source != "none",
+            "per_visitor_per_hour": limits.per_ip,
             "runs_left_this_hour": remaining["this_hour"],
             "runs_left_everyone_this_hour": remaining["everyone_this_hour"],
             "runs_left_today": remaining["today"],

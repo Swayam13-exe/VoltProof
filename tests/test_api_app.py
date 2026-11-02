@@ -85,3 +85,20 @@ def test_content_is_visible_without_javascript() -> None:
     assert hiding and all(selector.strip().startswith(".reveal-armed") for selector, _ in hiding)
     landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
     assert 'classList.add("reveal-armed")' in landing and 'classList.remove("reveal-armed"), 1500' in landing
+
+
+def test_every_section_shares_one_frame() -> None:
+    """Try it is part of the page, not a separate tool: every section below the hero is a plain
+    .section with the same .section-inner frame (only the Problem two-column split and the reveal
+    hook on top), and no CSS rule gives one section its own background band or a narrower column."""
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    css = re.sub(r"/\*.*?\*/", "", (WEB_DIR / "styles.css").read_text(encoding="utf-8"), flags=re.S)
+    for section_id in ("problem", "how", "try", "evidence", "limits"):
+        tag = re.search(rf'<section id="{section_id}" class="([^"]+)"', html).group(1)
+        assert tag == "section", (section_id, tag)
+        start = html.index(f'<section id="{section_id}"')
+        inner = re.search(r'<div class="([^"]+)"', html[start:]).group(1).split()
+        assert inner[0] == "section-inner" and set(inner[1:]) <= {"split", "reveal"}, (section_id, inner)
+    assert not re.search(r"\.section-inner\.[a-z]", css)  # no narrowed variant of the frame
+    assert "#try" not in css and not re.search(r"\.try[\s{.,]", css)  # no special band or width for Try it
+    assert re.search(r"\.hero \{[^}]*max-width: 1160px", css) and re.search(r"\.section-inner \{[^}]*max-width: 1160px", css)  # hero and sections share the width

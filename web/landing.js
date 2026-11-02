@@ -211,7 +211,7 @@
       const picks = heroPicks(index.chips).filter(Boolean);
       const views = await Promise.all(picks.map((chip) => fetch(`replays/${encodeURIComponent(chip.file)}`, { cache: "no-cache" }).then((r) => r.json())));
       const examples = views.map((view, i) => ({ view, file: `web/replays/${picks[i].file}`, language: view.goal.language || picks[i].language }));
-      if (examples.length) VPDay.mount($("day-mount"), examples, { id: "hero", switcher: true, loop: true, live: $("day-live"), mutedCost: true });
+      if (examples.length) VPDay.mount($("day-mount"), examples, { id: "hero", switcher: true, loop: true, live: $("day-live"), cost: "muted" });
     } catch (_err) {
       $("day-mount").replaceChildren(make("p", { class: "hint" }, "The recorded days could not load. Try it below still works."));
     }
@@ -295,11 +295,16 @@
       const sizes = [...new Set(languages.map((row) => row.episodes))];
       const languageList = languages.map((row) => VPDay.languageName(String(row.group).split(":")[1].trim()).split(" · ")[0]).join(", ");
       const size = sizes.length === 1 ? `${sizes[0]} goals each` : `${languages.reduce((sum, row) => sum + Number(row.episodes), 0)} goals`;
-      const tolerance = code.spec_match_pct_points !== undefined ? `; charge levels within ±${code.spec_match_pct_points} percentage point, power within ±${code.spec_match_kw} kW` : "";
-      const label = `of goals got rules that matched the hand-written rules item for item: same rule kinds and hours${tolerance}. ${allSame ? "In every" : "In the weakest"} language tested: ${languageList} (${size}).`;
-      const sources = [sourceLine(BENCHMARK_FILES.main, 'a4_spec_by_language, "exact match", multilingual rows')];
-      if (tolerance) sources.push(sourceLine(code.spec_match_source));
-      numbers.push(bigNumber(leadingNumber(lowest["exact match"]), label, sources));
+      const label = allSame
+        ? `of goals turned into exactly the hand-written rules, in all ${languages.length} languages tested (${size})`
+        : `of goals turned into exactly the hand-written rules, in the weakest of ${languages.length} languages tested (${size})`;
+      numbers.push(bigNumber(leadingNumber(lowest["exact match"]), label, [sourceLine(BENCHMARK_FILES.main, 'a4_spec_by_language, "exact match"')]));
+      // the fine print, once, under the card row: what "exactly" means and where the tolerances live
+      const tolerance = code.spec_match_pct_points !== undefined ? ` Charge levels count as equal within ±${code.spec_match_pct_points} percentage point and power within ±${code.spec_match_kw} kW.` : "";
+      $("evidence-footnote").replaceChildren(
+        `"Exactly the hand-written rules": every rule item matches the hand-written rules for that goal (same rule kinds and hours), nothing missing and nothing extra. Languages: ${languageList}.${tolerance} `,
+        make("span", { class: "source source-inline" }, [sourceLine(BENCHMARK_FILES.main, 'a4_spec_by_language, "exact match"'), tolerance ? sourceLine(code.spec_match_source) : null].filter(Boolean).join(" · "))
+      );
     }
     $("evidence-numbers").replaceChildren(...numbers.slice(0, 3));
 
