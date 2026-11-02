@@ -642,5 +642,8 @@
     await playChip(chip || state.chips.find((c) => c.site_id === state.siteId), { instant: true, keepUrl: !chip });
   }
 
+  // The landing page (landing.js) reuses these helpers, so the hero speaks exactly like the results below
+  window.VPPage = Object.freeze({ money, goalWords, costLine });
+
   start();
 })();

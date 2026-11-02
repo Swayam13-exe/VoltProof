@@ -6,60 +6,193 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="light dark">
+  <meta name="description" content="An AI operator for solar + battery sites: say the goal in your own language; it plans the day and checks the plan before anything runs.">
   <title>VoltProof AI</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="charts.js"></script>
   <script defer src="app.js"></script>
+  <script defer src="landing.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#setup">Skip to the conversation</a>
-  <header class="site-header">
-    <p class="brand">VoltProof AI</p>
-    <h1 class="lede">Tell a solar-and-battery site what you need today, in plain words: an AI turns it into exact rules, an optimizer finds the cheapest plan that meets them, and a physics check verifies the plan before anything reaches the battery.</h1>
+  <a class="skip-link" href="#setup">Skip to Try it</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top">VoltProof AI</a>
+      <nav class="menu" aria-label="Sections">
+        <ul>
+          <li><a href="#problem">Problem</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#try">Try it</a></li>
+          <li><a href="#evidence">Evidence</a></li>
+          <li><a href="#limits">Limits</a></li>
+        </ul>
+      </nav>
+      <div class="actions">
+        <button type="button" id="theme-toggle" class="tool-button" aria-pressed="false">Dark mode</button>
+        <button type="button" id="copy-link" class="tool-button">Copy link</button>
+        <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
   </header>
 
   <main id="main">
-    <section id="setup" class="panel" aria-labelledby="setup-title" tabindex="-1">
-      <h2 id="setup-title" class="visually-hidden">Choose a site and a goal</h2>
-
-      <fieldset class="sites">
-        <legend>1. Choose a site</legend>
-        <div id="site-list" class="site-list"></div>
-      </fieldset>
-
-      <div class="field">
-        <label for="day">2. Day</label>
-        <select id="day" aria-describedby="day-hint"></select>
-        <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
-      </div>
-
-      <div class="field">
-        <h3 class="field-title" id="chips-title">3. Try a recorded goal</h3>
-        <p class="hint" id="chips-hint">Recorded runs of the agent, replayed for free. Goals in several languages.</p>
-        <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
-      </div>
-
-      <form id="goal-form" class="field goal-form" novalidate>
-        <label for="goal">Or type your own goal</label>
-        <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count"></textarea>
-        <div class="goal-meta">
-          <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
-          <p id="goal-count" class="hint count" aria-live="polite">0 / 500</p>
+    <!-- 1. Hero -->
+    <section id="top" class="hero" aria-labelledby="hero-title">
+      <div class="hero-text">
+        <h1 id="hero-title">A battery plan you can check before it runs.</h1>
+        <p class="subtitle">An AI operator for solar + battery sites. You say the goal in your own language; it plans the day and checks the plan before anything runs.</p>
+        <div class="cta">
+          <a class="button primary" href="#try">Try it</a>
+          <a class="button secondary" href="#evidence">See the evidence</a>
         </div>
-        <p id="live-note" class="hint"></p>
-        <button type="submit" class="primary">Plan my day</button>
-      </form>
-
-      <p id="status" class="status" role="status" aria-live="polite"></p>
+      </div>
+      <div class="hero-demo">
+        <div id="hero-card" class="hero-card" tabindex="0" role="group" aria-roledescription="example player" aria-label="Recorded example runs. The player pauses while you point at it or it has keyboard focus.">
+          <p class="hero-card-label">Replay of recorded runs</p>
+          <div id="hero-slides" class="hero-slides">
+            <p class="hint">Recorded examples load here.</p>
+          </div>
+          <div id="hero-progress" class="hero-progress" role="group" aria-label="Choose an example"></div>
+          <p id="hero-live" class="visually-hidden" aria-live="polite"></p>
+        </div>
+      </div>
     </section>
 
-    <section id="conversation" class="conversation" aria-label="Conversation with the agent"></section>
+    <!-- 2. Problem -->
+    <section id="problem" class="section" aria-labelledby="problem-title">
+      <div class="section-inner split reveal">
+        <div>
+          <p class="kicker">The problem</p>
+          <h2 id="problem-title">Batteries are easy to buy and hard to run well.</h2>
+          <p class="lead">An operator has to plan around grid outages, prices that change by the hour and battery wear, every day. Asking an AI to write the plan sounds easy, but a plan written as text can quietly break physics: charge the battery past full, or count on energy that is not there when the grid goes down.</p>
+        </div>
+        <div id="problem-number" class="figure-card" aria-live="off">
+          <p class="hint">The benchmark number loads from the app server.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. How it works -->
+    <section id="how" class="section" aria-labelledby="how-title">
+      <div class="section-inner">
+        <p class="kicker reveal">How it works</p>
+        <h2 id="how-title" class="reveal">Four steps. Only one of them is AI.</h2>
+        <ol class="how-cards">
+          <li class="how-card reveal">
+            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M8 10h32a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H22l-9 7v-7H8a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M14 20h20M14 26h13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <p class="how-step">Step 1</p>
+            <h3>You say the goal</h3>
+            <p>In your own words and language: an outage, a reserve to keep, a price to dodge.</p>
+          </li>
+          <li class="how-card reveal">
+            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="7" y="6" width="34" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M14 16l3 3 5-6M14 29l3 3 5-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 17h8M27 30h8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <p class="how-step">Step 2</p>
+            <h3>AI turns it into rules</h3>
+            <p>Muse Spark Open writes exact, checkable rules, and a separate AI review checks they match what you asked.</p>
+          </li>
+          <li class="how-card reveal">
+            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M6 40h36" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M8 32l9-10 8 6 13-16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="12" r="3.5" fill="currentColor"/></svg>
+            <p class="how-step">Step 3</p>
+            <h3>An optimizer plans the day</h3>
+            <p>A mathematical optimizer finds the cheapest hour-by-hour battery plan that meets every rule.</p>
+          </li>
+          <li class="how-card reveal">
+            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M24 5l15 6v11c0 10-6.5 17-15 21C15.5 39 9 32 9 22V11z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M17 24l5 5 9-10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <p class="how-step">Step 4</p>
+            <h3>A checker verifies, then replays it on real weather</h3>
+            <p>Physics checks the plan before anything runs; then it is replayed on the same-day weather next to a simple rule-based battery.</p>
+          </li>
+        </ol>
+        <p class="motto reveal">The AI proposes. Deterministic tools decide.</p>
+      </div>
+    </section>
+
+    <!-- 4. Try it: the existing tool, unchanged in behaviour -->
+    <section id="try" class="section try" aria-labelledby="try-title">
+      <div class="section-inner">
+        <p class="kicker">Try it</p>
+        <h2 id="try-title">Pick a site and a goal.</h2>
+        <p class="lead">Recorded goals replay instantly and cost nothing. A typed goal runs the AI live when live runs are available.</p>
+
+        <div id="setup" class="panel" tabindex="-1">
+          <fieldset class="sites">
+            <legend>1. Choose a site</legend>
+            <div id="site-list" class="site-list"></div>
+          </fieldset>
+
+          <div class="field">
+            <label for="day">2. Day</label>
+            <select id="day" aria-describedby="day-hint"></select>
+            <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
+          </div>
+
+          <div class="field">
+            <h3 class="field-title" id="chips-title">3. Try a recorded goal</h3>
+            <p class="hint" id="chips-hint">Recorded runs of the agent, replayed for free. Goals in several languages.</p>
+            <ul id="chips" class="chips" aria-labelledby="chips-title" aria-describedby="chips-hint"></ul>
+          </div>
+
+          <form id="goal-form" class="field goal-form" novalidate>
+            <label for="goal">Or type your own goal</label>
+            <textarea id="goal" name="goal" rows="3" maxlength="500" placeholder="e.g. The grid will be off from 2 to 5 PM. Keep the fridge running and the bill low." aria-describedby="goal-notice goal-count"></textarea>
+            <div class="goal-meta">
+              <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
+              <p id="goal-count" class="hint count" aria-live="polite">0 / 500</p>
+            </div>
+            <p id="live-note" class="hint"></p>
+            <button type="submit" class="primary">Plan my day</button>
+          </form>
+
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </div>
+
+        <section id="conversation" class="conversation" aria-label="Conversation with the agent"></section>
+      </div>
+    </section>
+
+    <!-- 5. Evidence -->
+    <section id="evidence" class="section" aria-labelledby="evidence-title">
+      <div class="section-inner">
+        <p class="kicker reveal">Evidence</p>
+        <h2 id="evidence-title" class="reveal">Tested on goals it never saw while it was being built.</h2>
+        <p id="evidence-size" class="lead reveal">Every approach gets the same test goals, sites and days.</p>
+        <div id="evidence-numbers" class="big-numbers reveal">
+          <p class="hint">The benchmark numbers load from the app server (/api/benchmark).</p>
+        </div>
+        <figure id="evidence-chart" class="bar-figure reveal" aria-labelledby="evidence-chart-title">
+          <figcaption id="evidence-chart-title" class="chart-heading">Goals met, by approach</figcaption>
+        </figure>
+        <p class="links reveal">
+          <a href="https://github.com/Swayam13-exe/VoltProof/tree/main/results">All results in the repository</a>
+          <a href="https://github.com/Swayam13-exe/VoltProof#readme">How the benchmark works (README)</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- 6. Honest limits -->
+    <section id="limits" class="section" aria-labelledby="limits-title">
+      <div class="section-inner narrow reveal">
+        <p class="kicker">Honest limits</p>
+        <h2 id="limits-title">What this demo is, and is not.</h2>
+        <ul class="limits">
+          <li><strong>Synthetic sites.</strong> Sites, tariffs, prices and loads are illustrative, not real customer data. No real device is controlled.</li>
+          <li><strong>Modelled weather.</strong> The "same-day weather" in replays is a weather model's estimate of what happened, not a measurement.</li>
+          <li><strong>Whole site kept running.</strong> During an outage the optimizer keeps every load on, so the rule-based battery can look cheaper by switching other loads off. The results say so when it happens.</li>
+          <li><strong>Limited live runs.</strong> Live AI runs are rate-limited; when they are not available the page plays a recorded run and labels it.</li>
+          <li><strong>A small world.</strong> Results cover only the sites in this demo: a cold store in India, a clinic in Kenya and a household in Germany.</li>
+        </ul>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
-    <p>Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0), model DWD ICON global. Built with Muse Spark Open (Meta), served by Baseten.</p>
-    <p>Sites, tariffs, prices and loads are illustrative and synthetic. "Same-day weather" is a weather model's same-day analysis, not a measurement. No real device is controlled.</p>
+    <div class="section-inner">
+      <p class="footer-built">Built with Muse Spark Open (Meta), served by Baseten. Code and results: <a href="https://github.com/Swayam13-exe/VoltProof">github.com/Swayam13-exe/VoltProof</a></p>
+      <p>Weather: <a href="https://open-meteo.com/">Open-Meteo</a> / DWD ICON. Weather data by Open-Meteo.com, CC BY 4.0.</p>
+      <p><a href="https://github.com/Swayam13-exe/VoltProof/blob/main/LICENSE">MIT license</a></p>
+    </div>
   </footer>
 </body>
 </html>

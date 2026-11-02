@@ -321,5 +321,5 @@ const VPCharts = (() => {
   if (ready()) Chart.register(bandPlugin);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerenderAll);
 
-  return { socChart, flowsChart, priceChart, sameDayChart, destroyAll, ready, make, formatNumber };
+  return { socChart, flowsChart, priceChart, sameDayChart, destroyAll, rerenderAll, ready, make, formatNumber };
 })();

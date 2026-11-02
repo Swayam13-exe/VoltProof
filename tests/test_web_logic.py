@@ -131,3 +131,99 @@ def test_limit_reasons_and_the_live_note() -> None:
     assert shared == "Live AI on: 37 live runs left this hour (shared by all visitors)."
     assert mine == old == "Live AI on: 9 live runs left for you this hour."
     assert off.startswith("Live AI unavailable (the live AI is switched off here)") and unreachable.startswith("Live AI not available here")
+
+
+# --- the landing page's pure functions (web/landing.js) ---------------------------------------------------
+
+LANDING = r"""
+const fs = require("fs");
+const src = fs.readFileSync(process.argv[1], "utf8");
+const code = src.slice(src.indexOf("/* --- pure: begin"), src.indexOf("/* --- pure: end"));
+const f = new Function(code + "; return { HERO_PAIRS, HERO_EXAMPLE_MS, HERO_STEPS, heroPicks, heroFrame, heroStart, specCodes, hourWindows, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
+const index = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const cases = JSON.parse(process.argv[3]);
+const out = {
+  constants: { pairs: f.HERO_PAIRS, exampleMs: f.HERO_EXAMPLE_MS, steps: f.HERO_STEPS },
+  picks: f.heroPicks(index.chips).map((c) => (c ? c.id : null)),
+  missing: f.heroPicks(index.chips, [["nairobi_clinic", "en"], ["nowhere", "xx"]]).map((c) => (c ? c.id : null)),
+  frames: cases.frames.map(([t, n]) => f.heroFrame(t, n)),
+  starts: [0, 1, 2].map(f.heroStart),
+  codes: cases.specs.map(f.specCodes),
+  windows: f.hourWindows([14, 9, 10, 11, 10]),
+  sources: [f.sourceLine("results/report/summary.json", "goal_satisfaction"), f.sourceLine("web/replays/x.json")],
+  leading: ["98.8% (257/260)", "17.8%", "+8.5 pts [+5.0, +11.9]", "n/a"].map(f.leadingNumber),
+  shares: ["98.8% (257/260)", "100.0%", "n/a"].map(f.parseShare),
+  deltas: ["+8.5 pts [+5.0, +11.9]", "-1.2 pts [-3.0, +0.4]", "x"].map(f.parseDelta),
+  names: f.armNames([{ arm: "A2", name: "LLM writes schedule" }, { arm: "A4", name: "VoltProof" }]),
+  row: f.rowFor([{ arm: "A2", v: 1 }, { arm: "A4", v: 2 }], "arm", "A4"),
+};
+console.log(JSON.stringify(out));
+"""
+
+
+def landing(cases: dict) -> dict:
+    result = subprocess.run([NODE, "-e", LANDING, str(WEB_DIR / "landing.js"), str(REPLAYS / "index.json"), json.dumps(cases)], capture_output=True, text=True, encoding="utf-8")
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_hero_plays_nairobi_english_then_ahmedabad_hindi_then_the_held_out_site_in_spanish() -> None:
+    """The third example is the held-out household site; it is named only through landing.js and the
+    replay index, never in tests (test_days guards that)."""
+    out = landing({"frames": [], "specs": []})
+    pairs = out["constants"]["pairs"]
+    assert pairs[:2] == [["nairobi_clinic", "en"], ["ahmedabad_cold_store", "hi"]] and pairs[2][1] == "es"
+    chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
+    third = [c for c in chips if [c["site_id"], c["language"]] == pairs[2]]
+    assert len(third) == 1 and third[0]["site"]["site_type"] == "household"
+    assert out["picks"] == ["nairobi-outage-reserve-en", "ahmedabad-outage-hi", third[0]["id"]]  # an everyday goal before a hard one
+    assert out["missing"] == ["nairobi-outage-reserve-en", None]  # a missing pair is skipped, never replaced
+    for pick in out["picks"]:
+        view = json.loads((REPLAYS / f"{pick}.json").read_text(encoding="utf-8"))
+        assert view["same_day"]["agent"]["goals_met"] and view["plan"]["verified"]
+
+
+def test_hero_timing_and_rotation() -> None:
+    ms = 9000
+    frames = [[0, 3], [1799, 3], [1800, 3], [3200, 3], [5600, 3], [8999, 3], [9000, 3], [2 * ms + 4000, 3], [3 * ms, 3], [3 * ms + 1800, 3], [-1, 3], [100, 0]]
+    out = landing({"frames": frames, "specs": []})
+    assert out["constants"]["exampleMs"] == ms and [s[1] for s in out["constants"]["steps"]] == [0, 1800, 3200, 5600]
+    got = [(f["index"], f["step"]) if f else None for f in out["frames"]]
+    assert got == [(0, "goal"), (0, "goal"), (0, "rules"), (0, "chart"), (0, "result"), (0, "result"), (1, "goal"), (2, "chart"), (0, "goal"), (0, "rules"), (2, "result"), None]
+    assert out["frames"][0]["progress"] == 0 and abs(out["frames"][5]["progress"] - 8999 / ms) < 1e-9
+    assert out["starts"] == [0, ms, 2 * ms]  # clicking line i jumps to the start of example i
+
+
+def test_rule_codes_windows_and_source_lines() -> None:
+    specs = [{"grid_outages": [{"start_hour": 9, "end_hour": 12}], "reserve_windows": [{}]}, {"import_caps": [{}], "no_export_windows": []}, {"end_of_day_min_soc_pct": 0}, {}, None]
+    out = landing({"frames": [], "specs": specs})
+    assert out["codes"] == [["OUTAGE_DEFICIT", "RESERVE"], ["IMPORT_CAP"], ["END_SOC"], [], []]
+    assert out["windows"] == [[9, 12], [14, 15]]
+    assert out["sources"] == ["Source: results/report/summary.json · goal_satisfaction", "Source: web/replays/x.json"]
+    assert out["leading"] == ["98.8%", "17.8%", "+8.5", None]
+    assert out["shares"] == [{"pct": 98.8, "num": 257, "den": 260}, {"pct": 100, "num": None, "den": None}, None]
+    assert out["deltas"] == [{"value": "+8.5", "low": "+5.0", "high": "+11.9"}, {"value": "-1.2", "low": "-3.0", "high": "+0.4"}, None]
+    assert out["names"] == {"A2": "LLM writes schedule", "A4": "VoltProof"} and out["row"] == {"arm": "A4", "v": 2}
+
+
+def test_the_numbers_the_landing_page_shows_parse_from_the_committed_results() -> None:
+    """The Problem and Evidence numbers: every string the page reads exists in the files and parses."""
+    main = json.loads((WEB_DIR.parent / "results" / "report" / "summary.json").read_text(encoding="utf-8"))["tables"]
+    e2 = json.loads((WEB_DIR.parent / "results" / "e2" / "summary.json").read_text(encoding="utf-8"))["tables"]
+    names = {r["arm"]: r["name"] for r in main["run_summary"]}
+    assert names["A2"] == "LLM writes schedule" and names["A4"] == "VoltProof"
+    outage = {r["arm"]: r for r in main["outage_safety"]}
+    assert outage["A2"]["plan physics valid"] == "17.8%" and outage["A4"]["plan physics valid"] == "100.0%" and outage["A2"]["episodes"] == 45
+    satisfied = {r["arm"]: r["overall"] for r in main["goal_satisfaction"]}
+    assert satisfied["A4"] == "98.8% (257/260)"
+    assert {r["comparison"]: r["overall"] for r in main["goal_satisfaction_bootstrap"]}["A4 - A2"] == "+8.5 pts [+5.0, +11.9]"
+    assert {r["arm"]: r["overall"] for r in e2["goal_satisfaction"]}["A4"] == "94.1% (95/101)"
+    assert [r["exact match"] for r in main["a4_spec_by_language"] if r["group"].startswith("multilingual:")] == ["100.0%"] * 5
+
+
+def test_every_page_script_parses() -> None:
+    """The other tests load only slices of the scripts; a syntax error elsewhere (say, a comment closed
+    early by a glob in its text) would stop the whole page, so check every script parses."""
+    for name in ("app.js", "charts.js", "landing.js"):
+        result = subprocess.run([NODE, "--check", str(WEB_DIR / name)], capture_output=True, text=True, encoding="utf-8")
+        assert result.returncode == 0, f"{name}: {result.stderr}"

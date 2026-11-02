@@ -98,7 +98,12 @@ def test_status_sites_days_and_static_endpoints(settings: Settings) -> None:
     assert [(d["date"], d["split"]) for d in days] == [(DAY.isoformat(), "dev")]
     assert client.get("/api/days", params={"site": "nowhere"}).status_code == 422
     assert client.post("/api/tariff-from-image").status_code == 501
-    assert set(client.get("/api/benchmark").json()) == {"main", "e2", "e3", "e4"}
+    benchmark = client.get("/api/benchmark").json()
+    assert set(benchmark) == {"main", "e2", "e3", "e4"}
+    assert {"run_summary", "goal_satisfaction", "goal_satisfaction_bootstrap", "outage_safety", "a4_spec_by_language"} <= set(benchmark["main"])
+    names = {r["arm"]: r["name"] for r in benchmark["main"]["run_summary"]}  # the page's arm names and numbers come from here
+    assert names["A2"] == "LLM writes schedule" and names["A4"] == "VoltProof"
+    assert {r["arm"] for r in benchmark["main"]["outage_safety"]} >= {"A2", "A4"} and benchmark["e2"]
 
 
 def test_goal_site_and_day_are_validated(settings: Settings) -> None:

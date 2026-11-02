@@ -103,7 +103,7 @@ def benchmark_summary(results_dir: Path) -> dict[str, Any]:
     e4 = read_json(results_dir / "e4" / "summary.json") or {}
     tables = main.get("tables", {})
     return {
-        "main": {name: tables.get(name) for name in ("goal_satisfaction", "goal_satisfaction_bootstrap", "error_decomposition", "a4_spec_by_language")},
+        "main": {name: tables.get(name) for name in ("run_summary", "goal_satisfaction", "goal_satisfaction_bootstrap", "outage_safety", "error_decomposition", "a4_spec_by_language")},
         "e2": (e2.get("tables") or {}).get("goal_satisfaction"),
         "e3": e3.get("summary"),
         "e4": (e4.get("tables") or {}).get("e4_by_effort"),
