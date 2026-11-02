@@ -1,6 +1,6 @@
-"""The page's pure helpers (web/app.js), run in Node on committed replays: missed goals in plain words,
-the cost line against the rule-based battery and the "Other load kept on" line. Skipped where Node is
-not installed."""
+"""The page's pure helpers (web/app.js and web/landing.js), run in Node on committed replays: missed goals
+in plain words, the cost line against the rule-based battery, the "Other load kept on" line, and the
+landing page's day player, rule drawing and dot counts. Skipped where Node is not installed."""
 
 from __future__ import annotations
 
@@ -97,6 +97,19 @@ def test_cost_line_explains_load_the_rule_based_battery_switched_off(tmp_path: P
     assert lines["small_gap.json"]["cost"]["tone"] == "fail"  # under 0.1 kWh more shed is not a reason
 
 
+def test_cost_line_says_same_cost_when_the_difference_rounds_to_zero(tmp_path: Path) -> None:
+    chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
+    same = [c["file"] for c in chips if round(abs(replay(c["id"])["same_day"]["cost_difference"]) * 100) == 0]
+    assert same  # at least one recorded day costs the same as the rule-based battery
+    tiny = variant(tmp_path, "tiny.json", lambda sd: sd.update(cost_difference=-0.004))
+    cent = variant(tmp_path, "cent.json", lambda sd: sd.update(cost_difference=0.01))
+    lines = run(*same, tiny, cent)
+    for name in [*same, "tiny.json"]:
+        cost = lines[name]["cost"]
+        assert cost["value"] == "Same cost as the rule-based battery" and cost["tone"] == "neutral" and cost["same"] is True, name
+    assert lines["cent.json"]["cost"]["value"].endswith("cheaper") and "same" not in lines["cent.json"]["cost"]
+
+
 def test_other_load_line(tmp_path: Path) -> None:
     both = variant(tmp_path, "both_shed.json", lambda sd: sd["agent"].update(non_critical_shed_kwh=5.0, non_critical_shed_outage_kwh=5.0))
     lines = run(SHED_DAY, "ahmedabad-outage-en.json", both)
@@ -133,45 +146,43 @@ def test_limit_reasons_and_the_live_note() -> None:
     assert off.startswith("Live AI unavailable (the live AI is switched off here)") and unreachable.startswith("Live AI not available here")
 
 
-# --- the landing page's pure functions (web/landing.js) ---------------------------------------------------
+# --- the landing page's pure functions (web/landing.js), on the committed replays -------------------------
 
 LANDING = r"""
 const fs = require("fs");
+const path = require("path");
 const src = fs.readFileSync(process.argv[1], "utf8");
 const code = src.slice(src.indexOf("/* --- pure: begin"), src.indexOf("/* --- pure: end"));
-const f = new Function(code + "; return { HERO_PAIRS, HERO_EXAMPLE_MS, HERO_STEPS, heroPicks, heroFrame, heroStart, specCodes, hourWindows, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
-const index = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const cases = JSON.parse(process.argv[3]);
-const out = {
-  constants: { pairs: f.HERO_PAIRS, exampleMs: f.HERO_EXAMPLE_MS, steps: f.HERO_STEPS },
-  picks: f.heroPicks(index.chips).map((c) => (c ? c.id : null)),
-  missing: f.heroPicks(index.chips, [["nairobi_clinic", "en"], ["nowhere", "xx"]]).map((c) => (c ? c.id : null)),
-  frames: cases.frames.map(([t, n]) => f.heroFrame(t, n)),
-  starts: [0, 1, 2].map(f.heroStart),
-  codes: cases.specs.map(f.specCodes),
-  windows: f.hourWindows([14, 9, 10, 11, 10]),
-  sources: [f.sourceLine("results/report/summary.json", "goal_satisfaction"), f.sourceLine("web/replays/x.json")],
-  leading: ["98.8% (257/260)", "17.8%", "+8.5 pts [+5.0, +11.9]", "n/a"].map(f.leadingNumber),
-  shares: ["98.8% (257/260)", "100.0%", "n/a"].map(f.parseShare),
-  deltas: ["+8.5 pts [+5.0, +11.9]", "-1.2 pts [-3.0, +0.4]", "x"].map(f.parseDelta),
-  names: f.armNames([{ arm: "A2", name: "LLM writes schedule" }, { arm: "A4", name: "VoltProof" }]),
-  row: f.rowFor([{ arm: "A2", v: 1 }, { arm: "A4", v: 2 }], "arm", "A4"),
-};
+const f = new Function(code + "; return { HERO_PAIRS, HOUR_MS, DAY_MS, SITE_MS, heroPicks, heroClock, heroTime, hourFlows, specCodes, hourWindows, timelineRules, ruleResults, focusHour, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames, hourText };")();
+const dir = process.argv[2];
+const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
+const views = Object.fromEntries(index.chips.map((c) => [c.id, JSON.parse(fs.readFileSync(path.join(dir, c.file), "utf8"))]));
+const out = {};
+for (const [key, expr] of Object.entries(JSON.parse(process.argv[3]))) out[key] = new Function("f", "views", "index", `return (${expr});`)(f, views, index);
 console.log(JSON.stringify(out));
 """
 
 
-def landing(cases: dict) -> dict:
-    result = subprocess.run([NODE, "-e", LANDING, str(WEB_DIR / "landing.js"), str(REPLAYS / "index.json"), json.dumps(cases)], capture_output=True, text=True, encoding="utf-8")
+def landing(**exprs: str) -> dict:
+    """Evaluate JS expressions over landing.js's pure functions `f`, the replays `views` and `index`."""
+    result = subprocess.run([NODE, "-e", LANDING, str(WEB_DIR / "landing.js"), str(REPLAYS), json.dumps(exprs)], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
 
 
+def replay(chip_id: str) -> dict:
+    return json.loads((REPLAYS / f"{chip_id}.json").read_text(encoding="utf-8"))
+
+
+def hero_ids() -> list[str]:
+    return landing(picks="f.heroPicks(index.chips).map((c) => c.id)")["picks"]
+
+
 def test_hero_plays_nairobi_english_then_ahmedabad_hindi_then_the_held_out_site_in_spanish() -> None:
-    """The third example is the held-out household site; it is named only through landing.js and the
+    """The third day is the held-out household site; it is named only through landing.js and the
     replay index, never in tests (test_days guards that)."""
-    out = landing({"frames": [], "specs": []})
-    pairs = out["constants"]["pairs"]
+    out = landing(pairs="f.HERO_PAIRS", picks="f.heroPicks(index.chips).map((c) => c && c.id)", missing='f.heroPicks(index.chips, [["nairobi_clinic", "en"], ["nowhere", "xx"]]).map((c) => c && c.id)')
+    pairs = out["pairs"]
     assert pairs[:2] == [["nairobi_clinic", "en"], ["ahmedabad_cold_store", "hi"]] and pairs[2][1] == "es"
     chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
     third = [c for c in chips if [c["site_id"], c["language"]] == pairs[2]]
@@ -179,26 +190,106 @@ def test_hero_plays_nairobi_english_then_ahmedabad_hindi_then_the_held_out_site_
     assert out["picks"] == ["nairobi-outage-reserve-en", "ahmedabad-outage-hi", third[0]["id"]]  # an everyday goal before a hard one
     assert out["missing"] == ["nairobi-outage-reserve-en", None]  # a missing pair is skipped, never replaced
     for pick in out["picks"]:
-        view = json.loads((REPLAYS / f"{pick}.json").read_text(encoding="utf-8"))
-        assert view["same_day"]["agent"]["goals_met"] and view["plan"]["verified"]
+        assert replay(pick)["same_day"]["agent"]["goals_met"] and replay(pick)["plan"]["verified"]
 
 
-def test_hero_timing_and_rotation() -> None:
-    ms = 9000
-    frames = [[0, 3], [1799, 3], [1800, 3], [3200, 3], [5600, 3], [8999, 3], [9000, 3], [2 * ms + 4000, 3], [3 * ms, 3], [3 * ms + 1800, 3], [-1, 3], [100, 0]]
-    out = landing({"frames": frames, "specs": []})
-    assert out["constants"]["exampleMs"] == ms and [s[1] for s in out["constants"]["steps"]] == [0, 1800, 3200, 5600]
-    got = [(f["index"], f["step"]) if f else None for f in out["frames"]]
-    assert got == [(0, "goal"), (0, "goal"), (0, "rules"), (0, "chart"), (0, "result"), (0, "result"), (1, "goal"), (2, "chart"), (0, "goal"), (0, "rules"), (2, "result"), None]
-    assert out["frames"][0]["progress"] == 0 and abs(out["frames"][5]["progress"] - 8999 / ms) < 1e-9
-    assert out["starts"] == [0, ms, 2 * ms]  # clicking line i jumps to the start of example i
+def test_translated_goals_carry_their_english_source() -> None:
+    chips = json.loads((REPLAYS / "index.json").read_text(encoding="utf-8"))["chips"]
+    for chip in chips:
+        goal = replay(chip["id"])["goal"]
+        if goal["language"] == "en":
+            assert goal["english"] is None
+        else:
+            assert goal["english"] and goal["english"] != goal["text"], chip["id"]
+    hindi, spanish = (replay(i)["goal"] for i in hero_ids()[1:])
+    assert hindi["english"].startswith("The grid will be off from 2 PM to 5 PM")
+    cap = replay(hero_ids()[2])["spec"]["import_caps"][0]["max_kw"]
+    assert f"{cap:g} kW" in spanish["text"] and f"{cap:g} kW" in spanish["english"]  # filled with the same value
 
 
-def test_rule_codes_windows_and_source_lines() -> None:
-    specs = [{"grid_outages": [{"start_hour": 9, "end_hour": 12}], "reserve_windows": [{}]}, {"import_caps": [{}], "no_export_windows": []}, {"end_of_day_min_soc_pct": 0}, {}, None]
-    out = landing({"frames": [], "specs": specs})
+def test_hero_clock_steps_through_the_hours_and_back() -> None:
+    out = landing(
+        consts="[f.HOUR_MS, f.DAY_MS, f.SITE_MS]",
+        frames="[0, 349, 350, 23 * 350, 8400, 9999, 10000, 2 * 10000 + 15 * 350, 30000, -1].map((t) => { const c = f.heroClock(t, 3); return [c.index, c.hour]; })",
+        none="f.heroClock(100, 0)",
+        times="[[0, 0], [1, 15], [2, 24]].map(([i, h]) => f.heroTime(i, h))",
+        roundtrip="[0, 1, 2].every((i) => [...Array(25).keys()].every((h) => { const c = f.heroClock(f.heroTime(i, h), 3); return c.index === i && c.hour === h; }))",
+        hours="[0, 9, 23].map(f.hourText)",
+    )
+    assert out["consts"] == [350, 8400, 10000]
+    assert out["frames"] == [[0, 0], [0, 0], [0, 1], [0, 23], [0, 24], [0, 24], [1, 0], [2, 15], [0, 0], [2, 24]]
+    assert out["none"] is None and out["times"] == [0, 15250, 28400] and out["roundtrip"] is True
+    assert out["hours"] == ["00:00", "09:00", "23:00"]
+
+
+def test_the_playhead_drives_the_diagram_with_the_replay_values() -> None:
+    ids = hero_ids()
+    out = landing(flows=f"{json.dumps(ids)}.map((id) => [...Array(25).keys()].map((h) => f.hourFlows(views[id], h)))")
+    for chip_id, flows in zip(ids, out["flows"]):
+        view = replay(chip_id)
+        sd, run_, plan = view["same_day"], view["same_day"]["agent"], view["plan"]
+        for hour in range(24):
+            got = flows[hour]
+            assert got["pv"] == sd["pv_actual_kw"][hour] and got["load"] == sd["load_actual_kw"][hour]
+            assert got["gridImport"] == run_["grid_import_kw"][hour] and got["gridExport"] == run_["grid_export_kw"][hour]
+            assert got["charge"] - got["discharge"] == pytest.approx(run_["battery_kw"][hour])
+            assert got["critical"] == plan["critical_load_kw"][hour]
+            assert got["socEnd"] == run_["soc_pct"][hour] and got["socStart"] == (plan["initial_soc_pct"] if hour == 0 else run_["soc_pct"][hour - 1])
+            assert got["outage"] == (hour in plan["goals"]["outage_hours"])
+            assert abs(got["balance"]) < 0.01, (chip_id, hour, got["balance"])  # energy in = energy out
+            assert 0 <= got["curtail"] <= got["pv"] + 1e-9 and got["fullLoadServed"] is True
+            if got["outage"]:
+                assert got["gridImport"] == 0 and got["gridExport"] == 0
+        assert flows[24]["end"] is True and flows[24]["socEnd"] == run_["soc_pct"][23]
+
+
+def test_rules_are_drawn_on_the_timeline_and_checked() -> None:
+    nairobi, ahmedabad, third = hero_ids()
+    three = json.dumps([nairobi, ahmedabad, third])
+    out = landing(
+        rules=f"{three}.map((id) => f.timelineRules(views[id]))",
+        focus=f"{three}.map((id) => f.focusHour(views[id]))",
+        results=f'[f.ruleResults(views["{nairobi}"].spec, []), f.ruleResults(views["{nairobi}"].spec, ["RESERVE"]), f.ruleResults({{no_export_windows: [{{}}]}}, [])]',
+        codes="[{grid_outages: [{start_hour: 9, end_hour: 12}], reserve_windows: [{}]}, {import_caps: [{}], no_export_windows: []}, {end_of_day_min_soc_pct: 0}, {}, null].map(f.specCodes)",
+        windows="f.hourWindows([14, 9, 10, 11, 10])",
+    )
+    n, a, t = out["rules"]
+    required = replay(nairobi)["plan"]["goals"]["required_soc_pct"]
+    assert n["outages"] == [[9, 12]] and n["importCap"] == [] and n["listed"] == []
+    assert [f["hour"] for f in n["floor"]] == [h for h, v in enumerate(required) if v is not None] and {f["pct"] for f in n["floor"]} == {40}
+    assert a["outages"] == [[14, 17]] and a["floor"] == [] and a["importCap"] == []
+    assert t["outages"] == [] and [c["hour"] for c in t["importCap"]] == [13, 14, 15, 16] and {c["kw"] for c in t["importCap"]} == {7}
+    assert out["focus"] == [10, 15, 14]  # mid-outage, mid-outage, middle of the import cap
+    assert out["results"][0] == [{"code": "OUTAGE_DEFICIT", "met": True}, {"code": "RESERVE", "met": True}]
+    assert out["results"][1][1] == {"code": "RESERVE", "met": False}
+    assert out["results"][2] == [{"code": "NO_EXPORT", "met": True}]  # listed in words, not drawn
     assert out["codes"] == [["OUTAGE_DEFICIT", "RESERVE"], ["IMPORT_CAP"], ["END_SOC"], [], []]
     assert out["windows"] == [[9, 12], [14, 15]]
+
+
+def test_dot_grid_counts_reproduce_the_printed_rates_and_the_episode_records() -> None:
+    main = json.loads((WEB_DIR.parent / "results" / "report" / "summary.json").read_text(encoding="utf-8"))["tables"]
+    outage = {r["arm"]: r for r in main["outage_safety"]}
+    cases = [[outage["A2"]["plan physics valid"], outage["A2"]["episodes"]], [outage["A4"]["plan physics valid"], outage["A4"]["episodes"]], ["12.3%", 45], ["50%", 0]]
+    out = landing(counts=f"{json.dumps(cases)}.map(([rate, n]) => f.dotCount(rate, n))")
+    assert out["counts"] == [{"passed": 8, "failed": 37}, {"passed": 45, "failed": 0}, None, None]
+    # the same counts straight from the per-episode records of the frozen test run
+    rows = [json.loads(line) for line in (WEB_DIR.parent / "results" / "test-run" / "episodes.jsonl").read_text(encoding="utf-8").splitlines()]
+    outage_rows = [r for r in rows if r["spec_name"] in ("outage_critical", "outage_then_reserve")]
+    for arm, expected in (("A2", 8), ("A4", 45)):
+        mine = [r for r in outage_rows if r["arm"] == arm]
+        assert len(mine) == outage[arm]["episodes"] == 45 and sum(r["plan_physics_valid"] for r in mine) == expected
+
+
+def test_source_lines_and_parsers() -> None:
+    out = landing(
+        sources='[f.sourceLine("results/report/summary.json", "goal_satisfaction"), f.sourceLine("web/replays/x.json")]',
+        leading='["98.8% (257/260)", "17.8%", "+8.5 pts [+5.0, +11.9]", "n/a"].map(f.leadingNumber)',
+        shares='["98.8% (257/260)", "100.0%", "n/a"].map(f.parseShare)',
+        deltas='["+8.5 pts [+5.0, +11.9]", "-1.2 pts [-3.0, +0.4]", "x"].map(f.parseDelta)',
+        names='f.armNames([{arm: "A2", name: "LLM writes schedule"}, {arm: "A4", name: "VoltProof"}])',
+        row='f.rowFor([{arm: "A2", v: 1}, {arm: "A4", v: 2}], "arm", "A4")',
+    )
     assert out["sources"] == ["Source: results/report/summary.json · goal_satisfaction", "Source: web/replays/x.json"]
     assert out["leading"] == ["98.8%", "17.8%", "+8.5", None]
     assert out["shares"] == [{"pct": 98.8, "num": 257, "den": 260}, {"pct": 100, "num": None, "den": None}, None]
@@ -224,6 +315,6 @@ def test_the_numbers_the_landing_page_shows_parse_from_the_committed_results() -
 def test_every_page_script_parses() -> None:
     """The other tests load only slices of the scripts; a syntax error elsewhere (say, a comment closed
     early by a glob in its text) would stop the whole page, so check every script parses."""
-    for name in ("app.js", "charts.js", "landing.js"):
+    for name in ("theme.js", "app.js", "charts.js", "landing.js"):
         result = subprocess.run([NODE, "--check", str(WEB_DIR / name)], capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, f"{name}: {result.stderr}"

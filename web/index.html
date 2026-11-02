@@ -8,6 +8,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="An AI operator for solar + battery sites: say the goal in your own language; it plans the day and checks the plan before anything runs.">
   <title>VoltProof AI</title>
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script defer src="charts.js"></script>
@@ -19,7 +20,7 @@
 
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="#top">VoltProof AI</a>
+      <a class="brand" href="#top"><svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>VoltProof AI</a>
       <nav class="menu" aria-label="Sections">
         <ul>
           <li><a href="#problem">Problem</a></li>
@@ -30,7 +31,7 @@
         </ul>
       </nav>
       <div class="actions">
-        <button type="button" id="theme-toggle" class="tool-button" aria-pressed="false">Dark mode</button>
+        <button type="button" id="theme-toggle" class="tool-button" aria-label="Switch to dark theme"><span class="tool-icon" aria-hidden="true">☾</span><span class="tool-text">Dark</span></button>
         <button type="button" id="copy-link" class="tool-button">Copy link</button>
         <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
       </div>
@@ -38,82 +39,99 @@
   </header>
 
   <main id="main">
-    <!-- 1. Hero -->
+    <!-- 1. Hero: the claim, then one recorded day played back -->
     <section id="top" class="hero" aria-labelledby="hero-title">
-      <div class="hero-text">
+      <div class="hero-head">
         <h1 id="hero-title">A battery plan you can check before it runs.</h1>
         <p class="subtitle">An AI operator for solar + battery sites. You say the goal in your own language; it plans the day and checks the plan before anything runs.</p>
         <div class="cta">
           <a class="button primary" href="#try">Try it</a>
           <a class="button secondary" href="#evidence">See the evidence</a>
+          <span class="built">Built with Muse Spark Open</span>
         </div>
       </div>
-      <div class="hero-demo">
-        <div id="hero-card" class="hero-card" tabindex="0" role="group" aria-roledescription="example player" aria-label="Recorded example runs. The player pauses while you point at it or it has keyboard focus.">
-          <p class="hero-card-label">Replay of recorded runs</p>
-          <div id="hero-slides" class="hero-slides">
-            <p class="hint">Recorded examples load here.</p>
-          </div>
-          <div id="hero-progress" class="hero-progress" role="group" aria-label="Choose an example"></div>
-          <p id="hero-live" class="visually-hidden" aria-live="polite"></p>
+
+      <div id="day-panel" class="day-panel" role="region" aria-labelledby="day-title" aria-describedby="day-note">
+        <div class="day-top">
+          <h2 id="day-title" class="day-title">The day</h2>
+          <p id="day-note" class="day-note">Recorded run, replayed on the same-day weather.</p>
         </div>
+        <div id="site-switch" class="site-switch" role="group" aria-label="Recorded days"></div>
+        <div id="day-body" class="day-body">
+          <p class="hint">The recorded days load here.</p>
+        </div>
+        <p id="day-live" class="visually-hidden" aria-live="polite"></p>
       </div>
     </section>
 
     <!-- 2. Problem -->
     <section id="problem" class="section" aria-labelledby="problem-title">
-      <div class="section-inner split reveal">
-        <div>
-          <p class="kicker">The problem</p>
+      <div class="section-inner split">
+        <div class="reveal">
           <h2 id="problem-title">Batteries are easy to buy and hard to run well.</h2>
           <p class="lead">An operator has to plan around grid outages, prices that change by the hour and battery wear, every day. Asking an AI to write the plan sounds easy, but a plan written as text can quietly break physics: charge the battery past full, or count on energy that is not there when the grid goes down.</p>
         </div>
-        <div id="problem-number" class="figure-card" aria-live="off">
-          <p class="hint">The benchmark number loads from the app server.</p>
-        </div>
+        <figure id="problem-dots" class="dots-figure reveal">
+          <p class="hint">The benchmark numbers load from the app server.</p>
+        </figure>
       </div>
     </section>
 
-    <!-- 3. How it works -->
+    <!-- 3. How it works: one pipeline, AI zone and tool zone -->
     <section id="how" class="section" aria-labelledby="how-title">
       <div class="section-inner">
-        <p class="kicker reveal">How it works</p>
-        <h2 id="how-title" class="reveal">Four steps. Only one of them is AI.</h2>
-        <ol class="how-cards">
-          <li class="how-card reveal">
-            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M8 10h32a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H22l-9 7v-7H8a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M14 20h20M14 26h13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-            <p class="how-step">Step 1</p>
-            <h3>You say the goal</h3>
-            <p>In your own words and language: an outage, a reserve to keep, a price to dodge.</p>
+        <h2 id="how-title" class="reveal">The AI proposes. Deterministic tools decide.</h2>
+        <p class="lead reveal">Every typed goal goes through the same line. Point at or focus a step for one more sentence.</p>
+        <ol class="pipeline reveal" aria-label="How a goal becomes a checked plan">
+          <li class="pipe-node pipe-user" tabindex="0">
+            <span class="pipe-name">Your goal</span>
+            <span class="pipe-line">In your own words and language.</span>
+            <span class="pipe-more">An outage, a reserve to keep, a price window to avoid.</span>
           </li>
-          <li class="how-card reveal">
-            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="7" y="6" width="34" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M14 16l3 3 5-6M14 29l3 3 5-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 17h8M27 30h8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-            <p class="how-step">Step 2</p>
-            <h3>AI turns it into rules</h3>
-            <p>Muse Spark Open writes exact, checkable rules, and a separate AI review checks they match what you asked.</p>
+          <li class="pipe-zone pipe-ai" aria-label="AI zone">
+            <span class="zone-label">AI</span>
+            <ol class="zone-nodes">
+              <li class="pipe-node" tabindex="0">
+                <span class="pipe-name">Muse Spark Open writes the rules</span>
+                <span class="pipe-line">Exact, checkable rules, not a schedule.</span>
+                <span class="pipe-more">Hours, levels and limits the optimizer can check, plus the assumptions it made.</span>
+              </li>
+              <li class="pipe-node" tabindex="0">
+                <span class="pipe-name">A separate AI review checks them</span>
+                <span class="pipe-line">Do the rules say what you asked?</span>
+                <span class="pipe-more">It sees only your goal, the site and the rules, and raises any mismatch.</span>
+              </li>
+            </ol>
           </li>
-          <li class="how-card reveal">
-            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M6 40h36" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M8 32l9-10 8 6 13-16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="38" cy="12" r="3.5" fill="currentColor"/></svg>
-            <p class="how-step">Step 3</p>
-            <h3>An optimizer plans the day</h3>
-            <p>A mathematical optimizer finds the cheapest hour-by-hour battery plan that meets every rule.</p>
-          </li>
-          <li class="how-card reveal">
-            <svg class="how-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M24 5l15 6v11c0 10-6.5 17-15 21C15.5 39 9 32 9 22V11z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M17 24l5 5 9-10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <p class="how-step">Step 4</p>
-            <h3>A checker verifies, then replays it on real weather</h3>
-            <p>Physics checks the plan before anything runs; then it is replayed on the same-day weather next to a simple rule-based battery.</p>
+          <li class="pipe-boundary" aria-label="Boundary: the AI proposes, the tools decide"><span>AI proposes</span><span class="boundary-bar" aria-hidden="true"></span><span>tools decide</span></li>
+          <li class="pipe-zone pipe-tools" aria-label="Deterministic tools">
+            <span class="zone-label">Tools</span>
+            <ol class="zone-nodes">
+              <li class="pipe-node" tabindex="0">
+                <span class="pipe-name">Optimizer plans the day</span>
+                <span class="pipe-line">The cheapest plan that meets every rule.</span>
+                <span class="pipe-more">A linear program over the day's forecast, hour by hour.</span>
+              </li>
+              <li class="pipe-node pipe-gate" tabindex="0">
+                <span class="pipe-name">Physics checker</span>
+                <span class="pipe-line"><span class="gate-pass">pass → run</span> · <span class="gate-fail">fail → back to the AI</span></span>
+                <span id="repair-note" class="pipe-more">Battery limits, the grid connection and every rule are checked before anything runs.</span>
+              </li>
+              <li class="pipe-node" tabindex="0">
+                <span class="pipe-name">Replay on the same-day weather</span>
+                <span class="pipe-line">Next to a rule-based battery.</span>
+                <span class="pipe-more">The plan runs on what the weather model says happened, so the comparison is fair.</span>
+              </li>
+            </ol>
           </li>
         </ol>
-        <p class="motto reveal">The AI proposes. Deterministic tools decide.</p>
       </div>
     </section>
 
     <!-- 4. Try it: the existing tool, unchanged in behaviour -->
     <section id="try" class="section try" aria-labelledby="try-title">
       <div class="section-inner">
-        <p class="kicker">Try it</p>
-        <h2 id="try-title">Pick a site and a goal.</h2>
+        <h2 id="try-title">Try it</h2>
         <p class="lead">Recorded goals replay instantly and cost nothing. A typed goal runs the AI live when live runs are available.</p>
 
         <div id="setup" class="panel" tabindex="-1">
@@ -155,7 +173,6 @@
     <!-- 5. Evidence -->
     <section id="evidence" class="section" aria-labelledby="evidence-title">
       <div class="section-inner">
-        <p class="kicker reveal">Evidence</p>
         <h2 id="evidence-title" class="reveal">Tested on goals it never saw while it was being built.</h2>
         <p id="evidence-size" class="lead reveal">Every approach gets the same test goals, sites and days.</p>
         <div id="evidence-numbers" class="big-numbers reveal">
@@ -174,7 +191,6 @@
     <!-- 6. Honest limits -->
     <section id="limits" class="section" aria-labelledby="limits-title">
       <div class="section-inner narrow reveal">
-        <p class="kicker">Honest limits</p>
         <h2 id="limits-title">What this demo is, and is not.</h2>
         <ul class="limits">
           <li><strong>Synthetic sites.</strong> Sites, tariffs, prices and loads are illustrative, not real customer data. No real device is controlled.</li>

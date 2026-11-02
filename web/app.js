@@ -272,6 +272,7 @@
      kept on, the value is neutral and the reason is said. */
   function costLine(sd, currency, spec, explain) {
     const diff = sd.cost_difference;
+    if (Math.round(Math.abs(diff) * 100) === 0) return { value: "Same cost as the rule-based battery", tone: "neutral", explain, same: true };
     if (diff >= 0) return { value: `${money(diff, currency)} cheaper`, tone: "ok", explain };
     const value = `${money(-diff, currency)} more expensive`;
     const metOnly = sd.agent.goals_met && !sd.rule_based.goals_met;

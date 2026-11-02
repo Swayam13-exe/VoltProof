@@ -34,7 +34,8 @@ def test_policy_allows_no_inline_code_and_only_the_pinned_chart_library() -> Non
     assert "script-src 'self' https://cdnjs.cloudflare.com" in CONTENT_SECURITY_POLICY and "connect-src 'self'" in CONTENT_SECURITY_POLICY
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     sources = re.findall(r'<script[^>]*src="([^"]+)"', html)
-    assert sources == [CHART_JS, "charts.js", "app.js", "landing.js"]
+    assert sources == ["theme.js", CHART_JS, "charts.js", "app.js", "landing.js"]
+    assert '<script src="theme.js"></script>' in html.split("</head>")[0]  # synchronous in <head>: no theme flash
     assert re.search(rf'src="{re.escape(CHART_JS)}" integrity="sha512-[A-Za-z0-9+/=]+" crossorigin="anonymous"', html)
     assert not re.search(r"<script(?![^>]*src=)[^>]*>", html)  # no inline script
     assert " style=" not in html and "<style" not in html and not re.search(r"<[^>]+\son[a-z]+=", html)  # no inline style or handlers
@@ -42,7 +43,7 @@ def test_policy_allows_no_inline_code_and_only_the_pinned_chart_library() -> Non
 
 
 def test_the_page_never_inserts_html() -> None:
-    for name in ("app.js", "charts.js", "landing.js"):
+    for name in ("theme.js", "app.js", "charts.js", "landing.js"):
         source = (WEB_DIR / name).read_text(encoding="utf-8")
         code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)  # comments may mention the rule itself
         code = re.sub(r"^\s*//.*$", "", code, flags=re.M)
@@ -74,3 +75,13 @@ def test_landing_sections_menu_and_no_hand_typed_numbers() -> None:
     visible = visible[visible.index("Skip to"):]
     numbers = set(re.findall(r"(?<![\w-])\d+(?:[.,:]\d+)*%?(?![\w-])", visible))  # standalone numbers, not names like Swayam13
     assert numbers <= {"1", "2", "3", "4", "0", "500", "4.0"}, numbers  # step labels, the goal box counter, CC BY 4.0
+
+
+def test_content_is_visible_without_javascript() -> None:
+    """Reveal-on-scroll is progressive: CSS hides .reveal content only under the class landing.js adds
+    (and removes after a safety timer), so with no script, or a failed one, every section shows."""
+    css = re.sub(r"/\*.*?\*/", "", (WEB_DIR / "styles.css").read_text(encoding="utf-8"), flags=re.S)
+    hiding = [rule for rule in re.findall(r"([^{}]+)\{([^}]*)\}", css) if "opacity: 0" in rule[1] and ".reveal" in rule[0]]
+    assert hiding and all(selector.strip().startswith(".reveal-armed") for selector, _ in hiding)
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    assert 'classList.add("reveal-armed")' in landing and 'classList.remove("reveal-armed"), 1500' in landing

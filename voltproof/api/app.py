@@ -31,6 +31,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from voltproof.agents.loop import ChatLLM
+from voltproof.agents.voltproof import MAX_REPAIRS
 from voltproof.api.live import RUN_RESERVE_USD, Limits, LiveState, RunStore, client_ip, run_live
 from voltproof.api.view import day_card, site_card
 from voltproof.bench.episode import DayBuilder, processed_day_builder
@@ -107,6 +108,8 @@ def benchmark_summary(results_dir: Path) -> dict[str, Any]:
         "e2": (e2.get("tables") or {}).get("goal_satisfaction"),
         "e3": e3.get("summary"),
         "e4": (e4.get("tables") or {}).get("e4_by_effort"),
+        # facts from the frozen code the page states (it never types a number by hand)
+        "code": {"max_repairs": MAX_REPAIRS, "max_repairs_source": "voltproof/agents/voltproof.py (MAX_REPAIRS)"},
     }
 
 

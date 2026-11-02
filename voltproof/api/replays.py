@@ -8,6 +8,9 @@ spec exactly matching gold, reviewer approved, no repairs. Building a replay:
 3. check that the recovered plan reproduces the benchmark row (realized_cost within 1e-9,
    gold_satisfied, unserved_critical_kwh within 1e-9) through the benchmark's own evaluate
 4. build the page view with `view_model` (no LLM, no weather files needed afterwards)
+5. a translated goal also carries the English sentence it was translated from (`goal.english`): the
+   user's own English source in intents.yaml / intents_hard.yaml, filled with the same site and day
+   values by the frozen `multilingual_goal`, which must reproduce the recorded goal text exactly
 """
 
 from __future__ import annotations
@@ -18,6 +21,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from voltproof.api.view import view_model
+from voltproof.bench import intents as main_intents
+from voltproof.bench import intents_hard
 from voltproof.bench.counterfactual import read_trace, recover_a4, rows_by_key, run_episodes
 from voltproof.bench.episode import Episode, evaluate
 from voltproof.config import PROJECT_ROOT
@@ -89,6 +94,23 @@ def replay_meta(run_dir: Path, row: Mapping[str, Any], config: Mapping[str, Any]
     }
 
 
+def english_source(episode: Episode, config: Mapping[str, Any]) -> str | None:
+    """The English sentence a translated goal was written from, or None for an English goal."""
+    goal = episode.goal
+    if goal.language == "en":
+        return None
+    hard = (config.get("args") or {}).get("intents") == "hard"
+    module = intents_hard if hard else main_intents
+    intents = intents_hard.load_hard_intents() if hard else main_intents.load_intents()
+    goal_id = goal.goal_id.removesuffix(f"_{goal.language}")
+    source = next((m for m in intents.multilingual if m.id == goal_id), None)
+    if source is None:
+        raise ReplayCheckFailed(f"{episode.episode_id}: no multilingual goal {goal_id!r}")
+    if module.multilingual_goal(intents, source, goal.language, episode.site, episode.tariff).text != goal.text:
+        raise ReplayCheckFailed(f"{episode.episode_id}: the intents file no longer reproduces the recorded goal text")
+    return module.multilingual_goal(intents, source, "en", episode.site, episode.tariff).text
+
+
 def build_replay(episode: Episode, run_dir: Path, row: Mapping[str, Any], config: Mapping[str, Any]) -> dict[str, Any]:
     events = read_trace(run_dir, "A4", episode.episode_id)
     plan = recover_a4(episode, events)
@@ -113,6 +135,7 @@ def build_replay(episode: Episode, run_dir: Path, row: Mapping[str, Any], config
         shown = view["same_day"]["agent"]["realized_cost"]
         if abs(shown - round(row["realized_cost"], 2)) > 0.005 + 1e-9:
             raise ReplayCheckFailed(f"{episode.episode_id}: the page would show {shown}, the benchmark has {row['realized_cost']}")
+    view["goal"]["english"] = english_source(episode, config)
     return view
 
 
