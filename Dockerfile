@@ -29,6 +29,9 @@ COPY --chown=app:app results/report/summary.json results/report/
 COPY --chown=app:app results/e2/summary.json results/e2/
 COPY --chown=app:app results/e3/summary.json results/e3/
 COPY --chown=app:app results/e4/summary.json results/e4/
+# the sample bills and their recorded reads (the bill reader without live AI)
+COPY --chown=app:app data/vision_samples/bill_1_tou_inr.png data/vision_samples/bill_1_tou_inr.json data/vision_samples/bill_2_flat_kes.png data/vision_samples/bill_2_flat_kes.json data/vision_samples/bill_3_tou_eur.png data/vision_samples/bill_3_tou_eur.json data/vision_samples/
+COPY --chown=app:app results/vision_probe/results.json results/vision_probe/
 COPY --chown=app:app LICENSE ./
 
 # /app is the app user's, so the LLM client can create .cache/ and runs/ (cache and spend ledger) at

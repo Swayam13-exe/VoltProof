@@ -1,0 +1,18 @@
+{
+  "expect": "read",
+  "why": "export credit to read",
+  "site_currency": "KES",
+  "tariff": {
+    "currency": "KES",
+    "tariff_kind": "flat",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 24,
+        "import_rate": 22.0
+      }
+    ],
+    "export_rate": 9.75,
+    "fixed_charge": 1100.0
+  }
+}

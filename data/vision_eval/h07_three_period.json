@@ -1,0 +1,38 @@
+{
+  "expect": "read",
+  "why": "three rates, one split in two",
+  "site_currency": "INR",
+  "tariff": {
+    "currency": "INR",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 7,
+        "import_rate": 5.2
+      },
+      {
+        "start_hour": 7,
+        "end_hour": 16,
+        "import_rate": 7.0
+      },
+      {
+        "start_hour": 16,
+        "end_hour": 21,
+        "import_rate": 11.5
+      },
+      {
+        "start_hour": 21,
+        "end_hour": 23,
+        "import_rate": 7.0
+      },
+      {
+        "start_hour": 23,
+        "end_hour": 24,
+        "import_rate": 5.2
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 400.0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "expect": "refuse",
+  "why": "USD bill for an INR site",
+  "site_currency": "INR",
+  "tariff": {
+    "currency": "USD",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 15,
+        "import_rate": 0.112
+      },
+      {
+        "start_hour": 15,
+        "end_hour": 21,
+        "import_rate": 0.194
+      },
+      {
+        "start_hour": 21,
+        "end_hour": 24,
+        "import_rate": 0.112
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 12.0
+  }
+}

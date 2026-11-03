@@ -521,3 +521,34 @@ def test_redact_removes_secret_and_auth_tokens() -> None:
     cleaned = redact(text, SENTINEL)
     assert SENTINEL not in cleaned
     assert "abcdefgh12345678" not in cleaned and "zyxwvuts98765432" not in cleaned
+
+
+IMAGE_MESSAGES = [
+    {"role": "system", "content": "Read the bill."},
+    {"role": "user", "content": [{"type": "text", "text": "Return JSON."}, {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + "A" * 400_000}}]},
+]
+
+
+def test_worst_case_counts_an_image_as_a_fixed_token_block_not_its_base64(settings: Settings) -> None:
+    from voltproof.llm.client import IMAGE_TOKENS_ESTIMATE
+
+    with_image = worst_case_cost_usd(IMAGE_MESSAGES, None, None, settings)
+    text_only = worst_case_cost_usd([IMAGE_MESSAGES[0], {"role": "user", "content": [{"type": "text", "text": "Return JSON."}]}], None, None, settings)
+    image_share = with_image - text_only
+    assert IMAGE_TOKENS_ESTIMATE * settings.price_input_usd_per_m / 1e6 == pytest.approx(image_share, abs=2e-5)  # the image adds its fixed block
+    as_text = (400_000 / 3) * settings.price_input_usd_per_m / 1e6  # what counting the base64 as text would have reserved
+    assert image_share < as_text / 40
+    measured = (2190 * settings.price_input_usd_per_m + 900 * settings.price_output_usd_per_m) / 1e6  # the probe's heaviest call
+    assert with_image > measured  # still an upper bound for the measured calls
+
+
+def test_cache_false_keeps_no_trace_of_the_request(settings: Settings) -> None:
+    sdk = FakeSDK(make_response("{}"), make_response("{}"))
+    client = make_client(settings, sdk)
+    client.chat(IMAGE_MESSAGES, purpose="bill", tags={"demo": True, "purpose": "bill"}, cache=False)
+    client.chat(IMAGE_MESSAGES, purpose="bill", tags={"demo": True, "purpose": "bill"}, cache=False)
+    assert len(sdk.calls) == 2  # never served from a cache
+    assert not settings.cache_dir.exists() or not any(settings.cache_dir.rglob("*"))  # nothing written
+    lines = ledger_lines(settings)
+    assert [line["cache_key"] for line in lines] == ["", ""] and all(line["tags"] == {"demo": True, "purpose": "bill"} for line in lines)
+    assert "AAAA" not in settings.ledger_path.read_text(encoding="utf-8")

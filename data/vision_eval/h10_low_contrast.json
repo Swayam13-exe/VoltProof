@@ -1,0 +1,28 @@
+{
+  "expect": "read",
+  "why": "pale print, photographed",
+  "site_currency": "INR",
+  "tariff": {
+    "currency": "INR",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 6,
+        "import_rate": 6.4
+      },
+      {
+        "start_hour": 6,
+        "end_hour": 18,
+        "import_rate": 8.2
+      },
+      {
+        "start_hour": 18,
+        "end_hour": 24,
+        "import_rate": 9.6
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 500.0
+  }
+}

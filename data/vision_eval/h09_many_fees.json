@@ -1,0 +1,28 @@
+{
+  "expect": "read",
+  "why": "many fee lines around the rates",
+  "site_currency": "EUR",
+  "tariff": {
+    "currency": "EUR",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 8,
+        "import_rate": 0.21
+      },
+      {
+        "start_hour": 8,
+        "end_hour": 20,
+        "import_rate": 0.34
+      },
+      {
+        "start_hour": 20,
+        "end_hour": 24,
+        "import_rate": 0.21
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 12.4
+  }
+}

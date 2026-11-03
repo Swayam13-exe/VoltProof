@@ -1,7 +1,8 @@
 """Draw the synthetic sample bills for the tariff-from-image feasibility probe (SPEC §6.12).
 
 PowerShell, from the repo root:
-    python scripts\\make_vision_samples.py
+    python scripts\\make_vision_samples.py           # the three samples (data/vision_samples/)
+    python scripts\\make_vision_samples.py --hard    # the ten harder bills for scripts/vision_eval.py (data/vision_eval/)
 
 Writes data/vision_samples/: three bills in different layouts, each with a ground-truth JSON next to it,
 and a phone-photo-like version of each (slight rotation, lighting, blur, noise, JPEG quality 60). Every
@@ -267,9 +268,192 @@ def photo_like(page: Image.Image, angle: float, seed: int) -> Image.Image:
 BILLS = (("bill_1_tou_inr", bill_inr, 2.4), ("bill_2_flat_kes", bill_kes, -1.7), ("bill_3_tou_eur", bill_eur, 3.1))
 
 
-def main() -> int:
+# --- the harder set for the bill reader's evaluation (scripts/vision_eval.py) -----------------------------
+#
+# Ten bills that each test one thing. Every truth file says what the reader should do with the bill on a
+# site in `site_currency`: "read" (and the tariff it should read) or "refuse" (and why: the model should
+# say it is unreadable, or the validators should block it). Written to data/vision_eval/, which the app
+# never serves.
+
+EVAL_OUT = ROOT / "data" / "vision_eval"
+DEVANAGARI = (Path("C:/Windows/Fonts/Nirmala.ttc"), Path("/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf"))
+_deva: dict[int, ImageFont.FreeTypeFont] = {}
+
+
+def deva_font(size: int) -> ImageFont.FreeTypeFont:
+    if size not in _deva:
+        path = next((p for p in DEVANAGARI if p.is_file()), None)
+        if path is None:
+            raise SystemExit("no Devanagari font found (looked for Nirmala UI and Noto Sans Devanagari)")
+        _deva[size] = ImageFont.truetype(str(path), size)
+    return _deva[size]
+
+
+def plain_bill(
+    utility: str,
+    subtitle: str,
+    account: list[tuple[str, str]],
+    table_title: str,
+    header: tuple[str, str, str],
+    rows: list[tuple[str, str, str]],
+    lines: list[tuple[str, str]],
+    footer: str,
+    *,
+    brand: tuple[int, int, int] = (40, 70, 120),
+    ink: tuple[int, int, int] = INK,
+    muted: tuple[int, int, int] = MUTED,
+    paper: tuple[int, int, int] = WHITE,
+    hindi: bool = False,
+) -> Image.Image:
+    """One page: a header band, the account, a rate table, other lines (charges, credits), a footer and
+    the SAMPLE stamp."""
+    page = Image.new("RGB", SIZE, paper)
+    d = ImageDraw.Draw(page)
+
+    def put(xy: tuple[float, float], s: str, size: int = 18, bold: bool = False, fill=ink, anchor: str = "la") -> None:
+        d.text(xy, s, font=deva_font(size) if hindi else font(size, bold), fill=fill, anchor=anchor)
+
+    d.rectangle((0, 0, SIZE[0], 104), fill=brand)
+    put((40, 26), utility, 30, True, paper)
+    put((40, 68), subtitle, 17, False, paper)
+    for i, (k, v) in enumerate(account):
+        put((40, 136 + i * 30), k, 16, False, muted)
+        put((300, 136 + i * 30), v, 16, True)
+    top = 160 + len(account) * 30
+    put((40, top), table_title, 22, True, brand)
+    cols = (40, 330, 600, SIZE[0] - 40)
+    top += 40
+    d.rectangle((cols[0], top, cols[-1], top + 42), fill=tuple(min(255, c + 150) for c in brand) if paper == WHITE else paper)
+    for x, label in zip(cols[:-1], header):
+        put((x + 12, top + 21), label, 16, True, ink, "lm")
+    for i, row in enumerate(rows):
+        y = top + 42 + i * 46
+        for x, cell in zip(cols[:-1], row):
+            put((x + 12, y + 23), cell, 18, False, ink, "lm")
+        d.line((cols[0], y, cols[-1], y), fill=muted, width=1)
+    bottom = top + 42 + len(rows) * 46
+    d.rectangle((cols[0], top, cols[-1], bottom), outline=muted, width=2)
+    for x in cols[1:-1]:
+        d.line((x, top, x, bottom), fill=muted, width=1)
+    y = bottom + 36
+    for k, v in lines:
+        put((50, y), k, 17)
+        put((SIZE[0] - 50, y), v, 17, True, ink, "ra")
+        d.line((40, y + 30, SIZE[0] - 40, y + 30), fill=muted, width=1)
+        y += 42
+    put((40, 1070), footer, 14, False, muted)
+    stamp(page, (SIZE[0] - 246, 1010))
+    return page
+
+
+def periods(*spans: tuple[float, float, float]) -> list[dict]:
+    return [{"start_hour": a, "end_hour": b, "import_rate": r} for a, b, r in spans]
+
+
+def hard_bills() -> list[tuple[str, Image.Image, str, dict]]:
+    """(name, image, file suffix, truth) for the ten harder bills."""
+    out: list[tuple[str, Image.Image, str, dict]] = []
+    inr_account = [("Consumer", "Shanti Dairy Co-op (fictional)"), ("Consumer no.", "77-2210-041"), ("Billing period", "01-Nov-2025 to 30-Nov-2025")]
+
+    # 1. unreadable: a time-of-use bill, heavily blurred
+    page = plain_bill("NARMADA GRID SUPPLY LTD", "Time-of-Day tariff", inr_account, "Energy charges", ("Slot", "Hours", "Rate per kWh"),
+                      [("Off-peak", "22:00 - 06:00", "₹ 5.40"), ("Normal", "06:00 - 18:00", "₹ 7.10"), ("Peak", "18:00 - 22:00", "₹ 9.60")],
+                      [("Fixed charge (per month)", "₹ 350.00")], "SAMPLE - synthetic bill for software testing; utility and consumer are fictional.")
+    small = page.resize((SIZE[0] // 5, SIZE[1] // 5), Image.BILINEAR).filter(ImageFilter.GaussianBlur(2.2))
+    out.append(("h01_unreadable_blur", small.resize(SIZE, Image.BILINEAR).filter(ImageFilter.GaussianBlur(4)), "jpg",
+                {"expect": "refuse", "why": "unreadable: heavy blur", "site_currency": "INR", "tariff": None}))
+
+    # 2. Hindi labels (digits and the rupee sign as usual). Pillow here draws without a text shaper, so
+    #    the labels use only words whose letters draw correctly unshaped (no "ि" vowel sign, no conjuncts).
+    rows = [("रात (कम दर)", "23:00 - 06:00", "₹ 6.10"), ("दोपहर (आम दर)", "06:00 - 17:00", "₹ 7.80"), ("शाम (ऊंची दर)", "17:00 - 23:00", "₹ 10.40")]
+    page = plain_bill("गंगा पावर कंपनी", "समय के अनुसार दर (TOD)", [("नाम", "राम डेरी (नकली नाम)"), ("खाता नंबर", "51-7730-112"), ("महीना", "नवंबर 2025")],
+                      "दर", ("समय खंड", "घंटे", "दर (₹ / kWh)"), rows,
+                      [("हर महीने की फीस", "₹ 300.00"), ("सोलर बेचने पर जमा (₹ / kWh)", "₹ 3.00")],
+                      "SAMPLE - synthetic bill for software testing; utility and consumer are fictional.", brand=(120, 50, 20), hindi=True)
+    out.append(("h02_hindi_labels", page, "png", {"expect": "read", "why": "Hindi labels", "site_currency": "INR",
+                "tariff": {"currency": "INR", "tariff_kind": "time_of_use", "periods": periods((0, 6, 6.1), (6, 17, 7.8), (17, 23, 10.4), (23, 24, 6.1)), "export_rate": 3.0, "fixed_charge": 300.0}}))
+
+    # 3. half-hour boundaries: the validators must block (whole hours only)
+    page = plain_bill("SABARMATI VALLEY ELECTRIC LTD", "Time-of-Day tariff (revised slots)", inr_account, "Time-of-Day energy charges", ("Slot", "Hours", "Rate per kWh"),
+                      [("Off-peak", "22:30 - 06:30", "₹ 5.80"), ("Normal", "06:30 - 17:30", "₹ 7.40"), ("Peak", "17:30 - 22:30", "₹ 9.90")],
+                      [("Fixed charge (per month)", "₹ 450.00")], "SAMPLE - synthetic bill for software testing; utility and consumer are fictional.")
+    out.append(("h03_half_hour", page, "png", {"expect": "refuse", "why": "half-hour slot boundaries", "site_currency": "INR",
+                "tariff": {"currency": "INR", "tariff_kind": "time_of_use", "periods": periods((0, 6.5, 5.8), (6.5, 17.5, 7.4), (17.5, 22.5, 9.9), (22.5, 24, 5.8)), "export_rate": None, "fixed_charge": 450.0}}))
+
+    # 4. wrong currency: a dollar bill offered for the rupee site
+    page = plain_bill("PRAIRIE LIGHT & POWER CO.", "Residential Time-of-Use statement", [("Customer", "J. Doe (fictional)"), ("Account", "8812-0045-3"), ("Service period", "Nov 1 - Nov 30, 2025")],
+                      "Energy charges", ("Period", "Hours", "Price per kWh"), [("Off-peak", "9 PM - 3 PM", "$0.112"), ("On-peak", "3 PM - 9 PM", "$0.194")],
+                      [("Basic service charge", "$12.00"), ("State tax", "6 %")], "SAMPLE - synthetic bill for software testing; utility and customer are fictional.", brand=(30, 90, 60))
+    out.append(("h04_wrong_currency", page, "png", {"expect": "refuse", "why": "USD bill for an INR site", "site_currency": "INR",
+                "tariff": {"currency": "USD", "tariff_kind": "time_of_use", "periods": periods((0, 15, 0.112), (15, 21, 0.194), (21, 24, 0.112)), "export_rate": None, "fixed_charge": 12.0}}))
+
+    # 5. a phone photo taken sideways
+    kes_account = [("Account", "Kibera Youth Workshop (fictional)"), ("Meter", "0091-2231-07"), ("Period", "01 Nov - 30 Nov 2025")]
+    page = plain_bill("LAKE BASIN ELECTRIC", "Time-of-use statement", kes_account, "Energy rates", ("Band", "Hours", "KES per kWh"),
+                      [("Night", "22:00 - 07:00", "18.00"), ("Day", "07:00 - 22:00", "27.50")],
+                      [("Fixed service charge (monthly)", "KES 950.00"), ("VAT", "16 %")], "SAMPLE - synthetic statement for software testing; utility and customer are fictional.", brand=(20, 100, 110))
+    out.append(("h05_rotated_photo", photo_like(page.rotate(90, expand=True), 2.0, 105), "jpg", {"expect": "read", "why": "sideways phone photo", "site_currency": "KES",
+                "tariff": {"currency": "KES", "tariff_kind": "time_of_use", "periods": periods((0, 7, 18.0), (7, 22, 27.5), (22, 24, 18.0)), "export_rate": None, "fixed_charge": 950.0}}))
+
+    # 6. flat tariff in euros
+    page = plain_bill("HAVELWERK STROM", "Electricity invoice  |  Single rate", [("Customer", "M. Keller (fictional)"), ("Meter no.", "1ESY1160552"), ("Period", "01.11.2025 - 30.11.2025")],
+                      "Energy price", ("Tariff", "Hours", "Price per kWh"), [("Single rate", "all day (00:00 - 24:00)", "31.50 ct")],
+                      [("Standing charge (per month)", "9.50 EUR"), ("VAT 19 %", "included")], "SAMPLE - synthetic invoice for software testing; supplier and customer are fictional.", brand=(90, 60, 130))
+    out.append(("h06_flat", page, "png", {"expect": "read", "why": "flat tariff, rate in cents", "site_currency": "EUR",
+                "tariff": {"currency": "EUR", "tariff_kind": "flat", "periods": periods((0, 24, 0.315)), "export_rate": None, "fixed_charge": 9.5}}))
+
+    # 7. three-period time-of-use, the shoulder rate split in two
+    page = plain_bill("DECCAN POWER DISTRIBUTION LTD", "Three-part Time-of-Day tariff", inr_account, "Energy charges", ("Slot", "Hours", "Rate per kWh"),
+                      [("Off-peak", "23:00 - 07:00", "₹ 5.20"), ("Standard", "07:00-16:00, 21:00-23:00", "₹ 7.00"), ("Peak", "16:00 - 21:00", "₹ 11.50")],
+                      [("Fixed charge (per month)", "₹ 400.00")], "SAMPLE - synthetic bill for software testing; utility and consumer are fictional.", brand=(110, 40, 80))
+    out.append(("h07_three_period", page, "png", {"expect": "read", "why": "three rates, one split in two", "site_currency": "INR",
+                "tariff": {"currency": "INR", "tariff_kind": "time_of_use", "periods": periods((0, 7, 5.2), (7, 16, 7.0), (16, 21, 11.5), (21, 23, 7.0), (23, 24, 5.2)), "export_rate": None, "fixed_charge": 400.0}}))
+
+    # 8. an export (net-metering) rate
+    page = plain_bill("MOUNT KENYA POWER", "Commercial statement  |  Flat rate with net metering", kes_account, "Energy", ("Item", "Hours", "KES per kWh"),
+                      [("Import energy", "all hours", "22.00")],
+                      [("Net-metering export credit, per kWh exported", "KES 9.75"), ("Fixed charge (monthly)", "KES 1,100.00"), ("VAT", "16 %")],
+                      "SAMPLE - synthetic statement for software testing; utility and customer are fictional.", brand=(30, 110, 60))
+    out.append(("h08_export_rate", page, "png", {"expect": "read", "why": "export credit to read", "site_currency": "KES",
+                "tariff": {"currency": "KES", "tariff_kind": "flat", "periods": periods((0, 24, 22.0)), "export_rate": 9.75, "fixed_charge": 1100.0}}))
+
+    # 9. many fee lines around a time-of-use rate
+    page = plain_bill("NORDKAMM ENERGY", "Electricity bill  |  Day/Night tariff", [("Customer", "S. Novak (fictional)"), ("Meter no.", "1ITF5503921"), ("Period", "01.11.2025 - 30.11.2025")],
+                      "Unit rates", ("Rate", "Hours", "Price per kWh"), [("Night", "20:00 - 08:00", "0.210 EUR"), ("Day", "08:00 - 20:00", "0.340 EUR")],
+                      [("Standing charge (per month)", "12.40 EUR"), ("Meter rental (per month)", "2.10 EUR"), ("Paper bill fee", "1.50 EUR"), ("Late payment fee (October)", "5.00 EUR"),
+                       ("Loyalty discount", "-4.00 EUR"), ("Renewables levy", "included in unit rates"), ("VAT 20 %", "included in unit rates"), ("Balance brought forward", "0.00 EUR")],
+                      "SAMPLE - synthetic bill for software testing; supplier and customer are fictional.", brand=(50, 80, 100))
+    out.append(("h09_many_fees", page, "png", {"expect": "read", "why": "many fee lines around the rates", "site_currency": "EUR",
+                "tariff": {"currency": "EUR", "tariff_kind": "time_of_use", "periods": periods((0, 8, 0.21), (8, 20, 0.34), (20, 24, 0.21)), "export_rate": None, "fixed_charge": 12.4}}))
+
+    # 10. low contrast: pale grey print, photographed
+    page = plain_bill("KAVERI ELECTRIC SUPPLY CO.", "Time-of-Day tariff", inr_account, "Energy charges", ("Slot", "Hours", "Rate per kWh"),
+                      [("Night", "00:00 - 06:00", "₹ 6.40"), ("Day", "06:00 - 18:00", "₹ 8.20"), ("Evening", "18:00 - 24:00", "₹ 9.60")],
+                      [("Fixed charge (per month)", "₹ 500.00")], "SAMPLE - synthetic bill for software testing; utility and consumer are fictional.",
+                      brand=(196, 194, 186), ink=(170, 168, 160), muted=(196, 194, 186), paper=(238, 236, 228))
+    out.append(("h10_low_contrast", photo_like(page, -1.2, 110), "jpg", {"expect": "read", "why": "pale print, photographed", "site_currency": "INR",
+                "tariff": {"currency": "INR", "tariff_kind": "time_of_use", "periods": periods((0, 6, 6.4), (6, 18, 8.2), (18, 24, 9.6)), "export_rate": None, "fixed_charge": 500.0}}))
+    return out
+
+
+def write_hard() -> None:
+    EVAL_OUT.mkdir(parents=True, exist_ok=True)
+    for name, image, suffix, truth in hard_bills():
+        if suffix == "png":
+            image.save(EVAL_OUT / f"{name}.png", optimize=True)
+        else:
+            image.save(EVAL_OUT / f"{name}.jpg", quality=60)
+        (EVAL_OUT / f"{name}.json").write_text(json.dumps(truth, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    for path in sorted(EVAL_OUT.iterdir()):
+        print(f"{path.name:<28} {path.stat().st_size / 1024:7.1f} KB")
+
+
+def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    if "--hard" in (sys.argv[1:] if argv is None else argv):  # the evaluation set only
+        write_hard()
+        return 0
     OUT.mkdir(parents=True, exist_ok=True)
     for seed, (name, draw, angle) in enumerate(BILLS, start=1):
         page, truth = draw()

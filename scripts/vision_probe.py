@@ -15,7 +15,6 @@ results/vision_probe/results.json (the model's raw answers and the scores). Neve
 from __future__ import annotations
 
 import argparse
-import base64
 import dataclasses
 import json
 import sys
@@ -25,6 +24,7 @@ from typing import Any, Mapping, Sequence
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from voltproof.config import ConfigError, Settings, get_settings  # noqa: E402
+from voltproof.vision.extract import INSTRUCTIONS, SYSTEM, image_messages, parse_reply  # noqa: E402,F401  (the prompt lives there)
 from voltproof.llm.client import (  # noqa: E402
     LLMClient,
     LLMError,
@@ -43,25 +43,11 @@ MIME = {".png": "image/png", ".jpg": "image/jpeg"}
 FIELDS = ("currency", "tariff_kind", "periods", "export_rate", "fixed_charge")
 RATE_TOL, MONEY_TOL = 0.0005, 0.005
 
-SYSTEM = "You read electricity bills and tariff sheets. Answer with one JSON object only: no markdown, no commentary."
-INSTRUCTIONS = """Read this electricity bill and return exactly this JSON object, with these keys and nothing else:
-{"currency": "<ISO 4217 code>", "tariff_kind": "flat" | "time_of_use" | "hourly_dynamic", "periods": [{"start_hour": <int>, "end_hour": <int>, "import_rate": <number>}], "export_rate": <number or null>, "fixed_charge": <number or null>}
-Rules:
-- periods: the energy price paid for grid imports, per kWh, in the main currency unit (for example EUR, not cents), as a plain number with a decimal point. Hours are local time on a 24-hour clock; end_hour is exclusive and 24 means midnight. Every period must have start_hour < end_hour, so split a period that crosses midnight into two entries. Together the periods cover hours 0 to 24 exactly once. A flat tariff is one period from 0 to 24.
-- export_rate: the price paid for energy exported to the grid, per kWh, in the same unit; null if the bill gives none.
-- fixed_charge: the fixed (standing, service or base) charge as printed, a plain number; null if there is none.
-- Ignore taxes, levies, totals, meter readings and consumption. Use only what is printed on the image; do not guess."""
-
-
 # --- the request ------------------------------------------------------------------------------------------
 
 
 def messages_for(image: Path) -> list[dict[str, Any]]:
-    uri = f"data:{MIME[image.suffix]};base64,{base64.b64encode(image.read_bytes()).decode('ascii')}"
-    return [
-        {"role": "system", "content": SYSTEM},
-        {"role": "user", "content": [{"type": "text", "text": INSTRUCTIONS}, {"type": "image_url", "image_url": {"url": uri}}]},
-    ]
+    return image_messages(image.read_bytes(), MIME[image.suffix])
 
 
 def sample_files() -> list[Path]:
@@ -127,21 +113,7 @@ def score(answer: Mapping[str, Any], truth: Mapping[str, Any]) -> dict[str, Any]
     }
 
 
-def parse(content: str | None) -> tuple[Any, str]:
-    """(answer, how): how is 'strict' (the whole reply is JSON), 'fenced' (JSON inside a markdown fence or
-    with text around it) or 'invalid'."""
-    text = (content or "").strip()
-    try:
-        return json.loads(text), "strict"
-    except ValueError:
-        pass
-    start, end = text.find("{"), text.rfind("}")
-    if start != -1 and end > start:
-        try:
-            return json.loads(text[start : end + 1]), "fenced"
-        except ValueError:
-            pass
-    return None, "invalid"
+parse = parse_reply  # the probe's name for it
 
 
 # --- the run ----------------------------------------------------------------------------------------------

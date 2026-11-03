@@ -35,6 +35,10 @@ BACKOFF_BASE_S = 1.0
 BACKOFF_CAP_S = 30.0
 RETRY_AFTER_CAP_S = 60.0
 BYTES_PER_TOKEN_ESTIMATE = 3  # deliberately low, so input-token estimates err high
+# An image part is billed by the provider as a fixed-size block of tokens, not by its base64 length.
+# Measured in the vision probe (results/vision_probe/results.json): 1753-2190 prompt tokens for one bill
+# image plus about 400 tokens of instructions, so at most ~1800 for the image; 2600 adds a safety margin.
+IMAGE_TOKENS_ESTIMATE = 2600
 MAX_ERROR_CHARS = 500
 
 _AUTH_TOKEN_RE = re.compile(r"(?i)\b(bearer|api[-_]?key)(\s*[:=]?\s*['\"]?)([A-Za-z0-9._\-]{8,})")
@@ -230,15 +234,38 @@ def estimate_cost_usd(usage: Usage, settings: Settings) -> float:
     ) / 1_000_000
 
 
+def _without_images(messages: Sequence[Mapping[str, Any]]) -> tuple[list[Any], int]:
+    """The messages with every image_url content part replaced by a short placeholder, and how many
+    images there were (so their base64 bytes are not counted as text)."""
+    images = 0
+    out: list[Any] = []
+    for message in messages:
+        content = message.get("content") if isinstance(message, Mapping) else None
+        if isinstance(content, list):
+            parts = []
+            for part in content:
+                if isinstance(part, Mapping) and part.get("type") == "image_url":
+                    images += 1
+                    parts.append({"type": "image_url", "image_url": "<image>"})
+                else:
+                    parts.append(part)
+            out.append({**message, "content": parts})
+        else:
+            out.append(message)
+    return out, images
+
+
 def worst_case_cost_usd(
     messages: Sequence[Mapping[str, Any]],
     tools: Sequence[Mapping[str, Any]] | None,
     response_format: Mapping[str, Any] | None,
     settings: Settings,
 ) -> float:
-    """Upper bound for one call: over-estimated input at full price plus `max_tokens` of output."""
-    request_text = canonical_json({"messages": messages, "tools": tools, "response_format": response_format})
-    input_tokens = math.ceil(len(request_text.encode("utf-8")) / BYTES_PER_TOKEN_ESTIMATE)
+    """Upper bound for one call: over-estimated input at full price plus `max_tokens` of output.
+    Images count as IMAGE_TOKENS_ESTIMATE tokens each, not as their base64 text."""
+    text_messages, images = _without_images(messages)
+    request_text = canonical_json({"messages": text_messages, "tools": tools, "response_format": response_format})
+    input_tokens = math.ceil(len(request_text.encode("utf-8")) / BYTES_PER_TOKEN_ESTIMATE) + images * IMAGE_TOKENS_ESTIMATE
     return (
         input_tokens * settings.price_input_usd_per_m
         + settings.llm_max_output_tokens * settings.price_output_usd_per_m
@@ -347,6 +374,7 @@ class LLMClient:
         *,
         purpose: str,
         tags: Mapping[str, Any] | None = None,
+        cache: bool = True,
     ) -> LLMResponse:
         """One chat completion. Cache hits cost $0; misses pass the budget guard first.
 
@@ -360,6 +388,8 @@ class LLMClient:
         if self._stopped_by is not None:
             self._append_ledger(self._entry(purpose, tags, "", status="refused", error="LLMClientStopped"))
             raise LLMClientStopped(f"LLM client stopped after an earlier fatal error: {self._stopped_by}")
+        # cache=False (a visitor's bill image): nothing is cached and no hash of the request is kept,
+        # not even in the ledger, so the image leaves no trace on disk
         key = cache_key(
             model=s.llm_model,
             messages=messages,
@@ -368,9 +398,9 @@ class LLMClient:
             response_format=response_format,
             reasoning_effort=s.llm_reasoning_effort,
             max_tokens=s.llm_max_output_tokens,
-        )
+        ) if cache else ""
         started = self._clock()
-        cached = self._load_cached(key, started)
+        cached = self._load_cached(key, started) if cache else None
         if cached is not None:
             self._append_ledger(
                 self._entry(purpose, tags, key, status="ok", cache_hit=True, response=cached, attempts=0)
@@ -465,7 +495,8 @@ class LLMClient:
         )
         if not ok:
             return response, LLMError("LLM response has no message", attempts=outcome.attempts)
-        self._store_cached(key, response, raw, usage_missing)
+        if key:
+            self._store_cached(key, response, raw, usage_missing)
         return response, None
 
     def _request_kwargs(

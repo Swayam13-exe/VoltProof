@@ -1,0 +1,28 @@
+{
+  "expect": "read",
+  "why": "sideways phone photo",
+  "site_currency": "KES",
+  "tariff": {
+    "currency": "KES",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 7,
+        "import_rate": 18.0
+      },
+      {
+        "start_hour": 7,
+        "end_hour": 22,
+        "import_rate": 27.5
+      },
+      {
+        "start_hour": 22,
+        "end_hour": 24,
+        "import_rate": 18.0
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 950.0
+  }
+}

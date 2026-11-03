@@ -1,0 +1,33 @@
+{
+  "expect": "refuse",
+  "why": "half-hour slot boundaries",
+  "site_currency": "INR",
+  "tariff": {
+    "currency": "INR",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 6.5,
+        "import_rate": 5.8
+      },
+      {
+        "start_hour": 6.5,
+        "end_hour": 17.5,
+        "import_rate": 7.4
+      },
+      {
+        "start_hour": 17.5,
+        "end_hour": 22.5,
+        "import_rate": 9.9
+      },
+      {
+        "start_hour": 22.5,
+        "end_hour": 24,
+        "import_rate": 5.8
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 450.0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "expect": "read",
+  "why": "flat tariff, rate in cents",
+  "site_currency": "EUR",
+  "tariff": {
+    "currency": "EUR",
+    "tariff_kind": "flat",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 24,
+        "import_rate": 0.315
+      }
+    ],
+    "export_rate": null,
+    "fixed_charge": 9.5
+  }
+}

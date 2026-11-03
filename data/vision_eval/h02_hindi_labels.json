@@ -1,0 +1,33 @@
+{
+  "expect": "read",
+  "why": "Hindi labels",
+  "site_currency": "INR",
+  "tariff": {
+    "currency": "INR",
+    "tariff_kind": "time_of_use",
+    "periods": [
+      {
+        "start_hour": 0,
+        "end_hour": 6,
+        "import_rate": 6.1
+      },
+      {
+        "start_hour": 6,
+        "end_hour": 17,
+        "import_rate": 7.8
+      },
+      {
+        "start_hour": 17,
+        "end_hour": 23,
+        "import_rate": 10.4
+      },
+      {
+        "start_hour": 23,
+        "end_hour": 24,
+        "import_rate": 6.1
+      }
+    ],
+    "export_rate": 3.0,
+    "fixed_charge": 300.0
+  }
+}
