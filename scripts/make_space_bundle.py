@@ -32,6 +32,13 @@ INCLUDE = (
     "results/e2/summary.json",
     "results/e3/summary.json",
     "results/e4/summary.json",
+    "data/vision_samples/bill_1_tou_inr.png",
+    "data/vision_samples/bill_1_tou_inr.json",
+    "data/vision_samples/bill_2_flat_kes.png",
+    "data/vision_samples/bill_2_flat_kes.json",
+    "data/vision_samples/bill_3_tou_eur.png",
+    "data/vision_samples/bill_3_tou_eur.json",
+    "results/vision_probe/results.json",
 )
 SKIP_PARTS = ("__pycache__",)  # build leftovers: left out silently
 SKIP_SUFFIXES = (".pyc",)

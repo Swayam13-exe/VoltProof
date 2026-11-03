@@ -150,3 +150,22 @@ def test_client_ip_source_live_runs_per_hour_and_debug_client() -> None:
     assert load_settings({"DEBUG_CLIENT": "true"}).debug_client is True
     with pytest.raises(ConfigError, match="DEBUG_CLIENT"):
         load_settings({"DEBUG_CLIENT": "maybe"})
+
+
+def test_demo_video_url_is_optional_and_a_non_https_value_is_ignored(caplog: pytest.LogCaptureFixture) -> None:
+    assert load_settings({}).demo_video_url == ""
+    assert load_settings({"DEMO_VIDEO_URL": "https://example.org/demo"}).demo_video_url == "https://example.org/demo"
+    for bad in ("http://example.org/demo", "javascript:alert(1)", "https://example.org/a b", "example.org"):
+        caplog.clear()
+        with caplog.at_level("WARNING", logger="voltproof.config"):
+            assert load_settings({"DEMO_VIDEO_URL": bad}).demo_video_url == ""  # ignored: the app still starts
+        assert [r.getMessage() for r in caplog.records] == ["DEMO_VIDEO_URL ignored: it must be an https:// URL"]
+        assert bad not in caplog.text
+
+
+def test_public_base_url_is_optional_https_only_and_loses_a_trailing_slash() -> None:
+    assert load_settings({}).public_base_url == ""
+    assert load_settings({"PUBLIC_BASE_URL": "https://example.hf.space/"}).public_base_url == "https://example.hf.space"
+    for bad in ("http://example.hf.space", "/relative", "example.hf.space", "https://a b"):
+        with pytest.raises(ConfigError, match="PUBLIC_BASE_URL"):
+            load_settings({"PUBLIC_BASE_URL": bad})

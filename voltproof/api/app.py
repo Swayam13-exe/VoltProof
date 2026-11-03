@@ -17,6 +17,7 @@ headers (to choose CLIENT_IP_SOURCE on a new host); otherwise that path is a 404
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import time
@@ -26,7 +27,7 @@ from pathlib import Path
 from typing import Annotated, Any, Awaitable, Callable, Iterator, Mapping
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
@@ -39,11 +40,21 @@ from voltproof.bench.episode import DayBuilder, processed_day_builder
 from voltproof.config import PROJECT_ROOT, Settings, get_settings
 from voltproof.data.days import load_splits, split_dates
 from voltproof.data.sites import SITES
-from voltproof.llm.client import LLMClient, read_ledger_totals
+from voltproof.llm.client import BudgetExceeded, LLMClient, LLMError, LLMFatalError, read_ledger_totals
 from voltproof.models import Site
+from voltproof.vision.extract import read_bill
+from voltproof.vision.image import OUTPUT_MIME, BillImageError, decode_upload, sanitize_image
+from voltproof.vision.validate import apply_bill, check_bill
 
 WEB_DIR = PROJECT_ROOT / "web"
 RESULTS_DIR = PROJECT_ROOT / "results"
+SAMPLES_DIR = PROJECT_ROOT / "data" / "vision_samples"
+SAMPLE_BILLS = ("bill_1_tou_inr", "bill_2_flat_kes", "bill_3_tou_eur")  # one per site, drawn by scripts/make_vision_samples.py
+RECORDED_LABEL = "Recorded read of the sample bill"  # never "read just now": it was read earlier, by the probe
+RECORDED_READS_FILE = "results/vision_probe/results.json"
+BILL_RESERVE_USD = 0.05  # what one bill read may cost at most, for the pre-check against the demo cap
+MAX_IMAGE_B64_CHARS = 2_900_000  # a 2 MB image in base64, with a little room
+bill_log = logging.getLogger("voltproof.bill")
 MAX_GOAL_CHARS = 500
 HEARTBEAT_S = 15.0
 CHART_JS_ORIGIN = "https://cdnjs.cloudflare.com"
@@ -77,11 +88,42 @@ class PlanRequest(BaseModel):
     site: str
     day: date
     goal: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_GOAL_CHARS)]
+    tariff: BillTariffIn | None = None  # a tariff confirmed from a bill (live runs only)
 
 
 class ReplayRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     run_id: str
+
+
+class BillTariffIn(BaseModel):
+    """A tariff the user confirmed from a bill; always re-validated on the server."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: str
+    periods: list[dict[str, Any]]
+    export_rate: float | str | None = None  # as typed: check_bill says what is wrong with a non-number
+    currency: str | None = None
+    fixed_charge: float | None = None
+
+    def as_answer(self, site_currency: str) -> dict[str, Any]:
+        return {"currency": self.currency or site_currency, "tariff_kind": self.kind, "periods": self.periods, "export_rate": self.export_rate, "fixed_charge": self.fixed_charge}
+
+
+class BillReadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    site_id: str
+    day: date | None = None
+    sample_id: str | None = None
+    image_b64: Annotated[str, StringConstraints(max_length=MAX_IMAGE_B64_CHARS)] | None = None
+    mime: str | None = None
+
+
+class TariffCheckRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    site_id: str
+    day: date | None = None
+    tariff: BillTariffIn
 
 
 def split_days(sites: Mapping[str, Site], splits: Mapping[str, Any]) -> dict[str, list[tuple[date, str]]]:
@@ -91,6 +133,23 @@ def split_days(sites: Mapping[str, Site], splits: Mapping[str, Any]) -> dict[str
         days = [(d, split) for split in ("dev", "test") for d in split_dates(splits, split, site_id)]
         out[site_id] = sorted(days)
     return out
+
+
+def with_image_tags(page: str, base_url: str) -> str:
+    """index.html with og:image and twitter:image pointing at {base_url}/og.png; unchanged without a base."""
+    if not base_url:
+        return page
+    image = html.escape(f"{base_url}/og.png", quote=True)
+    tags = "".join(
+        f"  {tag}\n"
+        for tag in (
+            f'<meta property="og:image" content="{image}">',
+            '<meta property="og:image:width" content="1200">',
+            '<meta property="og:image:height" content="630">',
+            f'<meta name="twitter:image" content="{image}">',
+        )
+    )
+    return page.replace("</head>", tags + "</head>", 1)
 
 
 def read_json(path: Path) -> Any:
@@ -141,8 +200,10 @@ def create_app(
     splits: Mapping[str, Any] | None = None,
     day_builder: DayBuilder | None = None,
     limits: Limits | None = None,
+    bill_limits: Limits | None = None,
     web_dir: Path = WEB_DIR,
     results_dir: Path = RESULTS_DIR,
+    samples_dir: Path = SAMPLES_DIR,
 ) -> FastAPI:
     """The app (uvicorn builds it with --factory, so importing this module reads no settings). Every
     dependency can be injected, so the tests run offline with a scripted LLM."""
@@ -155,6 +216,7 @@ def create_app(
     factory = make_client or (lambda s: LLMClient(s))
     state = LiveState(settings.live_mode, lambda: factory(settings), clock)
     limits = limits or Limits(clock, hourly=settings.live_runs_per_hour)
+    bill_limits = bill_limits or Limits(clock, per_ip=settings.bill_reads_per_visitor, hourly=settings.bill_reads_per_hour)
     store = RunStore(clock)
     workers = ThreadPoolExecutor(max_workers=limits.concurrent, thread_name_prefix="live")
 
@@ -191,6 +253,7 @@ def create_app(
             **state.status(),
             "per_visitor_limit": settings.client_ip_source != "none",
             "per_visitor_per_hour": limits.per_ip,
+            "demo_video_url": settings.demo_video_url or None,  # the page shows "Watch video" only when set
             "runs_left_this_hour": remaining["this_hour"],
             "runs_left_everyone_this_hour": remaining["everyone_this_hour"],
             "runs_left_today": remaining["today"],
@@ -249,6 +312,14 @@ def create_app(
         site = site_or_422(body.site)
         if body.day not in {d for d, _ in days.get(body.site, [])}:
             raise HTTPException(422, "unknown day for this site")
+        day, tariff = build(site, body.day)
+        tariff_source = "site"
+        if body.tariff is not None:  # the bill's tariff: checked again here (never trusted), then in place of the site's prices
+            check = check_bill(body.tariff.as_answer(site.currency), site.currency, average_price(day))
+            if not check["ok"]:
+                return JSONResponse({"reason": "tariff_invalid", "errors": check["errors"]}, status_code=422)
+            day, tariff = apply_bill(day, tariff, check)
+            tariff_source = "bill"
         unavailable = state.unavailable()
         if unavailable:
             return JSONResponse({"reason": unavailable, **state.status()}, status_code=503)
@@ -258,12 +329,11 @@ def create_app(
         if refusal:
             headers = {"Retry-After": str(refusal.retry_after_s)} if refusal.retry_after_s else {}
             return JSONResponse({"reason": refusal.reason, "retry_after_s": refusal.retry_after_s}, status_code=REFUSAL_STATUS[refusal.reason], headers=headers)
-        day, tariff = build(site, body.day)
         run = store.new()
 
         def work() -> None:
             try:
-                run_live(run, state, site=site, day=day, tariff=tariff, goal=body.goal, model=settings.llm_model, effort=settings.llm_reasoning_effort, demo_spend=demo_spend, demo_cap=settings.demo_budget_usd_cap)
+                run_live(run, state, site=site, day=day, tariff=tariff, goal=body.goal, model=settings.llm_model, effort=settings.llm_reasoning_effort, demo_spend=demo_spend, demo_cap=settings.demo_budget_usd_cap, tariff_source=tariff_source)
             finally:
                 limits.release()
 
@@ -311,9 +381,125 @@ def create_app(
             raise HTTPException(409, "this run has no plan to replay")
         return run.view["same_day"]
 
+    # --- the bill reader (SPEC §6.12): read it, then confirm it ------------------------------------------
+
+    def average_price(day: Any) -> float:
+        prices = list(day.import_price_per_kwh)
+        return sum(prices) / len(prices)
+
+    def reference_day(site: Site, day: date | None) -> Any:
+        known = [d for d, _ in days.get(site.site_id, [])]
+        chosen = day if day in known else (known[0] if known else None)
+        if chosen is None:
+            raise HTTPException(422, "no day for this site")
+        return build(site, chosen)[0]
+
+    def sample_index() -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        for sample_id in SAMPLE_BILLS:
+            truth_path, image_path = samples_dir / f"{sample_id}.json", samples_dir / f"{sample_id}.png"
+            if not (truth_path.is_file() and image_path.is_file()):
+                continue
+            truth = json.loads(truth_path.read_text(encoding="utf-8"))
+            site = next((s for s in sites.values() if s.currency == truth["currency"]), None)
+            if site is None:
+                continue
+            words = {"time_of_use": "time-of-use", "flat": "flat"}.get(truth["tariff_kind"], truth["tariff_kind"])
+            out[sample_id] = {"id": sample_id, "site_id": site.site_id, "currency": truth["currency"], "kind": truth["tariff_kind"], "label": f"Sample bill for {site.name} ({truth['currency']}, {words})"}
+        return out
+
+    samples = sample_index()
+    recorded_reads = read_json(results_dir / "vision_probe" / "results.json") or {}
+
+    @app.get("/api/bill-samples")
+    def api_bill_samples() -> list[dict[str, Any]]:
+        return list(samples.values())
+
+    @app.get("/api/bill-samples/{sample_id}.png")
+    def api_bill_sample_image(sample_id: str) -> Response:
+        if sample_id not in samples:  # only the known samples: no path from the request reaches the disk
+            raise HTTPException(404, "unknown sample")
+        return Response((samples_dir / f"{sample_id}.png").read_bytes(), media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+
+    @app.post("/api/tariff/check")
+    def api_tariff_check(body: TariffCheckRequest) -> dict[str, Any]:
+        """The confirm table's edits, checked with the same functions as the server's own check."""
+        site = site_or_422(body.site_id)
+        return check_bill(body.tariff.as_answer(site.currency), site.currency, average_price(reference_day(site, body.day)))
+
     @app.post("/api/tariff-from-image")
-    def api_tariff_from_image() -> JSONResponse:
-        return JSONResponse({"reason": "not_built"}, status_code=501)
+    def api_tariff_from_image(body: BillReadRequest, request: Request) -> JSONResponse:
+        """Read a sample bill or an uploaded one. The image is sanitized in memory, sent once, and dropped:
+        never written to disk, logged or hashed.
+
+        A sample bill never dead-ends: whenever a live read cannot happen (live AI off or paused, the demo
+        budget, a bill-read limit, a failed call) it returns the sample's recorded read, labelled
+        RECORDED_LABEL, with the reason in `why`. Only an upload is refused, with the reason."""
+        site = site_or_422(body.site_id)
+        reference = average_price(reference_day(site, body.day))
+        sample = body.sample_id
+        if sample is not None and sample not in samples:
+            raise HTTPException(422, "unknown sample")
+        if sample is None and (not body.image_b64 or not body.mime):
+            raise HTTPException(422, "send an image (PNG or JPEG) or pick a sample bill")
+
+        def recorded_read(why: str) -> JSONResponse:
+            recorded = recorded_reads.get(f"{sample}.png") or {}
+            check = check_bill(recorded.get("answer"), site.currency, reference)
+            return JSONResponse({"source": "recorded", "label": RECORDED_LABEL, "why": why, "recorded_in": RECORDED_READS_FILE, "sample_id": sample, "answer": recorded.get("answer"), "check": check, "cost_usd": recorded.get("cost_usd")})
+
+        def refused(reason: str, status: int, message: str, **extra: Any) -> JSONResponse:
+            if sample is not None:
+                return recorded_read(reason)
+            headers = {"Retry-After": str(extra["retry_after_s"])} if extra.get("retry_after_s") else {}
+            return JSONResponse({"reason": reason, "message": message, **extra}, status_code=status, headers=headers)
+
+        unavailable = state.unavailable()
+        if unavailable:
+            return refused(unavailable, 503, "Reading your own bill needs the live AI, which is not available here right now. Try a sample bill.")
+        if sample is not None:
+            data, mime = (samples_dir / f"{sample}.png").read_bytes(), "image/png"
+        else:
+            try:
+                data, mime = decode_upload(body.image_b64 or ""), body.mime or ""
+            except BillImageError as exc:
+                return JSONResponse({"reason": "image", "message": str(exc)}, status_code=422)
+        try:
+            clean = sanitize_image(data, mime)
+        except BillImageError as exc:
+            return JSONResponse({"reason": "image", "message": str(exc)}, status_code=422)
+        del data
+        if demo_spend() + BILL_RESERVE_USD > settings.demo_budget_usd_cap:
+            return refused("budget", 503, "The demo's AI budget is used up. Try a sample bill.")
+        refusal = bill_limits.admit(caller(request))
+        if refusal:
+            return refused(refusal.reason, REFUSAL_STATUS[refusal.reason], "No bill reads are left for now. Try a sample bill.", retry_after_s=refusal.retry_after_s, per_visitor_per_hour=bill_limits.per_ip)
+        try:
+            read = read_bill(state.client(), clean, OUTPUT_MIME, tags={"demo": True, "purpose": "bill"})
+        except BudgetExceeded:
+            return refused("budget", 503, "The demo's AI budget is used up. Try a sample bill.")
+        except LLMFatalError as exc:
+            state.switch_off(type(exc).__name__)
+            return refused("live_off", 503, "The live AI is switched off here. Try a sample bill.")
+        except LLMError:
+            return refused("error", 503, "The bill could not be read right now. Try again or use a sample bill.")
+        finally:
+            bill_limits.release()
+            del clean
+        check = check_bill(read["answer"], site.currency, reference)
+        bill_log.info("bill read: ok=%s unreadable=%s cost_usd=%.4f", check["ok"], check["unreadable"], read["cost_usd"])  # never the image, its hash or the visitor
+        return JSONResponse({"source": "live", "label": f"Read by Muse Spark Open in {read['latency_s']:.1f} s", "sample_id": sample, "answer": read["answer"], "check": check, "json": read["json"], "latency_s": read["latency_s"], "cost_usd": read["cost_usd"]})
+
+    # The page, with the link-preview image tags added when the public address is known: og:image must be
+    # an absolute URL, so without PUBLIC_BASE_URL there are none (never a relative one).
+    page_html = (web_dir / "index.html").read_text(encoding="utf-8") if (web_dir / "index.html").is_file() else None
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/index.html", include_in_schema=False)
+    def index_page() -> Response:
+        if page_html is None:
+            raise HTTPException(404, "no page")
+        return HTMLResponse(with_image_tags(page_html, settings.public_base_url), headers={"Cache-Control": "no-cache"})
 
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")  # last: the API routes come first
     return app

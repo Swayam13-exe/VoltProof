@@ -6,6 +6,7 @@ The API key is wrapped in `Secret` so it never appears in a repr, log line or er
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 import re
@@ -42,6 +43,10 @@ DEFAULTS: Mapping[str, str] = MappingProxyType(
         "CLIENT_IP_SOURCE": "xff",
         "LIVE_RUNS_PER_HOUR": "40",
         "DEBUG_CLIENT": "false",
+        "DEMO_VIDEO_URL": "",
+        "PUBLIC_BASE_URL": "",
+        "BILL_READS_PER_HOUR": "20",
+        "BILL_READS_PER_VISITOR": "5",
     }
 )
 CLIENT_IP_SOURCE_RE = re.compile(r"^(xff|none|header:[!#$%&'*+.^_`|~0-9A-Za-z-]+)$")  # header names are RFC 9110 tokens
@@ -100,6 +105,10 @@ class Settings:
     client_ip_source: str = "xff"  # demo app: "xff", "header:<Name>" or "none" (no per-visitor limit)
     live_runs_per_hour: int = 40  # demo app: live runs per hour for all visitors together
     debug_client: bool = False  # demo app: enables GET /api/debug/client
+    demo_video_url: str = ""  # demo app: the "Watch video" link (https), hidden when empty
+    public_base_url: str = ""  # demo app: the public https address, for the absolute og:image link; no image tags when empty
+    bill_reads_per_hour: int = 20  # demo app: bill images read per hour, all visitors together
+    bill_reads_per_visitor: int = 5  # demo app: bill images read per hour, per visitor
     cache_dir: Path = DEFAULT_CACHE_DIR
     ledger_path: Path = DEFAULT_LEDGER_PATH
 
@@ -164,6 +173,21 @@ class _Reader:
             self.errors.append(f"{name}={text!r} must be xff, none or header:<Name>")
         return text
 
+    def https_url_or_ignored(self, name: str) -> str:
+        """An https:// URL, or "" for anything else: a bad optional link is dropped with a warning (the
+        value is not logged), so it can never stop the app or reach the page."""
+        text = self.text(name)
+        if text and (not text.startswith("https://") or any(c.isspace() for c in text)):
+            logging.getLogger("voltproof.config").warning("%s ignored: it must be an https:// URL", name)
+            return ""
+        return text
+
+    def optional_https_url(self, name: str) -> str:
+        text = self.text(name)
+        if text and (not text.startswith("https://") or any(c.isspace() for c in text)):
+            self.errors.append(f"{name}={text!r} must be empty or an https:// URL")
+        return text
+
     def reasoning_effort(self, name: str) -> str | None:
         text = self.text(name).lower()
         if not text:
@@ -196,6 +220,10 @@ def load_settings(environ: Mapping[str, str]) -> Settings:
         client_ip_source=read.client_ip_source("CLIENT_IP_SOURCE"),
         live_runs_per_hour=read.number("LIVE_RUNS_PER_HOUR", int, low=1, high=1000),
         debug_client=read.boolean("DEBUG_CLIENT"),
+        demo_video_url=read.https_url_or_ignored("DEMO_VIDEO_URL"),
+        public_base_url=read.optional_https_url("PUBLIC_BASE_URL").rstrip("/"),
+        bill_reads_per_hour=read.number("BILL_READS_PER_HOUR", int, low=1, high=1000),
+        bill_reads_per_visitor=read.number("BILL_READS_PER_VISITOR", int, low=1, high=100),
     )
     if 0 < settings.budget_usd_cap < settings.demo_budget_usd_cap:
         read.errors.append(

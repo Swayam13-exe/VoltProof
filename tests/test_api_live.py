@@ -94,11 +94,14 @@ def test_status_sites_days_and_static_endpoints(settings: Settings) -> None:
     status = client.get("/api/status", headers={"x-forwarded-for": "203.0.113.5"}).json()
     assert status["live"] is True and status["runs_left_this_hour"] == 10 and status["runs_left_today"] == 150 and status["demo_cap_usd"] == settings.demo_budget_usd_cap
     assert status["per_visitor_per_hour"] == 10  # the refusal text reads the limit from here
+    assert status["demo_video_url"] is None  # no video configured: the page keeps the link hidden
+    video, _, _ = make(settings, lambda s: a4_llm(), demo_video_url="https://example.org/demo")
+    assert video.get("/api/status").json()["demo_video_url"] == "https://example.org/demo"
     assert [c["site_id"] for c in client.get("/api/sites").json()] == [SITE.site_id]
     days = client.get("/api/days", params={"site": SITE.site_id}).json()
     assert [(d["date"], d["split"]) for d in days] == [(DAY.isoformat(), "dev")]
     assert client.get("/api/days", params={"site": "nowhere"}).status_code == 422
-    assert client.post("/api/tariff-from-image").status_code == 501
+    assert client.post("/api/tariff-from-image").status_code == 422  # a body is required
     benchmark = client.get("/api/benchmark").json()
     assert set(benchmark) == {"main", "e2", "e3", "e4", "code"}
     assert benchmark["code"]["max_repairs"] == 2 and "voltproof/agents/voltproof.py" in benchmark["code"]["max_repairs_source"]
@@ -167,7 +170,9 @@ def test_a_plan_mismatch_in_live_mode_shows_the_logged_plan(settings: Settings, 
 
 
 def test_per_ip_limit_frees_up_after_an_hour_and_other_ips_are_separate(settings: Settings) -> None:
-    client, _, clock = make(settings, lambda s: Raising(BudgetExceeded("cap")))
+    clock = Clock()
+    # concurrency raised: a run still in its thread under a loaded suite must not read as "busy" here
+    client, _, _ = make(settings, lambda s: Raising(BudgetExceeded("cap")), clock=clock, limits=Limits(clock, concurrent=100))
     for _ in range(10):
         assert post(client, ip="203.0.113.5").status_code == 200
         clock.now += 1

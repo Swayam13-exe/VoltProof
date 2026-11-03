@@ -164,6 +164,7 @@ a { color: var(--accent); }
 .actions { grid-area: actions; justify-self: end; display: flex; align-items: center; gap: 6px; }
 .menu { grid-area: menu; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
 .menu::-webkit-scrollbar { display: none; }
+.menu.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
 .menu ul { list-style: none; display: flex; gap: 2px; margin: 0; padding: 0; white-space: nowrap; }
 .menu a { display: block; padding: 8px 12px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-weight: 550; font-size: 0.95rem; }
 .menu a:hover { color: var(--ink); background: var(--surface-2); }
@@ -178,7 +179,17 @@ a { color: var(--accent); }
   color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 999px; padding: 6px 12px;
 }
 .tool-button:hover { border-color: var(--accent); color: var(--accent); }
-.copy-status { font-size: 0.82rem; color: var(--good); font-weight: 600; }
+a.tool-button { text-decoration: none; }
+.tool-svg { width: 16px; height: 16px; flex: none; }
+.hero-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--accent); text-decoration: none; }
+.hero-link:hover { text-decoration: underline; }
+[hidden] { display: none !important; }
+/* phones: the top-bar tools show icons only (each has an aria-label), as equal 36 px circles whatever the
+   icon (the theme toggle's text glyph and the links' SVGs) */
+@media (max-width: 720px) {
+  .actions .tool-text { display: none; }
+  .actions .tool-button { width: 36px; height: 36px; padding: 0; justify-content: center; line-height: 1; }
+}
 
 /* --- shared section rhythm ------------------------------------------------------------------- */
 
@@ -204,9 +215,9 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 .button:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 
 /* reveal on scroll: visible by default; hidden only once landing.js arms it (IntersectionObserver
-   present, no reduced motion), and a safety timer disarms it after 1.5 s */
-.reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(14px); }
-.reveal { transition: opacity 0.6s ease, transform 0.6s ease; }
+   present, no reduced motion); see setupReveal for the safety net */
+.reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(16px); }
+.reveal { transition: opacity 0.4s ease, transform 0.4s ease; } /* transform only: no layout shift */
 
 /* --- 1. hero ---------------------------------------------------------------------------------- */
 
@@ -216,11 +227,30 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 .subtitle { font-size: clamp(1.05rem, 1.7vw, 1.2rem); color: var(--ink-2); max-width: 52ch; margin: 18px 0 22px; line-height: 1.55; }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
 .built { font-size: 0.88rem; color: var(--muted); }
-/* wide screens: the headline left; its explanation and the buttons right, aligned to its bottom */
+/* phones: one column, in reading order: headline, explanation, buttons, then "Built with" and the links
+   (.hero-main dissolves so its two children can be ordered around .hero-side) */
+.hero-head { display: flex; flex-direction: column; }
+.hero-main { display: contents; }
+.hero-head h1 { order: 1; }
+.hero-side { order: 2; }
+.hero-meta { order: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 0; }
+/* wide screens: two columns aligned at the TOP. Left: the headline, then "Built with" and the links;
+   right: the explanation, then the buttons. The h1's first line and the paragraph's first line share
+   their cap-height line: text-box trims each first line to its cap height, so the grid's top edge is the
+   cap line of both (measured in headless Chrome, see the Part D report). */
 @media (min-width: 900px) {
-  .hero-head { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 40px; align-items: end; }
-  .hero h1 { font-size: clamp(2.3rem, 3.6vw, 3.4rem); max-width: 18ch; }
-  .hero-side .subtitle { margin: 0 0 18px; }
+  .hero-head { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .hero-main { display: block; }
+  .hero h1 { font-size: clamp(2.3rem, 4.6vw, 3.75rem); max-width: none; }
+  .hero-meta { margin-top: 22px; }
+  .hero-side .subtitle { margin: 0 0 22px; }
+  .hero h1, .hero-side .subtitle { text-box: trim-start cap alphabetic; }
+}
+/* browsers without text-box: shift the h1 by the difference of the two first-line cap offsets, from the
+   system font's measured metrics (cap offset = (line-height - ascent - descent) / 2 + ascent - cap
+   height: 0.515em for the paragraph, 0.280em for the h1) */
+@supports not (text-box: trim-start cap alphabetic) {
+  @media (min-width: 900px) { .hero h1 { margin-top: calc(0.515 * clamp(1.05rem, 1.7vw, 1.2rem) - 0.28em); } }
 }
 
 .day-panel {
@@ -353,6 +383,8 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 .check-item.missed .check-state { color: var(--bad); font-weight: 650; }
 .result-title { margin: 0 0 8px; font-size: 0.86rem; font-weight: 700; color: var(--ink-2); }
 .cost-line { margin: 12px 0 0; font-size: 0.88rem; color: var(--ink-2); }
+.assumptions { margin: 14px 0 0; }
+.assumption-list { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.92rem; color: var(--ink); overflow-wrap: anywhere; }
 .cost-line strong { color: var(--ink); }
 .cost-line.muted, .cost-line.muted .cost-value { color: var(--muted); font-weight: 400; }
 
@@ -578,10 +610,77 @@ button.button.primary:disabled { background: var(--surface-2); color: var(--mute
 .try-repairs { margin: 4px 0 0; }
 .try-repairs:empty { display: none; }
 
+/* the bill reader (SPEC §6.12): read it, then confirm it */
+.tariff-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 18px; }
+.tariff-row button.button { font-size: 0.95rem; padding: 9px 16px; }
+.tariff-tag { display: inline-flex; align-items: center; font-size: 0.84rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; color: var(--battery); background: var(--battery-soft); border: 1px solid var(--battery-fill); }
+.bill-panel { margin: 0 0 22px; padding: 18px; border-radius: 18px; border: 1px solid var(--ring); background: var(--surface); }
+.bill-panel h3 { margin: 0; font-size: 1.08rem; }
+.bill-privacy { margin: 6px 0 14px; padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-ink); font-size: 0.9rem; }
+.bill-samples { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bill-sample { width: 100%; font: inherit; font-size: 0.84rem; text-align: left; color: var(--ink); background: var(--surface-2); border: 1px solid var(--ring); border-radius: 12px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.bill-sample:hover { border-color: var(--accent); }
+.bill-sample[aria-pressed="true"] { border: 2px solid var(--accent); padding: 5px; background: var(--surface); }
+.bill-sample img { display: block; width: 100%; height: 96px; object-fit: cover; object-position: top; border-radius: 8px; background: #fff; }
+.bill-upload { margin: 14px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+label.upload-button { gap: 8px; cursor: pointer; font-size: 0.95rem; padding: 9px 16px; }
+.visually-hidden:focus-visible + label.upload-button { outline: 3px solid var(--focus); outline-offset: 2px; }
+.visually-hidden:disabled + label.upload-button { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.bill-file-name { font-size: 0.9rem; color: var(--ink-2); overflow-wrap: anywhere; min-width: 0; }
+.bill-upload .hint { margin-top: 2px; }
+.bill-upload .hint:empty { display: none; }
+.bill-reading { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); margin-top: 14px; }
+@media (min-width: 900px) { .bill-reading { grid-template-columns: minmax(0, 260px) minmax(0, 1fr); } }
+.bill-preview { width: 100%; max-height: 360px; object-fit: contain; object-position: top; border-radius: 10px; border: 1px solid var(--ring); background: #fff; }
+.bill-status { margin: 0; font-weight: 600; }
+.bill-status:empty { display: none; }
+.bill-status.warn { color: var(--bad); }
+.bill-confirm .source { margin: 4px 0 10px; }
+.bill-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0; }
+.bill-field-label { font-weight: 600; }
+.bill-readonly { font-weight: 700; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); }
+.bill-input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 8px; padding: 6px 8px; width: 7.5em; max-width: 100%; }
+.bill-input[aria-invalid="true"] { border: 2px solid var(--bad); padding: 5px 7px; }
+.bill-table { border-collapse: collapse; margin: 6px 0 8px; width: 100%; max-width: 440px; table-layout: fixed; }
+.bill-table col.bill-col-hour { width: 24%; }
+.bill-table col.bill-col-rate { width: 34%; }
+.bill-table col.bill-col-remove { width: 3.2em; }
+.bill-table th, .bill-table td { padding: 4px 8px 4px 0; text-align: left; font-size: 0.9rem; }
+.bill-table thead th { font-size: 0.82rem; color: var(--ink-2); }
+.bill-table .bill-input { width: 100%; }
+.bill-remove { font: inherit; font-size: 0.95rem; line-height: 1; color: var(--ink-2); background: none; border: 1px solid var(--ring); border-radius: 8px; padding: 7px 9px; cursor: pointer; }
+.bill-remove:hover { border-color: var(--bad); color: var(--bad); }
+button.button.small { font-size: 0.88rem; padding: 7px 14px; }
+.bill-bar { margin: 12px 0 0; max-width: 520px; }
+.bill-bar svg { display: block; width: 100%; height: auto; }
+.bill-bar .bar-cheap { fill: var(--battery-fill); }
+.bill-bar .bar-normal { fill: var(--grid-fill); }
+.bill-bar .bar-peak { fill: var(--solar-fill); }
+.bill-bar .bar-flat { fill: var(--grid-fill); }
+.bill-bar .bar-missing { fill: none; stroke: var(--bad); stroke-dasharray: 2 2; }
+.bill-bar text { fill: var(--muted); font-size: 6px; font-family: var(--font); }
+.bill-example { margin: 6px 0 0; font-weight: 650; }
+.bill-example:empty { display: none; }
+.bill-messages { margin: 8px 0 0; padding-left: 1.2em; font-size: 0.92rem; }
+.bill-messages:empty { display: none; }
+.bill-errors { color: var(--bad); }
+.bill-warnings { color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 6px 10px 6px 1.8em; }
+.bill-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 16px; }
+.bill-actions button.button { font-size: 0.98rem; padding: 10px 18px; }
+@media (max-width: 720px) {
+  .bill-panel { padding: 14px; }
+  .bill-samples { gap: 6px; }
+  .bill-sample img { height: 70px; }
+  .bill-sample span { font-size: 0.76rem; }
+}
+
 /* the result: the same panel style and spacing as the hero's day panel */
 .result { margin: 24px 0 0; display: flex; flex-direction: column; gap: 20px; }
 .result-empty { margin: 0; padding: 28px; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 22px; }
 .result-head .badges { margin-bottom: 4px; }
+.result-head .tariff-note { font-weight: 600; color: var(--battery); }
 .result-head p { margin: 0 0 4px; }
 .try-player { margin-top: 0; }
 .live-log { margin: 0; padding-left: 1.3em; color: var(--ink-2); }
@@ -597,6 +696,7 @@ button.button.primary:disabled { background: var(--surface-2); color: var(--mute
 .compare-table thead th { font-size: 0.82rem; color: var(--ink-2); }
 .compare-table tbody th { font-weight: 500; color: var(--ink); }
 .compare-cost { margin: 12px 0 0; font-size: 0.92rem; color: var(--ink-2); }
+.cost-note { margin: 6px 0 0; font-size: 0.84rem; color: var(--muted); }
 .rule-chips { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .rule-chip { font-size: 0.88rem; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--ring); }
 .result-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }

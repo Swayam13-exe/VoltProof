@@ -339,7 +339,7 @@ class ObservingLLM:
 # --- the worker -------------------------------------------------------------------------------------------
 
 
-def run_live(run: LiveRun, state: LiveState, *, site: Site, day: DayData, tariff: Tariff, goal: str, model: str, effort: str | None, demo_spend: Callable[[], float], demo_cap: float) -> None:
+def run_live(run: LiveRun, state: LiveState, *, site: Site, day: DayData, tariff: Tariff, goal: str, model: str, effort: str | None, demo_spend: Callable[[], float], demo_cap: float, tariff_source: str = "site") -> None:
     """Run the frozen A4 for one typed goal and finish `run`; never raises."""
     status, reason, view, plan_source = "unavailable", "error", None, None
     started = time.monotonic()
@@ -347,6 +347,9 @@ def run_live(run: LiveRun, state: LiveState, *, site: Site, day: DayData, tariff
         observer = ObservingLLM(state.client(), run.emit)
         ctx = EpisodeContext(f"live-{run.run_id}", site, day, tariff, goal)
         arm = run_a4(observer, ctx, tags={"demo": True, "run": f"live-{run.run_id}"})
+        for event in arm.trace.events:  # the gate's decision: the agent makes no call after it, so the observer never sees it
+            if event.kind == "gate" and event.name != "finalize":
+                run.emit("gate", {"decision": event.name, "plan_id": event.data.get("plan_id")})
         run.cost_usd = arm.totals.cost_usd
         plan_source = arm.plan_source
         if arm.stop_reason == "budget_exceeded":
@@ -363,6 +366,7 @@ def run_live(run: LiveRun, state: LiveState, *, site: Site, day: DayData, tariff
                 "tokens_in": arm.totals.tokens_in,
                 "tokens_out": arm.totals.tokens_out,
                 "plan_source": arm.plan_source,
+                "tariff_source": tariff_source,  # "bill": the agent, the executor and the rule-based battery all used the bill's prices
             }
             limits = {"export_limit_kw": arm.export_limit_kw, "import_limit_kw": arm.import_limit_kw, "protected_soc_kwh": arm.protected_soc_kwh}
             view = view_model(

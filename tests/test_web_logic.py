@@ -159,9 +159,9 @@ const day = block(read("dayplayer.js"), "/* --- pure: begin", "/* --- pure: end"
 const landing = block(read("landing.js"), "/* --- pure: begin", "/* --- pure: end");
 const app = read("app.js");
 const tryCode = block(app, "function money(", "function status(") + block(app, "function hourText(", "function stat(") + block(app, "function reasonText(", "async function fallBack(");
-const D = new Function(day + "; return { DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
+const D = new Function(day + "; return { assumptionLines, DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
 const L = new Function(landing + "; return { HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
-const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine };")(D);
+const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine, billRows, billTariff, billRowFlags, billBars, billExample, tariffNote, billRefusalText, billSourceText, COST_NOTE, gateAccepted };")(D);
 const dir = process.argv[2];
 const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
 const views = Object.fromEntries(index.chips.map((c) => [c.id, JSON.parse(fs.readFileSync(path.join(dir, c.file), "utf8"))]));
@@ -173,7 +173,10 @@ console.log(JSON.stringify(out));
 
 def pure(**exprs: str) -> dict:
     """Evaluate JS expressions over the pure functions: D (day player), L (landing), T (Try it), the
-    committed replays `views` and their `index`."""
+    committed replays `views` and their `index`. Other test files use it too, so it skips by itself
+    when Node.js is missing (this file's own tests are skipped by pytestmark)."""
+    if NODE is None:
+        pytest.skip("Node.js is not installed")
     result = subprocess.run([NODE, "-e", PURE, str(WEB_DIR), str(REPLAYS), json.dumps(exprs)], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
@@ -495,7 +498,8 @@ def test_comparison_panel_on_the_ahmedabad_hindi_day() -> None:
 
 def test_try_it_result_hides_the_goal_and_the_cost_line_the_hero_keeps_them() -> None:
     app, landing_js, day = ((WEB_DIR / n).read_text(encoding="utf-8") for n in ("app.js", "landing.js", "dayplayer.js"))
-    assert '{ id: "try", loop: false, showGoal: false, cost: "none" }' in app
+    assert '{ id: "try", loop: false, showGoal: false, cost: "none", checklistUnderFlow: true, assumptions: true }' in app
+    assert "checklistUnderFlow ? resultArea : null" in day and "checklistUnderFlow ? null : resultArea" in day  # one component, two layouts
     assert '{ id: "hero", switcher: true, loop: true, live: $("day-live"), cost: "muted" }' in landing_js
     assert 'showGoal ? make("div", { class: "day-goal" }' in day and 'cost === "none" ? null' in day
 
@@ -528,3 +532,166 @@ def test_every_page_script_parses() -> None:
     for name in ("theme.js", "app.js", "charts.js", "dayplayer.js", "landing.js"):
         result = subprocess.run([NODE, "--check", str(WEB_DIR / name)], capture_output=True, text=True, encoding="utf-8")
         assert result.returncode == 0, f"{name}: {result.stderr}"
+
+
+# --- the bill reader's confirm table (web/app.js) ---------------------------------------------------------
+
+
+def test_bill_rows_keep_what_was_read_and_the_tariff_body_keeps_non_numbers_for_the_server() -> None:
+    answer = {"periods": [{"start_hour": 22, "end_hour": 6, "import_rate": 5.8}, {"start_hour": "06:30", "end_hour": 18, "import_rate": None}]}
+    out = pure(
+        rows=f"T.billRows({json.dumps(answer)})",
+        none="[T.billRows(null), T.billRows({unreadable: true})]",
+        body='T.billTariff("time_of_use", [{start: "22", end: " 6 ", rate: "5.8"}, {start: "06:30", end: "18", rate: "abc"}, {start: "", end: "24", rate: ""}], "", "INR")',
+        export='[T.billTariff("flat", [], " 2.5 ", "KES").export_rate, T.billTariff("flat", [], "x", "KES").export_rate]',
+    )
+    assert out["rows"] == [{"start": "22", "end": "6", "rate": "5.8"}, {"start": "06:30", "end": "18", "rate": ""}]
+    assert out["none"] == [[], []]
+    assert out["body"] == {"kind": "time_of_use", "currency": "INR", "periods": [{"start_hour": 22, "end_hour": 6, "import_rate": 5.8}, {"start_hour": "06:30", "end_hour": 18, "import_rate": "abc"}, {"start_hour": None, "end_hour": 24, "import_rate": None}], "export_rate": None}
+    assert out["export"] == [2.5, "x"]
+
+
+def test_bill_price_bar_example_row_flags_and_result_note() -> None:
+    hourly = [5.8] * 6 + [7.4] * 12 + [9.9] * 4 + [5.8] * 2
+    out = pure(
+        bands=f"T.billBars({json.dumps(hourly)}).map((b) => b.band)",
+        heights=f"T.billBars({json.dumps(hourly)}).map((b) => Math.round(b.height * 100))",
+        flat="T.billBars(Array(24).fill(24.5)).map((b) => b.band)",
+        missing="T.billBars([5, null, ...Array(22).fill(7)]).map((b) => b.band).slice(0, 3)",
+        empty="T.billBars([null, null])",
+        example=f'T.billExample({json.dumps(hourly)}, "INR")',
+        flat_example='T.billExample(Array(24).fill(24.5), "KES")',
+        partial='T.billExample([5, null, ...Array(22).fill(7)], "INR")',
+        flags='[...T.billRowFlags(["Row 2: the rate must be a number above zero.", "No rate for 6:00-8:00.", "Row 3: check this rate."])]',
+        note='[T.tariffNote({meta: {tariff_source: "bill"}}), T.tariffNote({meta: {tariff_source: "site"}}), T.tariffNote({meta: {}})]',
+        refusals='[{reason: "rate_limit", per_visitor_per_hour: 5, retry_after_s: 600}, {reason: "hourly_cap"}, {reason: "image", message: "Only PNG and JPEG images are accepted."}, {}].map(T.billRefusalText)',
+    )
+    assert out["bands"] == ["cheap"] * 6 + ["normal"] * 12 + ["peak"] * 4 + ["cheap"] * 2
+    assert out["heights"][0] == 59 and out["heights"][18] == 100
+    assert set(out["flat"]) == {"flat"} and out["missing"] == ["cheap", "missing", "peak"] and out["empty"] == []
+    assert re.fullmatch(r"1 kWh at 18:00 costs \S*9\.90\S*", out["example"].replace(" ", "")), out["example"]
+    assert out["flat_example"].startswith("1 kWh costs ") and out["flat_example"].endswith(" at any hour") and "24.50" in out["flat_example"]
+    assert out["partial"] == ""
+    assert out["flags"] == [1, 2]
+    assert out["note"][0] == {"tag": "Tariff: from your bill", "text": "Planned with the tariff from your bill. The comparison with the rule-based battery used the same tariff."}
+    assert out["note"][1:] == [None, None]
+    assert out["refusals"][0] == "You have used this hour's 5 bill reads; try again in about 10 min. The sample bills still work."
+    assert out["refusals"][1].startswith("This hour's bill reads for all visitors are used up")
+    assert out["refusals"][2] == "Only PNG and JPEG images are accepted." and out["refusals"][3].startswith("The bill could not be read right now")
+
+
+def test_a_bill_tariff_offers_only_live_runs() -> None:
+    chip = chips()[0]
+    live = {"live": True, "runs_left_this_hour": 4}
+    off = {"live": False, "reason": "live_mode_off"}
+    goal = json.dumps(chip["goal"])
+    recorded = json.dumps([chip])
+    out = pure(
+        site=f"T.runButtonState({goal}, {recorded}, {json.dumps(live)}, null).mode",
+        bill=f"T.runButtonState({goal}, {recorded}, {json.dumps(live)}, null, true)",
+        bill_off=f"T.runButtonState({goal}, {recorded}, {json.dumps(off)}, null, true)",
+        bill_empty=f'T.runButtonState("", {recorded}, {json.dumps(live)}, null, true).hint',
+    )
+    assert out["site"] == "recorded"
+    assert out["bill"]["mode"] == "live" and "tariff from your bill" in out["bill"]["hint"] and "same tariff" in out["bill"]["hint"]
+    assert out["bill_off"]["mode"] == "unavailable" and out["bill_off"]["disabled"] is True
+    assert "the live AI is switched off here" in out["bill_off"]["hint"] and "Use the site's tariff" in out["bill_off"]["hint"]
+    assert "planned live with the tariff from your bill" in out["bill_empty"]
+
+
+def test_the_bill_panel_markup_has_its_privacy_note_labels_and_buttons() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    assert "The image is sent to the model provider to be read, then discarded. Nothing is stored." in html
+    assert '<input type="file" id="bill-file" class="visually-hidden" accept="image/png,image/jpeg"' in html and '<label for="bill-file" class="button secondary upload-button">' in html
+    for text in ("Use your own tariff from a bill", "Plan with this tariff", "Use the site&#39;s tariff" if "&#39;" in html else "Use the site's tariff", "Tariff: from your bill"):
+        assert text in html, text
+    assert 'id="bill-use" class="button primary" disabled' in html  # enabled only by a valid check
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert "readAsDataURL" in app and "createObjectURL(file" not in app  # the preview is a data: URL; no blob: needed in the CSP
+
+
+# --- Part C3: the cost note and how the AI read the rest of the goal ---------------------------------------
+
+
+def test_the_cost_note_matches_what_each_number_counts() -> None:
+    """The explanation's cost is solve_plan's energy_cost on the day-ahead forecast (optimizer.py); the
+    table's realized_cost replays the plan on the same-day weather and adds V x (start - end battery
+    energy), V = mean import price x discharge efficiency (metrics.trajectory_total_cost, rules.py)."""
+    note = pure(note="T.COST_NOTE")["note"]
+    assert "day-ahead forecast" in note and "same-day weather" in note
+    assert "change in battery energy over the day" in note and "average import price × discharge efficiency" in note
+    core = WEB_DIR.parent / "voltproof" / "core"
+    assert "energy_change=value * (execution.initial_soc_kwh - execution.soc_kwh[-1])" in (core / "metrics.py").read_text(encoding="utf-8")
+    assert "return float(np.mean(import_price_per_kwh)) * eta_discharge" in (core / "rules.py").read_text(encoding="utf-8")
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert 'make("p", { class: "cost-note" }, COST_NOTE)' in app  # under the comparison table
+
+
+def test_the_ais_reading_of_the_goal_is_listed_one_per_line_and_only_when_there_is_one() -> None:
+    first = chips()[0]["id"]
+    out = pure(
+        lines=f'D.assumptionLines(views["{first}"])',
+        merged='D.assumptionLines({assumptions: ["a", " b "], spec_assumptions: ["b", "c", ""]})',
+        none='[D.assumptionLines({assumptions: [], spec_assumptions: []}), D.assumptionLines({}), D.assumptionLines(null)]',
+    )
+    assert out["lines"] == replay(first)["assumptions"] and out["lines"]
+    assert out["merged"] == ["a", "b", "c"] and out["none"] == [[], [], []]
+    day = (WEB_DIR / "dayplayer.js").read_text(encoding="utf-8")
+    assert '"How the AI read the rest of your goal"' in day and "if (!lines.length) return null;" in day
+    assert day.index("assumptions ? assumptionBlock(view) : null") > day.index('"The rules, checked on the day"')  # right under the rules
+    assert "<details" not in day and '"details"' not in day.split("function assumptionBlock")[1].split("function ")[0]  # never folded
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert 'checklistUnderFlow: true, assumptions: true }' in app and "Assumptions the AI made" not in app
+
+
+# --- Part D3 and D5: the bill panel, the phone menu, the hero --------------------------------------------
+
+
+def css_rule(css: str, selector: str) -> str:
+    match = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", css)
+    assert match, selector
+    return match.group(1)
+
+
+def test_the_upload_control_is_a_keyboard_reachable_button_that_shows_the_file_name() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert re.search(r'<input type="file" id="bill-file" class="visually-hidden"[^>]*>\s*<label for="bill-file" class="button secondary upload-button">.*?Upload a photo</label>', html, re.S)
+    hidden = css_rule(css, ".visually-hidden")
+    assert "display: none" not in hidden and "visibility" not in hidden and "clip" in hidden  # still focusable
+    assert ".visually-hidden:focus-visible + label.upload-button" in css and ".visually-hidden:disabled + label.upload-button" in css
+    assert 'id="bill-file-name"' in html and '$("bill-file-name").textContent = file.name' in app
+
+
+def test_the_bill_tag_shows_once_and_the_actions_wait_for_a_reading() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert html.count("Tariff: from your bill") == 1 and "bill-panel-tag" not in app
+    assert '<div id="bill-actions" class="bill-actions" hidden>' in html
+    assert '$("bill-actions").hidden = !bill.draft;' in app
+    show = app.index("function showReading(")
+    assert app.index("showBillActions();", show) < app.index("async function readBill(")  # shown once a reading is on the table
+
+
+def test_the_phone_menu_fades_at_the_right_edge_while_more_items_are_off_screen() -> None:
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    assert "mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent)" in css_rule(css, ".menu.more-right")
+    assert 'menu.classList.toggle("more-right", menu.scrollLeft + menu.clientWidth < menu.scrollWidth - 2)' in landing
+
+
+def test_the_hero_columns_are_top_aligned_on_their_cap_line() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    head = html[html.index('<div class="hero-head">'):html.index('<div id="day-panel"')]
+    assert head.index('<div class="hero-main">') < head.index("<h1") < head.index('class="hero-meta"') < head.index('<div class="hero-side">') < head.index('class="cta"')
+    wide = css[css.index("@media (min-width: 900px) {\n  .hero-head"):]
+    wide = wide[: wide.index("\n}") + 2]
+    assert "align-items: start" in wide and "align-items: end" not in wide
+    assert "font-size: clamp(2.3rem, 4.6vw, 3.75rem)" in wide  # 60 px at most: still two lines in the 615 px column
+    assert ".hero h1, .hero-side .subtitle { text-box: trim-start cap alphabetic; }" in wide
+    assert "@supports not (text-box: trim-start cap alphabetic)" in css and "calc(0.515 * clamp(1.05rem, 1.7vw, 1.2rem) - 0.28em)" in css
+    # phones keep the reading order: headline, explanation and buttons, then "Built with" and the links
+    assert ".hero-main { display: contents; }" in css and ".hero-head h1 { order: 1; }" in css and ".hero-side { order: 2; }" in css
+    assert "order: 3" in css_rule(css, ".hero-meta")

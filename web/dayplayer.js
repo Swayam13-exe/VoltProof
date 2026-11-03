@@ -153,6 +153,17 @@ const VPDay = (() => {
     return `${String(hour).padStart(2, "0")}:00`;
   }
 
+  /* How the AI read the rest of the goal: the assumptions it submitted with the plan (finalize), then
+     any the spec carries that are not already listed; one line each, none when there are none. */
+  function assumptionLines(view) {
+    const out = [];
+    for (const a of [...((view && view.assumptions) || []), ...((view && view.spec_assumptions) || [])]) {
+      const text = String(a).trim();
+      if (text && !out.includes(text)) out.push(text);
+    }
+    return out;
+  }
+
   /* --- pure: end ------------------------------------------------------------------------------- */
 
   const SVG_NS = "http://www.w3.org/2000/svg";
@@ -406,7 +417,7 @@ const VPDay = (() => {
 
   /* cost: "full" (value and explanation), "muted" (the hero's quiet line) or "none" (the page shows it
      elsewhere, as Try it does in its comparison panel). */
-  function resultBlock(example, cost) {
+  function resultBlock(example, cost, assumptions) {
     const page = window.VPPage;
     const view = example.view;
     const sd = view.same_day;
@@ -425,6 +436,7 @@ const VPDay = (() => {
       make("p", { class: "result-title" }, "The rules, checked on the day"),
       items.length ? make("ul", { class: "checklist" }, items.map((i) => i.item)) : make("p", { class: "hint" }, "No rules besides the lowest cost."),
       listed.length ? make("p", { class: "hint" }, "Not drawn on the timeline: ", listed.map((code) => page.goalWords(code, view.spec)).join("; "), ".") : null,
+      assumptions ? assumptionBlock(view) : null,
       cost === "none" ? null : make("p", { class: `cost-line${muted ? " muted" : ""}` }, value, line.same ? ". " : " than the rule-based battery. ", line.explain),
       example.file ? make("p", { class: "source" }, `Source: ${example.file}`) : null
     );
@@ -440,6 +452,17 @@ const VPDay = (() => {
     return { block, reveal };
   }
 
+  function assumptionBlock(view) {
+    const lines = assumptionLines(view);
+    if (!lines.length) return null;
+    return make(
+      "div",
+      { class: "assumptions" },
+      make("p", { class: "result-title" }, "How the AI read the rest of your goal"),
+      make("ul", { class: "assumption-list", lang: (view.goal && view.goal.language) || null }, lines.map((line) => make("li", {}, line)))
+    );
+  }
+
   function dayScale(view) {
     const sd = view.same_day;
     const run = sd.agent;
@@ -451,13 +474,14 @@ const VPDay = (() => {
   /* examples: [{view, file (source path or null), language}]; options:
      id (unique per page), switcher (site buttons), loop (cycle forever, else one pass), live (an
      aria-live element announcing each new goal), showGoal (the goal quote; off when the page shows the
-     goal already), cost (see resultBlock). */
+     goal already), cost (see resultBlock), checklistUnderFlow (the checked rules under the diagram),
+     assumptions (under the checked rules, how the AI read the rest of the goal: Try it). */
   function mount(host, examples, options) {
-    const { id, switcher = false, loop = true, live = null, showGoal = true, cost = "full" } = options || {};
+    const { id, switcher = false, loop = true, live = null, showGoal = true, cost = "full", checklistUnderFlow = false, assumptions = false } = options || {};
     const still = reduceMotion.matches;
     examples.forEach((e) => {
       e.goal = goalBlock(e);
-      e.result = resultBlock(e, cost);
+      e.result = resultBlock(e, cost, assumptions);
     });
     let flow = flowDiagram(phone.matches ? "compact" : "wide", id);
     const flowSlot = make("div", { class: "flow-slot" }, flow.root);
@@ -465,13 +489,15 @@ const VPDay = (() => {
     const legendSlot = make("div", { class: "legend-slot" });
     const range = make("input", { type: "range", id: `${id}-hour`, min: "0", max: "24", step: "1", value: "0", "aria-describedby": `${id}-readout` });
     const readout = make("p", { id: `${id}-readout`, class: "scrub-readout" });
+    const goalArea = showGoal ? make("div", { class: "day-goal" }, make("div", { class: "stack" }, examples.map((e) => e.goal))) : null;
+    const flowArea = make("figure", { class: "day-flow" }, flowSlot, make("figcaption", { class: "flow-caption" }, "Energy this hour: line width follows kW, arrows show the direction. The red dot marks the critical load."));
+    const timelineArea = make("div", { class: "day-timeline" }, timelineSlot, legendSlot, make("div", { class: "scrub" }, make("label", { for: `${id}-hour` }, "Hour of the day"), range, readout));
+    const resultArea = make("div", { class: "day-result" }, make("div", { class: "stack" }, examples.map((e) => e.result.block)));
+    // checklistUnderFlow (Try it, no goal quote): the checked rules sit under the diagram so the two
+    // columns end at about the same height; otherwise (the hero) they sit under the timeline
     const body = make("div", { class: "day-body" },
-      make("div", { class: "day-col" },
-        showGoal ? make("div", { class: "day-goal" }, make("div", { class: "stack" }, examples.map((e) => e.goal))) : null,
-        make("figure", { class: "day-flow" }, flowSlot, make("figcaption", { class: "flow-caption" }, "Energy this hour: line width follows kW, arrows show the direction. The red dot marks the critical load."))),
-      make("div", { class: "day-col" },
-        make("div", { class: "day-timeline" }, timelineSlot, legendSlot, make("div", { class: "scrub" }, make("label", { for: `${id}-hour` }, "Hour of the day"), range, readout)),
-        make("div", { class: "day-result" }, make("div", { class: "stack" }, examples.map((e) => e.result.block)))));
+      make("div", { class: "day-col" }, goalArea, flowArea, checklistUnderFlow ? resultArea : null),
+      make("div", { class: "day-col" }, timelineArea, checklistUnderFlow ? null : resultArea));
 
     const fills = [];
     const buttons = switcher ? examples.map((example, i) => {
@@ -582,5 +608,5 @@ const VPDay = (() => {
     return { show };
   }
 
-  return { mount, specCodes, ruleBands, ruleResults, hourFlows, focusHour, hourText, shortSiteName, siteIcon, languageName };
+  return { mount, assumptionLines, specCodes, ruleBands, ruleResults, hourFlows, focusHour, hourText, shortSiteName, siteIcon, languageName };
 })();

@@ -8,6 +8,12 @@
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="An AI operator for solar + battery sites: say the goal in your own language; it plans the day and checks the plan before anything runs.">
   <title>VoltProof AI</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta property="og:title" content="VoltProof AI">
+  <meta property="og:description" content="An AI operator for solar + battery sites: say the goal in your own language; it plans the day and checks the plan before anything runs.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- the link-preview image tags are added by the app (voltproof/api/app.py) only when PUBLIC_BASE_URL is set: they must be absolute -->
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -33,8 +39,8 @@
       </nav>
       <div class="actions">
         <button type="button" id="theme-toggle" class="tool-button" aria-label="Switch to dark theme"><span class="tool-icon" aria-hidden="true">☾</span><span class="tool-text">Dark</span></button>
-        <button type="button" id="copy-link" class="tool-button">Copy link</button>
-        <span id="copy-status" class="copy-status" role="status" aria-live="polite"></span>
+        <a id="github-link" class="tool-button" href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer" aria-label="GitHub: the code and results (opens in a new tab)"><svg class="tool-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tool-text">GitHub</span></a>
+        <a id="video-link" class="tool-button" href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer" aria-label="Watch the demo video (opens in a new tab)" hidden><svg class="tool-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.5v7l6-3.5z" fill="currentColor"/></svg><span class="tool-text">Watch video</span></a>
       </div>
     </div>
   </header>
@@ -43,13 +49,19 @@
     <!-- 1. Hero: the claim, then one recorded day played back -->
     <section id="top" class="hero" aria-labelledby="hero-title">
       <div class="hero-head">
-        <h1 id="hero-title">A battery plan you can check before it runs.</h1>
+        <div class="hero-main">
+          <h1 id="hero-title">A battery plan you can check before it runs.</h1>
+          <p class="hero-meta">
+            <span class="built">Built with Muse Spark Open</span>
+            <a class="hero-link" href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer" aria-label="GitHub: the code and results (opens in a new tab)"><svg class="tool-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tool-text">GitHub</span></a>
+            <a id="hero-video" class="hero-link" href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer" aria-label="Watch the demo video (opens in a new tab)" hidden><svg class="tool-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.5v7l6-3.5z" fill="currentColor"/></svg><span class="tool-text">Watch video</span></a>
+          </p>
+        </div>
         <div class="hero-side">
           <p class="subtitle">An AI operator for solar + battery sites. You say the goal in your own language; it plans the day and checks the plan before anything runs.</p>
           <div class="cta">
             <a class="button primary" href="#try">Try it</a>
             <a class="button secondary" href="#evidence">See the evidence</a>
-            <span class="built">Built with Muse Spark Open</span>
           </div>
         </div>
       </div>
@@ -147,6 +159,63 @@
             </div>
           </div>
           <p id="day-hint" class="hint">The plan is made on the day-ahead forecast for this day, then replayed on the same-day weather.</p>
+
+          <div class="tariff-row">
+            <span id="tariff-tag" class="tariff-tag" hidden>Tariff: from your bill</span>
+            <button type="button" id="bill-open" class="button secondary" aria-expanded="false" aria-controls="bill-panel" hidden>Use your own tariff from a bill</button>
+          </div>
+          <section id="bill-panel" class="bill-panel" aria-labelledby="bill-title" hidden>
+            <h3 id="bill-title">Your tariff, read from a bill</h3>
+            <p class="bill-privacy">The image is sent to the model provider to be read, then discarded. Nothing is stored.</p>
+            <p class="try-label" id="bill-samples-title">Pick a sample bill</p>
+            <ul id="bill-samples" class="bill-samples" aria-labelledby="bill-samples-title"></ul>
+            <div class="bill-upload">
+              <p class="try-label">Or use a photo of your own bill</p>
+              <div class="upload-row">
+                <input type="file" id="bill-file" class="visually-hidden" accept="image/png,image/jpeg" aria-describedby="bill-upload-hint bill-upload-note">
+                <label for="bill-file" class="button secondary upload-button"><svg class="tool-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Upload a photo</label>
+                <span id="bill-file-name" class="bill-file-name" aria-live="polite"></span>
+              </div>
+              <p id="bill-upload-hint" class="hint">PNG or JPEG, at most 2 MB.</p>
+              <p id="bill-upload-note" class="hint"></p>
+            </div>
+            <div class="bill-reading">
+              <img id="bill-preview" class="bill-preview" alt="The bill being read" hidden>
+              <div class="bill-reading-text">
+                <p id="bill-status" class="bill-status" role="status" aria-live="polite"></p>
+                <div id="bill-confirm" class="bill-confirm" hidden>
+                  <p id="bill-source" class="source"></p>
+                  <p class="try-label">Check what was read, and fix anything that is wrong</p>
+                  <div class="bill-fields">
+                    <label for="bill-kind">Tariff type</label>
+                    <select id="bill-kind"></select>
+                    <span class="bill-field-label">Currency</span>
+                    <span id="bill-currency" class="bill-readonly"></span>
+                  </div>
+                  <table class="bill-table">
+                    <caption class="offscreen">Import rates by time of day</caption>
+                    <colgroup><col class="bill-col-hour"><col class="bill-col-hour"><col class="bill-col-rate"><col class="bill-col-remove"></colgroup>
+                    <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col" id="bill-rate-head">Rate per kWh</th><th scope="col"><span class="offscreen">Remove</span></th></tr></thead>
+                    <tbody id="bill-rows"></tbody>
+                  </table>
+                  <button type="button" id="bill-add" class="button secondary small">Add a period</button>
+                  <div class="bill-fields">
+                    <label for="bill-export">Export rate per kWh (empty: none)</label>
+                    <input id="bill-export" class="bill-input" type="text" inputmode="decimal" autocomplete="off">
+                  </div>
+                  <p id="bill-fixed" class="hint"></p>
+                  <div id="bill-bar" class="bill-bar"></div>
+                  <p id="bill-example" class="bill-example"></p>
+                  <ul id="bill-errors" class="bill-messages bill-errors"></ul>
+                  <ul id="bill-warnings" class="bill-messages bill-warnings"></ul>
+                </div>
+              </div>
+            </div>
+            <div id="bill-actions" class="bill-actions" hidden>
+              <button type="button" id="bill-use" class="button primary" disabled>Plan with this tariff</button>
+              <button type="button" id="bill-site" class="button secondary">Use the site's tariff</button>
+            </div>
+          </section>
 
           <form id="goal-form" class="goal-form" novalidate>
             <label for="goal">Your goal, in any language</label>

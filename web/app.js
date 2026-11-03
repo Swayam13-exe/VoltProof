@@ -24,7 +24,7 @@
   const INFO_TOOLS = { get_site_info: "the site", get_forecast: "the day-ahead forecast", get_tariff: "the tariff" };
   const KIND_TAGS = { english: "EN", hard: "hard", multilingual: null };
 
-  const state = { chips: [], sites: [], siteId: null, chipId: null, playToken: 0, live: null, busy: false };
+  const state = { chips: [], sites: [], siteId: null, chipId: null, playToken: 0, live: null, busy: false, bill: null }; // bill: a confirmed tariff from a bill, in use
 
   /* --- formatting -------------------------------------------------------------------------- */
 
@@ -132,6 +132,7 @@
     renderSites();
     renderDays();
     renderChips();
+    billSiteChanged();
   }
 
   /* A recorded goal fills the box (and sets its day); the button then offers the free replay. */
@@ -259,19 +260,22 @@
   }
 
   /* What the one main button offers for this text: a free replay when it is a recorded goal of this
-     site and day, a live run when it is typed and live runs are available, nothing when empty. */
-  function runButtonState(text, recorded, live, timing) {
+     site and day, a live run when it is typed and live runs are available, nothing when empty. With a
+     tariff from a bill in use (`bill`), only live runs: the recorded runs used the site's tariff. */
+  function runButtonState(text, recorded, live, timing, bill = false) {
     const goal = String(text || "").trim();
-    if (!goal) return { mode: "empty", label: "Plan my day", disabled: true, hint: "Type a goal above or pick a recorded one." };
-    const chip = recorded.find((c) => c.goal.trim() === goal) || null;
+    if (!goal) return { mode: "empty", label: "Plan my day", disabled: true, hint: bill ? "Type a goal or pick one above: it is planned live with the tariff from your bill." : "Type a goal above or pick a recorded one." };
+    const chip = bill ? null : recorded.find((c) => c.goal.trim() === goal) || null;
     if (chip) return { mode: "recorded", label: "Play recorded run (free)", disabled: false, hint: "A recorded run of the agent for this goal, replayed at no cost.", chip };
     const left = live && live.live ? Number(live.runs_left_this_hour) : 0;
     if (live && live.live && left > 0) {
       const took = timing ? ` The ${timing.runs} recorded runs took ${timing.min}-${timing.max} s (web/replays/index.json).` : "";
       const shared = live.per_visitor_limit === false ? " Live runs are shared by all visitors." : "";
-      return { mode: "live", label: `Run live (${left} left this hour)`, disabled: false, hint: `Runs the AI on your goal now.${took}${shared}` };
+      const tariff = bill ? " Planned with the tariff from your bill; the rule-based battery is compared on the same tariff." : "";
+      return { mode: "live", label: `Run live (${left} left this hour)`, disabled: false, hint: `Runs the AI on your goal now.${tariff}${took}${shared}` };
     }
     const why = !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason, null, live) : "no live runs are left this hour";
+    if (bill) return { mode: "unavailable", label: "Live runs unavailable", disabled: true, hint: `A tariff from your bill needs a live run, and live runs are unavailable (${why}). Choose "Use the site's tariff" to play recorded runs.` };
     return { mode: "unavailable", label: "Live runs unavailable: play a recorded run", disabled: true, hint: `Live runs unavailable (${why}). Pick a recorded goal above.` };
   }
 
@@ -314,12 +318,35 @@
     } else if (event.kind === "review") {
       s.checks = "done"; // the reviewer runs only after the checks passed
       s.review = event.data && event.data.approved === false ? "fail" : "done";
+    } else if (event.kind === "gate") {
+      // the gate's decision (api/live.py streams it after the run; recorded traces log it): accepted, or
+      // escalated to the operator (escalated_with_plan / escalated_fallback)
+      if (event.data && event.data.decision === "accepted") accept(s);
+      else s.accepted = "fail";
     } else if (event.kind === "end") {
       s.replay = event.data && event.data.status === "done" ? "active" : "fail";
     } else if (event.kind === "replayed") {
-      s.replay = event.data && event.data.ok ? "done" : "fail";
+      // the final result: a successful one with an accepted plan closes every stage, whatever the stream missed
+      const ok = Boolean(event.data && event.data.ok);
+      if (ok && event.data.accepted) accept(s);
+      s.replay = ok ? "done" : "fail";
     }
     return s;
+  }
+
+  /* An accepted plan: the rules, the plan and the checks passed, and so did the review (unless the
+     gate accepted it on its final attempt with the reviewer's dispute flagged). */
+  function accept(s) {
+    s.rules = "done";
+    s.optimizer = "done";
+    s.checks = "done";
+    if (s.review !== "fail") s.review = "done";
+    s.accepted = "done";
+  }
+
+  /* Did the run end with the gate accepting a plan (view.gate.outcome)? */
+  function gateAccepted(view) {
+    return Boolean(view && view.gate && view.gate.outcome && view.gate.outcome.decision === "accepted");
   }
 
   /* The states a run passes through, each with how long to hold it when replaying a recorded run. */
@@ -337,8 +364,8 @@
   /* The recorded trace as pipeline events (only the steps the stages show). */
   function traceEvents(view) {
     return (view.trace || [])
-      .filter((e) => e.kind === "review" || ((e.kind === "tool_call" || e.kind === "tool_result") && PIPELINE_TOOLS.has(e.name)))
-      .map((e) => ({ kind: e.kind, name: e.name, data: e.data || {} }));
+      .filter((e) => e.kind === "review" || (e.kind === "gate" && e.name !== "finalize") || ((e.kind === "tool_call" || e.kind === "tool_result") && PIPELINE_TOOLS.has(e.name)))
+      .map((e) => (e.kind === "gate" ? { kind: "gate", name: e.name, data: { decision: e.name } } : { kind: e.kind, name: e.name, data: e.data || {} }));
   }
 
   /* The operator's approval of a result (UI only: nothing is sent anywhere). */
@@ -348,6 +375,14 @@
     if (approved) return { show: true, state: "approved", text: "Approved by you. Marked as sent to the battery (demo: no device is controlled).", button: null };
     return { show: true, state: "waiting", text: "Verified - waiting for your approval", button: "Approve plan" };
   }
+
+  /* Why the explanation's cost and the table's cost differ (voltproof/core): the explanation quotes the
+     plan's energy_cost from solve_plan, on the day-ahead forecast (optimizer.py: import price x import -
+     export price x export + battery wear); the table's realized_cost replays the same battery schedule on
+     the same-day weather with the same grid and wear costs plus the change in stored energy, each kWh
+     valued at the day's average import price x discharge efficiency (metrics.trajectory_total_cost,
+     rules.terminal_value_per_kwh). Load switched off is a separate row, not priced. */
+  const COST_NOTE = "About the costs: a cost in the AI's explanation is the plan's expected cost on the day-ahead forecast. The table replays the same battery schedule on the same-day weather and adds the change in battery energy over the day, valued at the day's average import price × discharge efficiency.";
 
   /* The comparison panel: each rule met or missed on both sides, then cost, other load, critical load. */
   function comparisonRows(view, codes) {
@@ -383,6 +418,103 @@
     return `${rows.map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
   }
 
+  /* --- the bill reader (SPEC §6.12): read it, then confirm it. The server checks every edit with the
+     same functions it uses before a run (api/tariff/check); these only shape the table. ------------ */
+
+  const BILL_KINDS = { time_of_use: "time-of-use", flat: "flat" };
+
+  /* The confirm table's rows from what the model read (raw values, as text, so a wrong value shows). */
+  function billRows(answer) {
+    const periods = answer && Array.isArray(answer.periods) ? answer.periods : [];
+    const text = (v) => (v === null || v === undefined ? "" : String(v));
+    return periods.map((p) => ({ start: text(p && p.start_hour), end: text(p && p.end_hour), rate: text(p && p.import_rate) }));
+  }
+
+  /* The table as the tariff the API checks. A number stays a number; anything else goes as typed and
+     the server says what is wrong with it. */
+  function billTariff(kind, rows, exportText, currency) {
+    const value = (v) => {
+      const t = String(v === null || v === undefined ? "" : v).trim();
+      return t === "" ? null : Number.isFinite(Number(t)) ? Number(t) : t;
+    };
+    return { kind, currency: currency || null, periods: rows.map((r) => ({ start_hour: value(r.start), end_hour: value(r.end), import_rate: value(r.rate) })), export_rate: value(exportText) };
+  }
+
+  /* Which table rows an error or warning names ("Row 2: ..."), as 0-based indexes. */
+  function billRowFlags(messages) {
+    const rows = new Set();
+    for (const m of messages || []) {
+      const match = /^Row (\d+)/.exec(m);
+      if (match) rows.add(Number(match[1]) - 1);
+    }
+    return rows;
+  }
+
+  /* The 24-hour price bar: each hour's height as a share of the dearest rate, and its band for colour
+     (cheapest, dearest, in between; one band for a flat tariff; "missing" for an hour with no rate). */
+  function billBars(hourly) {
+    const rates = (hourly || []).filter((r) => typeof r === "number");
+    if (!rates.length) return [];
+    const max = Math.max(...rates);
+    const min = Math.min(...rates);
+    return hourly.map((rate, hour) => {
+      if (typeof rate !== "number") return { hour, rate: null, height: 0, band: "missing" };
+      return { hour, rate, height: rate / max, band: max === min ? "flat" : rate === min ? "cheap" : rate === max ? "peak" : "normal" };
+    });
+  }
+
+  /* One plain example of what the tariff means: "1 kWh at 18:00 costs ₹9.90" (the dearest hour). */
+  function billExample(hourly, currency) {
+    if (!hourly || hourly.length !== 24 || hourly.some((r) => typeof r !== "number")) return "";
+    const top = Math.max(...hourly);
+    if (hourly.every((r) => r === top)) return `1 kWh costs ${money(top, currency)} at any hour`;
+    return `1 kWh at ${hourText(hourly.indexOf(top))} costs ${money(top, currency)}`;
+  }
+
+  /* The result's tariff line: a run planned with a bill's tariff says so, and that the rule-based
+     battery was priced with the same tariff (api/live.py sets meta.tariff_source). */
+  function tariffNote(view) {
+    if (!view || !view.meta || view.meta.tariff_source !== "bill") return null;
+    return { tag: "Tariff: from your bill", text: "Planned with the tariff from your bill. The comparison with the rule-based battery used the same tariff." };
+  }
+
+  /* Why a sample bill shows its recorded read instead of a live one (the API's `why`). */
+  const RECORDED_WHY = {
+    live_mode_off: "the live AI is off here",
+    live_off: "the live AI is off here",
+    paused: "the model provider is busy right now",
+    budget: "the demo's AI budget is used up",
+    rate_limit: "you have used this hour's bill reads",
+    hourly_cap: "this hour's bill reads for all visitors are used up",
+    daily_cap: "today's bill reads are used up",
+    busy: "other bills are being read right now",
+    error: "the live read failed",
+  };
+
+  /* The line above the confirm table: who read the bill. A recorded read says so and why (never "read
+     just now"); a live read says "Read by Muse Spark Open in X s" (the API's label). */
+  function billSourceText(body) {
+    if (body.source === "recorded") {
+      const why = RECORDED_WHY[body.why];
+      return `Recorded read of the sample bill${why ? `, because ${why}` : ""}. It was read earlier by Muse Spark Open (${body.recorded_in || "results/vision_probe/results.json"}).`;
+    }
+    return `${body.label || "Read by Muse Spark Open"}.`;
+  }
+
+  /* Why a bill read was refused, from the API's answer. */
+  function billRefusalText(body) {
+    const b = body || {};
+    const minutes = b.retry_after_s ? Math.max(1, Math.ceil(b.retry_after_s / 60)) : null;
+    const later = minutes ? `; try again in about ${minutes} min` : "";
+    switch (b.reason) {
+      case "rate_limit": return `You have used this hour's ${b.per_visitor_per_hour ? `${b.per_visitor_per_hour} ` : ""}bill reads${later}. The sample bills still work.`;
+      case "hourly_cap": return `This hour's bill reads for all visitors are used up${later}. The sample bills still work.`;
+      case "daily_cap": return "Today's bill reads are used up. The sample bills still work.";
+      case "busy": return "Other bills are being read right now; try again in a minute.";
+      default: return b.message || "The bill could not be read right now. Try again or use a sample bill.";
+    }
+  }
+
   /* --- try pure: end --------------------------------------------------------------------------- */
 
   function stat(label, value, explain) {
@@ -392,7 +524,7 @@
   /* --- the main button and the pipeline strip ------------------------------------------------------ */
 
   function currentButtonState() {
-    return runButtonState($("goal").value, recordedFor(state.chips, state.siteId, $("day").value), state.live, recordedTiming(state.chips));
+    return runButtonState($("goal").value, recordedFor(state.chips, state.siteId, $("day").value), state.live, recordedTiming(state.chips), Boolean(state.bill));
   }
 
   function updateButton() {
@@ -520,8 +652,7 @@
         "details",
         { class: "fold" },
         make("summary", {}, "The exact rules the AI wrote"),
-        make("pre", { class: "spec", "aria-label": "Spec as JSON" }, specText),
-        view.assumptions.length ? make("div", {}, make("h4", {}, "Assumptions the AI made"), make("ul", { class: "list", lang: view.goal.language || null }, view.assumptions.map((a) => make("li", {}, a)))) : null
+        make("pre", { class: "spec", "aria-label": "Spec as JSON" }, specText)
       )
     );
   }
@@ -552,7 +683,8 @@
         make("thead", {}, make("tr", {}, make("th", { scope: "col" }, ""), make("th", { scope: "col" }, "VoltProof"), make("th", { scope: "col" }, "Rule-based battery"))),
         make("tbody", {}, ...c.rules.map((r) => row(r.label, met(r.agent), met(r.rule))), ...c.facts.map((f) => row(f.label, f.agent, f.rule)))
       )),
-      make("p", { class: "compare-cost" }, make("strong", { class: c.cost.tone }, c.cost.value), c.cost.same ? ". " : " than the rule-based battery. ", c.cost.explain)
+      make("p", { class: "compare-cost" }, make("strong", { class: c.cost.tone }, c.cost.value), c.cost.same ? ". " : " than the rule-based battery. ", c.cost.explain),
+      make("p", { class: "cost-note" }, COST_NOTE)
     );
   }
 
@@ -572,11 +704,13 @@
 
   function renderResult(view, { notice, file } = {}) {
     VPCharts.destroyAll();
+    const tariff = tariffNote(view);
     const head = make(
       "div",
       { class: "result-head" },
-      make("div", { class: "badges" }, make("span", { class: "badge" }, view.label)),
+      make("div", { class: "badges" }, make("span", { class: "badge" }, view.label), tariff ? make("span", { class: "tariff-tag" }, tariff.tag) : null),
       make("p", { class: "checked-against" }, view.checked_against),
+      tariff ? make("p", { class: "tariff-note" }, tariff.text) : null,
       metaLine(view),
       view.plan_notice ? make("p", { class: "fallback", role: "note" }, view.plan_notice) : null
     );
@@ -589,7 +723,7 @@
     const player = make("div", { class: "try-player day-panel", "aria-label": "The result, hour by hour", role: "region" });
     parts.push(player, approvalBlock(view), comparisonPanel(view), rulesSection(view), stepsFold(view), chartsFold(view), csvButton(view));
     $("conversation").replaceChildren(...parts.filter(Boolean));
-    VPDay.mount(player, [{ view, file: file || null, language: view.goal.language || null }], { id: "try", loop: false, showGoal: false, cost: "none" });
+    VPDay.mount(player, [{ view, file: file || null, language: view.goal.language || null }], { id: "try", loop: false, showGoal: false, cost: "none", checklistUnderFlow: true, assumptions: true });
   }
 
   /* "Verified - waiting for your approval", then the operator approves (UI only, SPEC §6.13). */
@@ -640,7 +774,7 @@
       status(`Could not load the recorded run: ${err.message}`, true);
       return;
     }
-    const frames = pipelineFrames([...traceEvents(view), { kind: "end", data: { status: view.plan ? "done" : "unavailable" } }, { kind: "replayed", data: { ok: Boolean(view.plan) } }]);
+    const frames = pipelineFrames([...traceEvents(view), { kind: "end", data: { status: view.plan ? "done" : "unavailable" } }, { kind: "replayed", data: { ok: Boolean(view.plan), accepted: gateAccepted(view) } }]);
     for (const frame of frames.slice(0, -1)) {
       if (token !== state.playToken) return;
       setPipeline(frame.state);
@@ -666,6 +800,7 @@
       case "paused":
       case "busy_upstream": return "the model provider is busy, so live runs are paused for a few minutes";
       case "network": return "the live AI could not be reached";
+      case "tariff_invalid": return "the tariff from your bill did not pass the checks";
       default: return "the live run failed";
     }
   }
@@ -682,7 +817,8 @@
     const day = $("day").value;
     const mine = state.chips.filter((c) => c.site_id === state.siteId);
     const fallback = mine.find((c) => c.date === day) || mine[0];
-    const notice = `Live run unavailable: ${reasonText(reason, body, state.live)}. Showing a recorded run for this site instead, labelled "replay (recorded run)". Your goal was not ${started ? "completed" : "run"}.`;
+    const tariff = state.bill ? ", which used the site's tariff, not your bill's" : "";
+    const notice = `Live run unavailable: ${reasonText(reason, body, state.live)}. Showing a recorded run for this site instead${tariff}, labelled "replay (recorded run)". Your goal was not ${started ? "completed" : "run"}.`;
     status(notice, true);
     if (fallback) await playRecorded(fallback, { notice });
     refreshLive();
@@ -704,6 +840,7 @@
       if (data.name === "finalize" && r.failed_checks && r.failed_checks.length) return `Checks not passed: ${r.failed_checks.map((c) => CHECK_NAMES[c] || c).join("; ")}. The AI is fixing it.`;
       return null;
     }
+    if (kind === "gate") return data.decision === "accepted" ? `Accepted: plan ${data.plan_id} passed the checks` : "Not accepted: escalated to the operator";
     if (kind === "review") return data.approved === true ? "Independent reviewer: ✓ approved" : data.approved === false ? "Independent reviewer: ✗ raised issues" : "Independent reviewer: no verdict";
     return null;
   }
@@ -723,7 +860,7 @@
         const text = liveStepText(kind, data);
         if (text) log.append(make("li", {}, text));
       };
-      for (const kind of ["tool_call", "tool_result", "review"]) source.addEventListener(kind, add(kind));
+      for (const kind of ["tool_call", "tool_result", "review", "gate"]) source.addEventListener(kind, add(kind));
       source.addEventListener("end", async (event) => {
         ended = true;
         source.close();
@@ -738,7 +875,7 @@
           const result = await (await fetch(`api/plan/${encodeURIComponent(runId)}`)).json();
           status("Live run finished.");
           renderResult(result.view);
-          setPipeline(pipelineStep(p, { kind: "replayed", data: { ok: Boolean(result.view && result.view.plan) } }));
+          setPipeline(pipelineStep(p, { kind: "replayed", data: { ok: Boolean(result.view && result.view.plan), accepted: gateAccepted(result.view) } }));
         } catch (_err) {
           await fallBack("network", null, true);
         }
@@ -757,7 +894,7 @@
   async function runLive(goal) {
     let response;
     try {
-      response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: state.siteId, day: $("day").value, goal }) });
+      response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: state.siteId, day: $("day").value, goal, tariff: state.bill ? state.bill.tariff : undefined }) });
     } catch (_err) {
       await fallBack("network");
       return;
@@ -797,11 +934,310 @@
       state.live = null;
     }
     $("live-note").textContent = liveNote(state.live);
+    billUploadState();
     updateButton();
   }
 
   function updateCount() {
     $("goal-count").textContent = `${$("goal").value.length} / ${MAX_GOAL}`;
+  }
+
+  /* --- the bill reader: samples, upload, the confirm table ---------------------------------------- */
+
+  const BILL_MAX_BYTES = 2 * 1024 * 1024;
+  const bill = { samples: [], sampleId: null, draft: null, checkSeq: 0, readSeq: 0, timer: null };
+
+  function svg(tag, attrs, ...children) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, String(value));
+    node.append(...children);
+    return node;
+  }
+
+  function billStatus(text, warn = false) {
+    $("bill-status").textContent = text;
+    $("bill-status").classList.toggle("warn", warn);
+  }
+
+  function showTariffTags() {
+    $("tariff-tag").hidden = !state.bill; // one tag, next to the panel's button
+  }
+
+  /* The two actions appear only once a bill has been read (a reading on the table). */
+  function showBillActions() {
+    $("bill-actions").hidden = !bill.draft;
+  }
+
+  /* The 24-hour price bar (SVG, text labels only). */
+  function priceBar(hourly, currency) {
+    const bars = billBars(hourly);
+    if (!bars.length) return null;
+    const top = 4;
+    const base = 44;
+    const rects = bars.map((b) => {
+      const h = b.band === "missing" ? base - top : Math.max(2, b.height * (base - top));
+      return svg("rect", { x: b.hour * 10 + 1, y: base - h, width: 8, height: h, rx: 1.5, class: `bar-${b.band}` });
+    });
+    const ticks = [0, 6, 12, 18, 24].map((h) => svg("text", { x: h * 10, y: 56, "text-anchor": h === 0 ? "start" : h === 24 ? "end" : "middle" }, `${h}:00`));
+    const runs = [];
+    bars.forEach((b) => {
+      const last = runs[runs.length - 1];
+      if (last && last.rate === b.rate) last.end = b.hour + 1;
+      else runs.push({ start: b.hour, end: b.hour + 1, rate: b.rate });
+    });
+    const label = `Price by hour: ${runs.map((r) => `${hourText(r.start)} to ${hourText(r.end)} ${r.rate === null ? "no rate" : money(r.rate, currency)}`).join(", ")}`;
+    return svg("svg", { viewBox: "0 0 240 60", role: "img", "aria-label": label }, ...rects, ...ticks);
+  }
+
+  function billInput(row, field, label, index) {
+    const input = make("input", { class: "bill-input", type: "text", inputmode: "decimal", autocomplete: "off", "aria-label": `Row ${index + 1}: ${label}` });
+    input.value = row[field];
+    input.addEventListener("input", () => {
+      row[field] = input.value;
+      billEdited();
+    });
+    return input;
+  }
+
+  function renderBillRows() {
+    const d = bill.draft;
+    $("bill-rows").replaceChildren(
+      ...d.rows.map((row, i) => {
+        const remove = make("button", { type: "button", class: "bill-remove", "aria-label": `Remove row ${i + 1}`, title: "Remove this row" }, "✕");
+        remove.addEventListener("click", () => {
+          d.rows.splice(i, 1);
+          renderBillRows();
+          billEdited();
+        });
+        return make("tr", {}, make("td", {}, billInput(row, "start", "from hour", i)), make("td", {}, billInput(row, "end", "to hour", i)), make("td", {}, billInput(row, "rate", `rate per kWh (${d.currency})`, i)), make("td", {}, remove));
+      })
+    );
+  }
+
+  /* A reading (or a re-check): the table, then what the check says. */
+  function renderBill(fresh) {
+    const d = bill.draft;
+    $("bill-confirm").hidden = false;
+    if (fresh) {
+      const kinds = { ...BILL_KINDS };
+      if (d.kind && !kinds[d.kind]) kinds[d.kind] = `${d.kind} (not supported)`;
+      $("bill-kind").replaceChildren(...Object.entries(kinds).map(([value, text]) => make("option", { value }, text)));
+      $("bill-kind").value = d.kind && kinds[d.kind] ? d.kind : "time_of_use";
+      $("bill-currency").textContent = d.currency;
+      $("bill-export").value = d.exportText;
+      $("bill-rate-head").textContent = `Rate per kWh (${d.currency})`;
+      renderBillRows();
+    }
+    showBillCheck();
+  }
+
+  function showBillCheck() {
+    const check = bill.draft.check;
+    const flagged = billRowFlags(check.errors);
+    [...$("bill-rows").children].forEach((tr, i) => {
+      for (const input of tr.querySelectorAll("input")) input.setAttribute("aria-invalid", String(flagged.has(i)));
+    });
+    $("bill-export").setAttribute("aria-invalid", String(check.errors.some((e) => e.startsWith("The export rate"))));
+    $("bill-errors").replaceChildren(...check.errors.map((e) => make("li", {}, e)));
+    $("bill-warnings").replaceChildren(...check.warnings.map((w) => make("li", {}, w)));
+    const fixed = check.fixed_charge;
+    $("bill-fixed").textContent = fixed === null || fixed === undefined ? "" : `Fixed charge on the bill: ${amount(fixed)} ${bill.draft.currency} (shown only; it does not change the plan).`;
+    const bar = priceBar(check.hourly, check.currency);
+    $("bill-bar").replaceChildren(...(bar ? [bar] : []));
+    $("bill-example").textContent = check.ok ? billExample(check.hourly, check.currency) : "";
+    $("bill-use").disabled = !check.ok;
+  }
+
+  function billTariffNow() {
+    const d = bill.draft;
+    return billTariff($("bill-kind").value, d.rows, $("bill-export").value, d.currency);
+  }
+
+  /* Any edit: the tariff in use (if any) no longer matches, and the server checks the table again. */
+  function billEdited() {
+    if (state.bill) {
+      state.bill = null;
+      showTariffTags();
+      updateButton();
+    }
+    $("bill-use").disabled = true;
+    clearTimeout(bill.timer);
+    bill.timer = setTimeout(checkBill, 250);
+  }
+
+  async function checkBill() {
+    if (!bill.draft) return;
+    const seq = ++bill.checkSeq;
+    let check;
+    try {
+      const response = await fetch("api/tariff/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site_id: state.siteId, day: $("day").value || null, tariff: billTariffNow() }) });
+      check = response.ok ? await response.json() : null;
+    } catch (_err) {
+      check = null;
+    }
+    if (seq !== bill.checkSeq || !bill.draft) return;
+    bill.draft.check = check || { ...bill.draft.check, ok: false, errors: ["The tariff could not be checked right now. Try again."], warnings: [] };
+    showBillCheck();
+  }
+
+  function showReading(body) {
+    const check = body.check;
+    bill.checkSeq += 1;
+    const answer = body.answer && typeof body.answer === "object" ? body.answer : {};
+    if (check.unreadable || !Array.isArray(answer.periods)) {
+      bill.draft = null;
+      showBillActions();
+      $("bill-confirm").hidden = true;
+      $("bill-use").disabled = true;
+      billStatus(check.errors[0] || "The bill could not be read.", true);
+      return;
+    }
+    const site = state.sites.find((s) => s.site_id === state.siteId);
+    const exportText = answer.export_rate === null || answer.export_rate === undefined ? "" : String(answer.export_rate);
+    bill.draft = { kind: answer.tariff_kind || null, rows: billRows(answer), exportText, currency: String(answer.currency || (site && site.currency) || "").toUpperCase(), check };
+    billStatus(check.ok ? "Read. Check the table below, then plan with it." : "Read, but something needs fixing before you can plan with it.", !check.ok);
+    $("bill-source").textContent = billSourceText(body);
+    renderBill(true);
+    showBillActions();
+  }
+
+  async function readBill(payload) {
+    const seq = ++bill.readSeq;
+    bill.checkSeq += 1; // a check still on its way belongs to the last reading
+    clearTimeout(bill.timer);
+    bill.draft = null; // the actions wait for this reading
+    showBillActions();
+    $("bill-confirm").hidden = true;
+    $("bill-use").disabled = true;
+    billStatus(payload.sample_id && !(state.live && state.live.live) ? "Loading the recorded read." : "Reading the bill. This takes a few seconds.");
+    let response;
+    let body;
+    try {
+      response = await fetch("api/tariff-from-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site_id: state.siteId, day: $("day").value || null, ...payload }) });
+      body = await response.json().catch(() => ({}));
+    } catch (_err) {
+      if (seq === bill.readSeq) billStatus("The bill could not be sent. Check your connection and try again.", true);
+      return;
+    }
+    if (seq !== bill.readSeq) return;
+    if (!response.ok || !body.check) {
+      billStatus(billRefusalText(body), true);
+      return;
+    }
+    showReading(body);
+  }
+
+  function markSamples() {
+    for (const button of $("bill-samples").querySelectorAll(".bill-sample")) button.setAttribute("aria-pressed", String(button.dataset.sample === bill.sampleId));
+  }
+
+  function pickSample(sample) {
+    if (sample.site_id !== state.siteId) selectSite(sample.site_id);
+    bill.sampleId = sample.id;
+    markSamples();
+    $("bill-file").value = "";
+    $("bill-file-name").textContent = "";
+    $("bill-preview").src = `api/bill-samples/${encodeURIComponent(sample.id)}.png`;
+    $("bill-preview").hidden = false;
+    readBill({ sample_id: sample.id });
+  }
+
+  function uploadBill(file) {
+    if (!file) return;
+    $("bill-file-name").textContent = file.name; // shown as text only
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      billStatus("Only PNG and JPEG images are accepted.", true);
+      return;
+    }
+    if (file.size > BILL_MAX_BYTES) {
+      billStatus("The image is larger than 2 MB. Take a smaller photo or crop it.", true);
+      return;
+    }
+    bill.sampleId = null;
+    markSamples();
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const url = String(reader.result);
+      $("bill-preview").src = url; // a data: URL (img-src allows data:), kept in this page only
+      $("bill-preview").hidden = false;
+      readBill({ image_b64: url.slice(url.indexOf(",") + 1), mime: file.type });
+    });
+    reader.addEventListener("error", () => billStatus("The image could not be opened.", true));
+    reader.readAsDataURL(file);
+  }
+
+  function useBill() {
+    if (!bill.draft || !bill.draft.check.ok) return;
+    state.bill = { tariff: billTariffNow() };
+    showTariffTags();
+    billStatus("This tariff is in use: type a goal and run it live.");
+    updateButton();
+    $("goal").focus();
+  }
+
+  function useSiteTariff() {
+    state.bill = null;
+    showTariffTags();
+    $("bill-panel").hidden = true;
+    $("bill-open").setAttribute("aria-expanded", "false");
+    updateButton();
+    $("bill-open").focus();
+  }
+
+  /* Another site: a bill's tariff in use belongs to the old site, so it is dropped; a reading on the
+     table is checked again against the new site (its currency may not match). */
+  function billSiteChanged() {
+    if (state.bill) {
+      state.bill = null;
+      showTariffTags();
+    }
+    if (bill.draft) checkBill();
+  }
+
+  function billUploadState() {
+    const on = Boolean(state.live && state.live.live);
+    $("bill-file").disabled = !on;
+    $("bill-upload-note").textContent = on ? "" : "Reading your own bill needs the live AI, which is not available here right now. The sample bills show recorded reads.";
+  }
+
+  async function setupBill() {
+    let samples = [];
+    try {
+      const response = await fetch("api/bill-samples", { cache: "no-cache" });
+      samples = response.ok ? await response.json() : [];
+    } catch (_err) {
+      samples = [];
+    }
+    if (!samples.length) return; // the page on its own (no API): no bill reader
+    bill.samples = samples;
+    $("bill-samples").replaceChildren(
+      ...samples.map((sample) => {
+        const button = make("button", { type: "button", class: "bill-sample", "aria-pressed": "false" }, make("img", { src: `api/bill-samples/${encodeURIComponent(sample.id)}.png`, alt: "", loading: "lazy" }), make("span", {}, sample.label));
+        button.dataset.sample = sample.id;
+        button.addEventListener("click", () => pickSample(sample));
+        return make("li", {}, button);
+      })
+    );
+    $("bill-open").hidden = false;
+    $("bill-open").addEventListener("click", () => {
+      const open = $("bill-panel").hidden;
+      $("bill-panel").hidden = !open;
+      $("bill-open").setAttribute("aria-expanded", String(open));
+    });
+    $("bill-file").addEventListener("change", (event) => uploadBill(event.target.files[0]));
+    $("bill-kind").addEventListener("change", billEdited);
+    $("bill-export").addEventListener("input", billEdited);
+    $("bill-add").addEventListener("click", () => {
+      bill.draft.rows.push({ start: "", end: "", rate: "" });
+      renderBillRows();
+      billEdited();
+    });
+    $("bill-use").addEventListener("click", useBill);
+    $("bill-site").addEventListener("click", useSiteTariff);
+    $("day").addEventListener("change", () => {
+      if (bill.draft) checkBill();
+    });
+    billUploadState();
   }
 
   /* --- start ------------------------------------------------------------------------------------ */
@@ -828,6 +1264,7 @@
     const chip = state.chips.find((c) => c.id === wanted);
     selectSite(chip ? chip.site_id : state.sites[0].site_id);
     emptyResult();
+    await setupBill();
     await refreshLive();
     if (chip) {
       // a shared link to a recorded run: fill the goal and play it

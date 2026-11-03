@@ -2,7 +2,8 @@
    - the hero mounts the shared day player on three recorded days (web/replays)
    - the Problem, How-it-works and Evidence numbers come from /api/benchmark (the committed summary
      files in results, plus constants from the frozen code); every number shows its source
-   - top menu (nothing highlighted while the hero is in view), theme toggle, copy link, reveal on scroll
+   - top menu (nothing highlighted while the hero is in view), theme toggle, GitHub and video links,
+     reveal on scroll
    Everything is built with createElement and textContent: no HTML is ever inserted. */
 "use strict";
 
@@ -124,33 +125,20 @@
     });
   }
 
-  /* --- copy link ------------------------------------------------------------------------------- */
+  /* --- the demo video link: shown only when the server has DEMO_VIDEO_URL (https) ----------------- */
 
-  function setupCopyLink() {
-    const note = $("copy-status");
-    let timer = null;
-    $("copy-link").addEventListener("click", async () => {
-      const url = window.location.href;
-      let copied = false;
-      try {
-        await navigator.clipboard.writeText(url);
-        copied = true;
-      } catch (_err) {
-        const area = make("textarea", { class: "offscreen", readonly: "readonly", "aria-hidden": "true", tabindex: "-1" });
-        area.value = url;
-        document.body.append(area);
-        area.select();
-        try {
-          copied = document.execCommand("copy");
-        } catch (_e) {
-          copied = false;
-        }
-        area.remove();
+  async function setupVideoLinks() {
+    try {
+      const response = await fetch("api/status", { cache: "no-store" });
+      const url = response.ok ? (await response.json()).demo_video_url : null;
+      if (typeof url !== "string" || !url.startsWith("https://")) return;
+      for (const id of ["video-link", "hero-video"]) {
+        $(id).href = url;
+        $(id).hidden = false;
       }
-      note.textContent = copied ? "Link copied" : "Copy the link from the address bar";
-      clearTimeout(timer);
-      timer = setTimeout(() => { note.textContent = ""; }, 2500);
-    });
+    } catch (_err) {
+      // no server here: the link stays hidden
+    }
   }
 
   /* --- menu: the section under the top bar is highlighted; nothing while the hero is in view ---- */
@@ -184,23 +172,60 @@
     }, { passive: true });
     window.addEventListener("resize", update);
     update();
+    // phones: while more items sit past the right edge, the row fades out there (CSS .menu.more-right),
+    // so a cut-off item reads as "scroll for more"
+    const edge = () => menu.classList.toggle("more-right", menu.scrollLeft + menu.clientWidth < menu.scrollWidth - 2);
+    menu.addEventListener("scroll", edge, { passive: true });
+    window.addEventListener("resize", edge);
+    edge();
   }
 
-  /* --- reveal on scroll: progressive, with a safety timer ---------------------------------------- */
+  /* --- reveal on scroll ------------------------------------------------------------------------- */
+
+  /* Every section, and the cards inside, fades in and rises as it enters the view, all the way down.
+     Content is visible without JavaScript: the hidden state (CSS under .reveal-armed) is applied only
+     here, only with IntersectionObserver and without reduced motion. Anything in view at load shows at
+     once; anything still hidden 1 s after it is in view is shown anyway (a missed observer callback). */
+  const REVEAL_CARDS = ".reveal, .pipe-node, .dot-group, .limits li";
+  let watchReveal = () => {};
 
   function setupReveal() {
     if (reduceMotion.matches || !("IntersectionObserver" in window)) return;
-    const root = document.documentElement;
-    root.classList.add("reveal-armed");
+    const inView = (node) => {
+      const r = node.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0;
+    };
+    const show = (node) => node.classList.add("in");
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        entry.target.classList.add("in");
+        show(entry.target);
         observer.unobserve(entry.target);
       }
-    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.05 });
-    document.querySelectorAll(".reveal").forEach((node) => observer.observe(node));
-    window.setTimeout(() => root.classList.remove("reveal-armed"), 1500); // nothing stays hidden
+    }, { threshold: 0.01 });
+    watchReveal = (nodes) => {
+      for (const node of nodes) {
+        node.classList.add("reveal");
+        if (inView(node)) show(node);
+        else observer.observe(node);
+      }
+    };
+    document.documentElement.classList.add("reveal-armed");
+    watchReveal(document.querySelectorAll(REVEAL_CARDS));
+    let queued = false;
+    const sweep = () => {
+      queued = false;
+      for (const node of document.querySelectorAll(".reveal:not(.in)")) {
+        if (!inView(node) || node.dataset.revealDue) continue;
+        node.dataset.revealDue = "1";
+        window.setTimeout(() => show(node), 1000); // the safety net
+      }
+    };
+    window.addEventListener("scroll", () => {
+      if (queued) return;
+      queued = true;
+      window.requestAnimationFrame(sweep);
+    }, { passive: true });
   }
 
   /* --- hero: three recorded days in the shared day player ------------------------------------------ */
@@ -307,6 +332,7 @@
       );
     }
     $("evidence-numbers").replaceChildren(...numbers.slice(0, 3));
+    watchReveal(numbers.slice(0, 3));
 
     const rows = (main.run_summary || []).map((summary) => {
       const row = rowFor(satisfied, "arm", summary.arm);
@@ -350,7 +376,7 @@
   }
 
   setupTheme();
-  setupCopyLink();
+  setupVideoLinks();
   setupMenu();
   setupReveal();
   setupHero();

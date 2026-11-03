@@ -84,7 +84,13 @@ def test_content_is_visible_without_javascript() -> None:
     hiding = [rule for rule in re.findall(r"([^{}]+)\{([^}]*)\}", css) if "opacity: 0" in rule[1] and ".reveal" in rule[0]]
     assert hiding and all(selector.strip().startswith(".reveal-armed") for selector, _ in hiding)
     landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
-    assert 'classList.add("reveal-armed")' in landing and 'classList.remove("reveal-armed"), 1500' in landing
+    reveal = landing[landing.index("function setupReveal("):landing.index("/* --- hero:")]
+    assert 'if (reduceMotion.matches || !("IntersectionObserver" in window)) return;' in reveal  # armed only with IO, no reduced motion
+    assert 'classList.add("reveal-armed")' in reveal and "if (inView(node)) show(node);" in reveal  # in view at load: shown at once
+    assert "window.setTimeout(() => show(node), 1000)" in reveal  # the safety net, while scrolling, the whole way down
+    assert "1500" not in reveal  # no blanket timer that ends the effect after the first seconds
+    assert re.search(r"\.reveal \{ transition: opacity 0\.4s ease, transform 0\.4s ease; \}", css)
+    assert "translateY(16px)" in css and "height" not in css[css.index(".reveal-armed"):css.index(".reveal-armed") + 120]  # no layout shift
 
 
 def test_every_section_shares_one_frame() -> None:
@@ -102,3 +108,97 @@ def test_every_section_shares_one_frame() -> None:
     assert not re.search(r"\.section-inner\.[a-z]", css)  # no narrowed variant of the frame
     assert "#try" not in css and not re.search(r"\.try[\s{.,]", css)  # no special band or width for Try it
     assert re.search(r"\.hero \{[^}]*max-width: 1160px", css) and re.search(r"\.section-inner \{[^}]*max-width: 1160px", css)  # hero and sections share the width
+
+
+def test_top_bar_and_hero_link_to_github_and_the_video() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    links = re.findall(r'<a [^>]*href="https://github.com/Swayam13-exe/VoltProof"[^>]*>', html)
+    top_and_hero = [a for a in links if ('id="github-link"' in a or 'class="hero-link"' in a) and "video" not in a]
+    assert len(top_and_hero) == 2 and all('target="_blank"' in a and 'rel="noopener noreferrer"' in a and "aria-label=" in a for a in top_and_hero)
+    for video_id in ("video-link", "hero-video"):  # hidden until /api/status gives an https URL
+        tag = re.search(rf'<a id="{video_id}"[^>]*>', html).group(0)
+        assert " hidden" in tag and 'target="_blank"' in tag and 'rel="noopener noreferrer"' in tag and "aria-label=" in tag
+    assert "copy-link" not in html and "copy-status" not in html
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    assert "setupCopyLink" not in landing and 'url.startsWith("https://")' in landing
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".actions .tool-text { display: none; }" in css  # phones: icons only
+
+
+# --- Part C1: favicon and link previews -------------------------------------------------------------------
+
+
+def preview_tags(text: str) -> dict[str, str]:
+    return {m.group(1): m.group(2) for m in re.finditer(r'<meta (?:property|name)="((?:og|twitter):[a-z:]+)" content="([^"]*)">', text)}
+
+
+def test_the_page_has_its_favicon_and_link_preview_tags() -> None:
+    from voltproof.config import load_settings
+
+    page = TestClient(create_app(settings=load_settings({}))).get("/")
+    assert page.status_code == 200 and page.headers["content-security-policy"] == CONTENT_SECURITY_POLICY
+    assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in page.text
+    description = re.search(r'<meta name="description" content="([^"]+)">', page.text).group(1)
+    tags = preview_tags(page.text)
+    assert tags == {"og:title": "VoltProof AI", "og:description": description, "og:type": "website", "twitter:card": "summary_large_image"}  # no image tags without a base
+    assert "og:image" not in page.text and "twitter:image" not in page.text
+
+
+def test_image_tags_are_absolute_when_the_public_address_is_set() -> None:
+    from voltproof.config import load_settings
+
+    app = create_app(settings=load_settings({"PUBLIC_BASE_URL": "https://example.hf.space/"}))
+    for path in ("/", "/index.html"):
+        tags = preview_tags(TestClient(app).get(path).text)
+        assert tags["og:image"] == tags["twitter:image"] == "https://example.hf.space/og.png", path
+        assert (tags["og:image:width"], tags["og:image:height"]) == ("1200", "630")
+    assert all(not v.startswith("/") for v in tags.values())
+
+
+def test_favicon_and_preview_image_are_served_with_their_types_and_sizes() -> None:
+    from PIL import Image
+
+    c = client()
+    icon = c.get("/favicon.svg")
+    assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/svg+xml")
+    assert icon.headers["content-security-policy"] == CONTENT_SECURITY_POLICY and "img-src 'self'" in CONTENT_SECURITY_POLICY
+    assert icon.text.startswith("<svg") and "#f2a516" in icon.text and "<script" not in icon.text
+    og = c.get("/og.png")
+    assert og.status_code == 200 and og.headers["content-type"] == "image/png"
+    assert len(og.content) < 300 * 1024
+    with Image.open(WEB_DIR / "og.png") as image:
+        assert image.size == (1200, 630) and image.format == "PNG"
+
+
+# --- Part D7: the page route -----------------------------------------------------------------------------
+
+
+def test_head_and_get_on_the_page_routes_and_the_static_types() -> None:
+    c = client()
+    for path in ("/", "/index.html"):
+        get, head = c.get(path), c.head(path)
+        assert get.status_code == head.status_code == 200 and head.content == b""
+        assert get.headers["content-type"] == head.headers["content-type"] == "text/html; charset=utf-8"
+        assert head.headers["content-security-policy"] == CONTENT_SECURITY_POLICY
+    for path, kind in (("/favicon.svg", "image/svg+xml"), ("/og.png", "image/png")):
+        for response in (c.get(path), c.head(path)):
+            assert response.status_code == 200 and response.headers["content-type"].startswith(kind), path
+
+
+def test_the_injected_image_url_is_html_escaped() -> None:
+    from voltproof.api.app import with_image_tags
+
+    page = with_image_tags("<html><head>\n</head><body></body></html>", 'https://x.example/a?b=1&c="><script>alert(1)</script>')
+    assert "<script>" not in page and '"><' not in page
+    assert 'content="https://x.example/a?b=1&amp;c=&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;/og.png"' in page
+    assert page.count("</head>") == 1 and with_image_tags("<head></head>", "") == "<head></head>"
+
+
+def test_a_non_https_video_url_is_ignored_and_the_app_still_starts() -> None:
+    from voltproof.config import load_settings
+
+    for bad in ("http://example.org/video", "javascript:alert(1)"):
+        status = TestClient(create_app(settings=load_settings({"DEMO_VIDEO_URL": bad}))).get("/api/status").json()
+        assert status["demo_video_url"] is None  # the page keeps both video links hidden
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    assert 'if (typeof url !== "string" || !url.startsWith("https://")) return;' in landing  # and the page checks again
