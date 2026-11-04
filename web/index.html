@@ -85,7 +85,7 @@
           <h2 id="problem-title">Batteries are easy to buy and hard to run well.</h2>
           <p class="lead">An operator has to plan around grid outages, prices that change by the hour and battery wear, every day. Asking an AI to write the plan sounds easy, but a plan written as text can quietly break physics: charge the battery past full, or count on energy that is not there when the grid goes down.</p>
         </div>
-        <figure id="problem-dots" class="dots-figure reveal">
+        <figure id="problem-dots" class="dots-figure">
           <p class="hint">The benchmark numbers load from the app server.</p>
         </figure>
       </div>
@@ -143,10 +143,10 @@
     <!-- 4. Try it: one panel like the hero's; goal, recorded goals, one button, the pipeline, the day -->
     <section id="try" class="section" aria-labelledby="try-title">
       <div class="section-inner">
-        <h2 id="try-title">Say the goal. Check the plan.</h2>
-        <p class="lead">Type a goal in any language, or pick a recorded one, and press the button. Recorded goals replay free; typed goals run the AI live when live runs are available.</p>
+        <h2 id="try-title" class="reveal">Say the goal. Check the plan.</h2>
+        <p class="lead reveal">Type a goal in any language, or pick a recorded one, and press the button. Recorded goals replay free; typed goals run the AI live when live runs are available.</p>
 
-        <div id="setup" class="day-panel try-panel" tabindex="-1">
+        <div id="setup" class="day-panel try-panel reveal" tabindex="-1">
           <div class="try-top">
             <div class="try-sites" role="group" aria-labelledby="site-label">
               <p class="try-label" id="site-label">Site</p>
@@ -226,6 +226,7 @@
             <p id="goal-notice" class="notice">Typed goals are sent to the model provider to run the AI. Please do not enter personal information.</p>
             <p class="try-label" id="chips-title">Or pick a recorded goal</p>
             <ul id="chips" class="chips" aria-labelledby="chips-title"></ul>
+            <p id="bill-chip-note" class="bill-chip-note" role="note" hidden><span id="bill-chip-text"></span> <button type="button" id="bill-chip-site" class="link-button" hidden>Use the site's tariff</button></p>
             <div class="run-row">
               <button type="submit" id="run-button" class="button primary" disabled>Plan my day</button>
               <p id="run-hint" class="hint run-hint">Type a goal above or pick a recorded one.</p>
@@ -251,21 +252,21 @@
           <p class="hint">The benchmark numbers load from the app server (/api/benchmark).</p>
         </div>
         <p id="evidence-footnote" class="footnote reveal"></p>
-        <figure id="evidence-chart" class="bar-figure reveal" aria-labelledby="evidence-chart-title">
+        <figure id="evidence-chart" class="bar-figure" aria-labelledby="evidence-chart-title">
           <figcaption id="evidence-chart-title" class="chart-heading">Goals met, by approach</figcaption>
         </figure>
         <p class="links reveal">
-          <a href="https://github.com/Swayam13-exe/VoltProof/tree/main/results">All results in the repository</a>
-          <a href="https://github.com/Swayam13-exe/VoltProof#readme">How the benchmark works (README)</a>
+          <a href="https://github.com/Swayam13-exe/VoltProof/tree/main/results" target="_blank" rel="noopener noreferrer">All results in the repository</a>
+          <a href="https://github.com/Swayam13-exe/VoltProof#readme" target="_blank" rel="noopener noreferrer">How the benchmark works (README)</a>
         </p>
       </div>
     </section>
 
     <!-- 6. Honest limits -->
     <section id="limits" class="section" aria-labelledby="limits-title">
-      <div class="section-inner reveal">
-        <h2 id="limits-title">What this demo is, and is not.</h2>
-        <ul class="limits">
+      <div class="section-inner">
+        <h2 id="limits-title" class="reveal">What this demo is, and is not.</h2>
+        <ul class="limits reveal">
           <li><strong>Synthetic sites.</strong> Sites, tariffs, prices and loads are illustrative, not real customer data. No real device is controlled.</li>
           <li><strong>Modelled weather.</strong> The "same-day weather" in replays is a weather model's estimate of what happened, not a measurement.</li>
           <li><strong>Whole site kept running.</strong> During an outage the optimizer keeps every load on, so the rule-based battery can look cheaper by switching other loads off. The results say so when it happens.</li>
@@ -278,9 +279,9 @@
 
   <footer class="site-footer">
     <div class="section-inner">
-      <p class="footer-built">Built with Muse Spark Open (Meta), served by Baseten. Code and results: <a href="https://github.com/Swayam13-exe/VoltProof">github.com/Swayam13-exe/VoltProof</a></p>
-      <p>Weather: <a href="https://open-meteo.com/">Open-Meteo</a> / DWD ICON. Weather data by Open-Meteo.com, CC BY 4.0.</p>
-      <p><a href="https://github.com/Swayam13-exe/VoltProof/blob/main/LICENSE">MIT license</a></p>
+      <p class="footer-built">Built with Muse Spark Open (Meta), served by Baseten. Code and results: <a href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer">github.com/Swayam13-exe/VoltProof</a></p>
+      <p>Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> / DWD ICON. Weather data by Open-Meteo.com, CC BY 4.0.</p>
+      <p><a href="https://github.com/Swayam13-exe/VoltProof/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT license</a></p>
     </div>
   </footer>
 </body>

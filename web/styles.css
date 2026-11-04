@@ -193,11 +193,16 @@ a.tool-button { text-decoration: none; }
 
 /* --- shared section rhythm ------------------------------------------------------------------- */
 
+/* One token for the space between sections, the same for every pair (hero, the sections, the footer):
+   each side gives half of it, and a section's first and last blocks bring no outer margin of their own.
+   No lines between sections: the space separates them. */
+:root { --section-gap: 88px; }
+@media (min-width: 900px) { :root { --section-gap: 160px; } }
 section[id] { scroll-margin-top: calc(var(--topbar-h) + 8px); }
-.section { padding: 80px 0; }
-.section + .section { border-top: 1px solid var(--line); }
+.section { padding: calc(var(--section-gap) / 2) 0; }
 .section-inner { max-width: 1160px; margin: 0 auto; padding: 0 16px; }
-@media (min-width: 900px) { .section { padding: 112px 0; } }
+.section-inner > :first-child { margin-top: 0; }
+.section-inner > :last-child, .hero > :last-child { margin-bottom: 0; }
 h1, h2 { letter-spacing: -0.02em; line-height: 1.12; margin: 0; }
 h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18px; }
 .lead { font-size: clamp(1.05rem, 1.6vw, 1.22rem); color: var(--ink-2); max-width: 62ch; margin: 0 0 28px; line-height: 1.55; }
@@ -217,12 +222,12 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 /* reveal on scroll: visible by default; hidden only once landing.js arms it (IntersectionObserver
    present, no reduced motion); see setupReveal for the safety net */
 .reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(16px); }
-.reveal { transition: opacity 0.4s ease, transform 0.4s ease; } /* transform only: no layout shift */
+.reveal { transition: opacity 0.5s ease-out, transform 0.5s ease-out; } /* the same for every block; transform only: no layout shift */
 
 /* --- 1. hero ---------------------------------------------------------------------------------- */
 
-.hero { max-width: 1160px; margin: 0 auto; padding: 40px 16px 72px; }
-@media (min-width: 900px) { .hero { padding: 36px 16px 96px; } }
+.hero { max-width: 1160px; margin: 0 auto; padding: 40px 16px calc(var(--section-gap) / 2); }
+@media (min-width: 900px) { .hero { padding-top: 36px; } }
 .hero h1 { font-size: clamp(2.2rem, 5.2vw, 3.7rem); font-weight: 790; max-width: 16ch; }
 .subtitle { font-size: clamp(1.05rem, 1.7vw, 1.2rem); color: var(--ink-2); max-width: 52ch; margin: 18px 0 22px; line-height: 1.55; }
 .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
@@ -479,7 +484,7 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 .limits li { position: relative; padding-left: 28px; color: var(--ink-2); font-size: 1.02rem; }
 .limits li::before { content: ""; position: absolute; left: 4px; top: 0.55em; width: 10px; height: 10px; border-radius: 2px; background: repeating-linear-gradient(135deg, var(--outage) 0 2px, transparent 2px 4px); }
 .limits strong { color: var(--ink); }
-.site-footer { border-top: 1px solid var(--line); padding: 32px 0 40px; color: var(--ink-2); font-size: 0.9rem; }
+.site-footer { padding: calc(var(--section-gap) / 2) 0 40px; color: var(--ink-2); font-size: 0.9rem; }
 .site-footer p { margin: 4px 0; }
 .footer-built { font-weight: 600; color: var(--ink); }
 
@@ -611,6 +616,8 @@ button.button.primary:disabled { background: var(--surface-2); color: var(--mute
 .try-repairs:empty { display: none; }
 
 /* the bill reader (SPEC §6.12): read it, then confirm it */
+.bill-chip-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--page); border: 1px solid var(--ring); color: var(--ink); font-size: 0.92rem; } /* neutral, like .summary: green is for success only */
+button.link-button { font: inherit; font-weight: 650; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .tariff-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 18px; }
 .tariff-row button.button { font-size: 0.95rem; padding: 9px 16px; }
 .tariff-tag { display: inline-flex; align-items: center; font-size: 0.84rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; color: var(--battery); background: var(--battery-soft); border: 1px solid var(--battery-fill); }

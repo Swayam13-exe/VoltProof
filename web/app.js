@@ -261,22 +261,35 @@
 
   /* What the one main button offers for this text: a free replay when it is a recorded goal of this
      site and day, a live run when it is typed and live runs are available, nothing when empty. With a
-     tariff from a bill in use (`bill`), only live runs: the recorded runs used the site's tariff. */
+     tariff from a bill in use (`bill`), only live runs: the recorded runs used the site's tariff, so a
+     recorded goal runs live too (its chip stays marked), and the label says it is the bill's tariff. */
   function runButtonState(text, recorded, live, timing, bill = false) {
     const goal = String(text || "").trim();
     if (!goal) return { mode: "empty", label: "Plan my day", disabled: true, hint: bill ? "Type a goal or pick one above: it is planned live with the tariff from your bill." : "Type a goal above or pick a recorded one." };
-    const chip = bill ? null : recorded.find((c) => c.goal.trim() === goal) || null;
-    if (chip) return { mode: "recorded", label: "Play recorded run (free)", disabled: false, hint: "A recorded run of the agent for this goal, replayed at no cost.", chip };
+    const chip = recorded.find((c) => c.goal.trim() === goal) || null;
+    if (chip && !bill) return { mode: "recorded", label: "Play recorded run (free)", disabled: false, hint: "A recorded run of the agent for this goal, replayed at no cost.", chip };
     const left = live && live.live ? Number(live.runs_left_this_hour) : 0;
     if (live && live.live && left > 0) {
       const took = timing ? ` The ${timing.runs} recorded runs took ${timing.min}-${timing.max} s (web/replays/index.json).` : "";
       const shared = live.per_visitor_limit === false ? " Live runs are shared by all visitors." : "";
       const tariff = bill ? " Planned with the tariff from your bill; the rule-based battery is compared on the same tariff." : "";
-      return { mode: "live", label: `Run live (${left} left this hour)`, disabled: false, hint: `Runs the AI on your goal now.${tariff}${took}${shared}` };
+      const label = bill ? `Run live with your bill's tariff (${left} left)` : `Run live (${left} left this hour)`;
+      return { mode: "live", label, disabled: false, hint: `Runs the AI on your goal now.${tariff}${took}${shared}`, chip };
     }
     const why = !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason, null, live) : "no live runs are left this hour";
-    if (bill) return { mode: "unavailable", label: "Live runs unavailable", disabled: true, hint: `A tariff from your bill needs a live run, and live runs are unavailable (${why}). Choose "Use the site's tariff" to play recorded runs.` };
+    if (bill) return { mode: "unavailable", label: "Live runs unavailable", disabled: true, hint: "Needs a live run.", chip }; // the reason is in the note above and the status line below
     return { mode: "unavailable", label: "Live runs unavailable: play a recorded run", disabled: true, hint: `Live runs unavailable (${why}). Pick a recorded goal above.` };
+  }
+
+  /* The line under the recorded goals while a bill's tariff is in use (nothing with the site's tariff).
+     Live runs unavailable: it also offers "Use the site's tariff", which plays the recorded run instead. */
+  const BILL_CHIP_LINE = "Recorded runs used the site's own tariff. With your bill's tariff, a recorded goal runs live and uses one of your live runs.";
+
+  function billChipNote(bill, live) {
+    if (!bill) return { show: false, text: "", offerSiteTariff: false };
+    if (live && live.live && Number(live.runs_left_this_hour) > 0) return { show: true, text: BILL_CHIP_LINE, offerSiteTariff: false };
+    const why = !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason, null, live) : "no live runs are left this hour";
+    return { show: true, text: `${BILL_CHIP_LINE} Live runs are unavailable right now (${why}).`, offerSiteTariff: true };
   }
 
   function pipelineStart() {
@@ -534,6 +547,11 @@
     button.disabled = s.disabled || state.busy;
     button.dataset.mode = s.mode;
     $("run-hint").textContent = s.hint;
+    $("live-note").textContent = liveNote(state.live, Boolean(state.bill));
+    const note = billChipNote(Boolean(state.bill), state.live);
+    $("bill-chip-note").hidden = !note.show;
+    $("bill-chip-text").textContent = note.text;
+    $("bill-chip-site").hidden = !note.offerSiteTariff;
     const chipId = s.chip ? s.chip.id : null;
     if (chipId !== state.chipId) {
       state.chipId = chipId;
@@ -805,10 +823,14 @@
     }
   }
 
-  /* The one-line live status under the goal box (status: /api/status, or null when unreachable). */
-  function liveNote(live) {
-    if (!live) return "Live AI not available here: pick a recorded goal above to play a recorded run.";
-    if (!live.live) return `Live AI unavailable (${reasonText(live.reason, null, live)}${live.paused_until ? `, until ${new Date(live.paused_until).toLocaleTimeString()}` : ""}): pick a recorded goal above to play a recorded run.`;
+  /* The one-line live status under the goal box (status: /api/status, or null when unreachable). With a
+     bill's tariff in use (`bill`) a recorded run is no way out, so the line gives only the reason. */
+  function liveNote(live, bill = false) {
+    if (!live) return bill ? "Live AI not available here." : "Live AI not available here: pick a recorded goal above to play a recorded run.";
+    if (!live.live) {
+      const why = `${reasonText(live.reason, null, live)}${live.paused_until ? `, until ${new Date(live.paused_until).toLocaleTimeString()}` : ""}`;
+      return bill ? `Live AI unavailable (${why}).` : `Live AI unavailable (${why}): pick a recorded goal above to play a recorded run.`;
+    }
     if (live.per_visitor_limit === false) return `Live AI on: ${live.runs_left_this_hour} live runs left this hour (shared by all visitors).`;
     return `Live AI on: ${live.runs_left_this_hour} live runs left for you this hour.`;
   }
@@ -933,9 +955,8 @@
     } catch (_err) {
       state.live = null;
     }
-    $("live-note").textContent = liveNote(state.live);
     billUploadState();
-    updateButton();
+    updateButton(); // also writes the live status line
   }
 
   function updateCount() {
@@ -1234,6 +1255,10 @@
     });
     $("bill-use").addEventListener("click", useBill);
     $("bill-site").addEventListener("click", useSiteTariff);
+    $("bill-chip-site").addEventListener("click", () => {
+      useSiteTariff(); // the recorded goal in the box now plays its recorded run
+      $("run-button").focus();
+    });
     $("day").addEventListener("change", () => {
       if (bill.draft) checkBill();
     });

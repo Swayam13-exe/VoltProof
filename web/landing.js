@@ -10,6 +10,20 @@
 (() => {
   /* --- pure: begin (no DOM; tested in tests/test_web_logic.py) --------------------------------- */
 
+  /* Reveal on scroll: what to do with one block, from where it is (px, viewport coordinates). Its top
+     passing 88% of the viewport shows it; a block that has gone completely below the viewport (the
+     reader scrolled back up past it) is hidden again so it fades in the next time; a block above the
+     viewport (left through the top, or jumped past by a menu link) is shown; a pinned block (the Try it
+     frame once used) always shows. Anything else, partly on screen below the line, stays as it is. */
+  const REVEAL_LINE = 0.88;
+
+  function revealDecision(top, bottom, viewportHeight, pinned) {
+    if (pinned || bottom <= 0) return "show";
+    if (top < viewportHeight * REVEAL_LINE) return "show";
+    if (top >= viewportHeight) return "hide";
+    return "keep";
+  }
+
   const HERO_PAIRS = [["nairobi_clinic", "en"], ["ahmedabad_cold_store", "hi"], ["munich_home", "es"]];
   const HERO_KIND_RANK = { english: 0, multilingual: 1, hard: 2 };
   const BENCHMARK_FILES = { main: "results/report/summary.json", e2: "results/e2/summary.json" };
@@ -182,43 +196,60 @@
 
   /* --- reveal on scroll ------------------------------------------------------------------------- */
 
-  /* Every section, and the cards inside, fades in and rises as it enters the view, all the way down.
-     Content is visible without JavaScript: the hidden state (CSS under .reveal-armed) is applied only
-     here, only with IntersectionObserver and without reduced motion. Anything in view at load shows at
-     once; anything still hidden 1 s after it is in view is shown anyway (a missed observer callback). */
-  const REVEAL_CARDS = ".reveal, .pipe-node, .dot-group, .limits li";
-  let watchReveal = () => {};
-
+  /* The top-level blocks of each section (the .reveal elements in index.html: headings, leads and main
+     content blocks, never charts, tables, results or bill-panel contents) fade in and rise as their top
+     passes 88% of the viewport, and again after the reader has scrolled back up past them (see
+     revealDecision). Content is visible without JavaScript: the hidden state (CSS under .reveal-armed)
+     is applied only here, only with IntersectionObserver and without reduced motion.
+     - two observers (threshold 0): one whose root ends 12% above the viewport bottom (the 88% line), one
+       at the viewport edge (a block leaving below); both just ask revealDecision about the block
+     - a scroll sweep shows blocks above the viewport at once (a smooth menu jump can carry a block from
+       below to above without it ever intersecting), and is the safety net: a block in the viewport still
+       hidden 1 s later is shown; a block below the viewport is never shown by it
+     - the Try it frame (#setup) is pinned once used (any focus, click or typing in it, or a run in the
+       pipeline strip): it never hides again, so nothing a run renders starts at opacity 0 */
   function setupReveal() {
     if (reduceMotion.matches || !("IntersectionObserver" in window)) return;
-    const inView = (node) => {
+    const blocks = [...document.querySelectorAll(".reveal")];
+    const frame = $("setup");
+    const pinned = (node) => node === frame && (frame.dataset.used === "1" || !$("try-pipeline").hidden);
+    const apply = (node) => {
       const r = node.getBoundingClientRect();
-      return r.top < window.innerHeight && r.bottom > 0;
+      const action = revealDecision(r.top, r.bottom, window.innerHeight, pinned(node));
+      if (action === "show") node.classList.add("in");
+      else if (action === "hide") node.classList.remove("in");
     };
-    const show = (node) => node.classList.add("in");
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        show(entry.target);
-        observer.unobserve(entry.target);
-      }
-    }, { threshold: 0.01 });
-    watchReveal = (nodes) => {
-      for (const node of nodes) {
-        node.classList.add("reveal");
-        if (inView(node)) show(node);
-        else observer.observe(node);
-      }
-    };
+    const onEntries = (entries) => entries.forEach((entry) => apply(entry.target));
+    const atLine = new IntersectionObserver(onEntries, { threshold: 0, rootMargin: `0px 0px -${Math.round((1 - REVEAL_LINE) * 100)}% 0px` });
+    const atEdge = new IntersectionObserver(onEntries, { threshold: 0 });
+    // at load: whatever is already on screen shows at once (no fade on first paint)
+    for (const node of blocks) if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");
     document.documentElement.classList.add("reveal-armed");
-    watchReveal(document.querySelectorAll(REVEAL_CARDS));
+    for (const node of blocks) {
+      atLine.observe(node);
+      atEdge.observe(node);
+    }
+    if (frame) {
+      const use = () => {
+        frame.dataset.used = "1";
+        frame.classList.add("in");
+      };
+      for (const kind of ["focusin", "pointerdown", "input"]) frame.addEventListener(kind, use, { passive: true });
+    }
     let queued = false;
     const sweep = () => {
       queued = false;
-      for (const node of document.querySelectorAll(".reveal:not(.in)")) {
-        if (!inView(node) || node.dataset.revealDue) continue;
-        node.dataset.revealDue = "1";
-        window.setTimeout(() => show(node), 1000); // the safety net
+      for (const node of blocks) {
+        if (node.classList.contains("in")) continue;
+        const r = node.getBoundingClientRect();
+        if (r.bottom <= 0) node.classList.add("in"); // above: show now
+        else if (r.top < window.innerHeight && !node.dataset.revealDue) {
+          node.dataset.revealDue = "1"; // the safety net, for blocks in the viewport only
+          window.setTimeout(() => {
+            delete node.dataset.revealDue;
+            if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");
+          }, 1000);
+        }
       }
     };
     window.addEventListener("scroll", () => {
@@ -332,7 +363,6 @@
       );
     }
     $("evidence-numbers").replaceChildren(...numbers.slice(0, 3));
-    watchReveal(numbers.slice(0, 3));
 
     const rows = (main.run_summary || []).map((summary) => {
       const row = rowFor(satisfied, "arm", summary.arm);

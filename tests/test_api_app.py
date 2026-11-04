@@ -78,19 +78,65 @@ def test_landing_sections_menu_and_no_hand_typed_numbers() -> None:
 
 
 def test_content_is_visible_without_javascript() -> None:
-    """Reveal-on-scroll is progressive: CSS hides .reveal content only under the class landing.js adds
-    (and removes after a safety timer), so with no script, or a failed one, every section shows."""
+    """Reveal-on-scroll is progressive: CSS hides .reveal blocks only under the class landing.js adds,
+    and only with IntersectionObserver and without reduced motion, so with no script, a failed one, an
+    old browser or reduced motion, every block shows with no transition."""
     css = re.sub(r"/\*.*?\*/", "", (WEB_DIR / "styles.css").read_text(encoding="utf-8"), flags=re.S)
     hiding = [rule for rule in re.findall(r"([^{}]+)\{([^}]*)\}", css) if "opacity: 0" in rule[1] and ".reveal" in rule[0]]
     assert hiding and all(selector.strip().startswith(".reveal-armed") for selector, _ in hiding)
+    assert re.search(r"\.reveal \{ transition: opacity 0\.5s ease-out, transform 0\.5s ease-out; \}", css)  # one motion for every block
+    assert "translateY(16px)" in css and "height" not in css[css.index(".reveal-armed"):css.index(".reveal-armed") + 120]  # no layout shift
+    assert "transition: none !important" in css[css.index("@media (prefers-reduced-motion: reduce)"):]
     landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
     reveal = landing[landing.index("function setupReveal("):landing.index("/* --- hero:")]
-    assert 'if (reduceMotion.matches || !("IntersectionObserver" in window)) return;' in reveal  # armed only with IO, no reduced motion
-    assert 'classList.add("reveal-armed")' in reveal and "if (inView(node)) show(node);" in reveal  # in view at load: shown at once
-    assert "window.setTimeout(() => show(node), 1000)" in reveal  # the safety net, while scrolling, the whole way down
-    assert "1500" not in reveal  # no blanket timer that ends the effect after the first seconds
-    assert re.search(r"\.reveal \{ transition: opacity 0\.4s ease, transform 0\.4s ease; \}", css)
-    assert "translateY(16px)" in css and "height" not in css[css.index(".reveal-armed"):css.index(".reveal-armed") + 120]  # no layout shift
+    assert 'if (reduceMotion.matches || !("IntersectionObserver" in window)) return;' in reveal
+    assert 'document.documentElement.classList.add("reveal-armed");' in reveal
+    # in view at load: shown before arming (no fade on first paint)
+    assert reveal.index("if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add(\"in\")") < reveal.index('classList.add("reveal-armed")')
+    # triggers: threshold 0 with a bottom root margin (the 88% line), and the viewport edge; never an area ratio
+    assert "threshold: 0, rootMargin: `0px 0px -${Math.round((1 - REVEAL_LINE) * 100)}% 0px`" in reveal and "threshold: 0.01" not in reveal
+    assert "unobserve" not in reveal  # blocks stay observed: they replay
+    # the safety net: only blocks in the viewport, checked again when it fires; blocks above show at once
+    assert "if (r.bottom <= 0) node.classList.add(\"in\"); // above: show now" in reveal
+    assert "if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add(\"in\");" in reveal and ", 1000);" in reveal
+    # the Try it frame is pinned once used or once a run has started
+    assert 'frame.dataset.used === "1" || !$("try-pipeline").hidden' in reveal
+    assert all(f'"{kind}"' in reveal for kind in ("focusin", "pointerdown", "input"))
+
+
+def test_only_top_level_blocks_are_animated() -> None:
+    """Headings, leads and main content blocks fade; charts, tables, results, the hero and anything a run
+    renders never do, and there is no per-child stagger (no card is a block of its own)."""
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    blocks = re.findall(r'<(\w+)([^>]*class="[^"]*\breveal\b[^"]*"[^>]*)>', html)
+    ids = [re.search(r'id="([^"]+)"', attrs).group(1) if 'id="' in attrs else re.search(r'class="([^"]+)"', attrs).group(1) for _, attrs in blocks]
+    assert ids == ["reveal", "how-title", "lead reveal", "pipeline reveal", "pipe-loop reveal", "pipe-key reveal", "try-title", "lead reveal", "setup",
+                   "evidence-title", "evidence-size", "evidence-numbers", "evidence-footnote", "links reveal", "limits-title", "limits reveal"]
+    for never in ("problem-dots", "evidence-chart", "conversation", "bill-panel", "try-pipeline", "day-panel"):
+        tag = re.search(rf'<\w+ id="{never}"[^>]*>', html).group(0)
+        assert "reveal" not in tag, never
+    hero = html[html.index('<section id="top"'):html.index('<section id="problem"')]
+    assert "reveal" not in hero
+    for path in WEB_DIR.glob("*.js"):
+        js = path.read_text(encoding="utf-8")
+        assert '"reveal"' not in js and "watchReveal" not in js, path.name  # nothing created at run time is a block
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    assert ".pipe-node.reveal" not in css and "transition-delay" not in css  # no stagger
+
+
+def test_no_lines_between_sections_and_one_spacing_token() -> None:
+    css = re.sub(r"/\*.*?\*/", "", (WEB_DIR / "styles.css").read_text(encoding="utf-8"), flags=re.S)
+    assert ".section + .section" not in css
+    footer = re.search(r"\.site-footer \{([^}]*)\}", css).group(1)
+    assert "border" not in footer and "padding: calc(var(--section-gap) / 2) 0 40px" in footer
+    assert re.search(r"\.topbar \{[^}]*\}", css) and "border-bottom: 1px solid var(--line)" in css  # the sticky header keeps its line
+    assert ":root { --section-gap: 88px; }" in css and "@media (min-width: 900px) { :root { --section-gap: 160px; } }" in css
+    assert ".section { padding: calc(var(--section-gap) / 2) 0; }" in css
+    assert "padding: 40px 16px calc(var(--section-gap) / 2)" in re.search(r"\.hero \{([^}]*)\}", css).group(1)
+    assert re.findall(r"\.section \{[^}]*\}", css) == [".section { padding: calc(var(--section-gap) / 2) 0; }"]  # no per-section override
+    for section_id in ("problem", "how", "try", "evidence", "limits"):
+        assert f"#{section_id} {{" not in css and f"#{section_id}{{" not in css
+    assert "section[id] { scroll-margin-top: calc(var(--topbar-h) + 8px); }" in css
 
 
 def test_every_section_shares_one_frame() -> None:
@@ -202,3 +248,63 @@ def test_a_non_https_video_url_is_ignored_and_the_app_still_starts() -> None:
         assert status["demo_video_url"] is None  # the page keeps both video links hidden
     landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
     assert 'if (typeof url !== "string" || !url.startsWith("https://")) return;' in landing  # and the page checks again
+
+
+# --- Part F4: links that leave the site -------------------------------------------------------------------
+
+
+def external(href: str) -> bool:
+    return bool(re.match(r"https?://", href)) and not href.startswith(("http://127.0.0.1", "http://localhost"))
+
+
+def test_every_external_link_opens_a_new_tab_without_opener_or_referrer() -> None:
+    """The page runs in a frame on huggingface.co; a link to another site without target="_blank" tries to
+    open inside the frame and is refused. In-page anchors stay in the same tab."""
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    anchors = re.findall(r"<a\s[^>]*>", html)
+    outside = [a for a in anchors if external(re.search(r'href="([^"]*)"', a).group(1))]
+    assert len(outside) >= 9  # header (2), hero (2), evidence (2), footer (3)
+    for a in outside:
+        assert 'target="_blank"' in a and 'rel="noopener noreferrer"' in a, a
+    for a in anchors:
+        if re.search(r'href="#', a):
+            assert "target=" not in a, a  # in-page jumps never open a tab
+    for name in ("github.com/Swayam13-exe/VoltProof/blob/main/LICENSE", "open-meteo.com"):
+        assert any(name in a for a in outside), name
+    # anchors created by the scripts: only same-origin ones (the CSV download is a blob: URL) or hrefs set on
+    # the existing, already-safe video links
+    for path in WEB_DIR.glob("*.js"):
+        js = path.read_text(encoding="utf-8")
+        for created in re.findall(r'make\("a",\s*\{([^}]*)\}', js) + re.findall(r'createElement\("a"\)', js):
+            assert "http" not in created and ("target" in created or "download" in created), (path.name, created)
+        for target in re.findall(r'\$\("([\w-]+)"\)\.href\s*=', js) + re.findall(r'\$\(id\)\.href = url', js):
+            pass
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    for video_id in ("video-link", "hero-video"):
+        tag = re.search(rf'<a id="{video_id}"[^>]*>', html).group(0)
+        assert 'target="_blank" rel="noopener noreferrer"' in tag
+
+
+def test_the_footer_has_no_video_link_and_the_header_and_hero_follow_the_rule() -> None:
+    """ "Watch video" lives in the header and the hero line only, shown only for an https DEMO_VIDEO_URL;
+    the footer never has one, with the URL set or unset (the script never touches the footer)."""
+    from voltproof.config import load_settings
+
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    footer = html[html.index('<footer class="site-footer">'):html.index("</footer>")]
+    assert "video" not in footer.lower()
+    assert [re.sub(r"<[^>]+>", "", p).strip() for p in re.findall(r"<p[^>]*>.*?</p>", footer, re.S)] == [
+        "Built with Muse Spark Open (Meta), served by Baseten. Code and results: github.com/Swayam13-exe/VoltProof",
+        "Weather: Open-Meteo / DWD ICON. Weather data by Open-Meteo.com, CC BY 4.0.",
+        "MIT license",
+    ]
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    video = landing[landing.index("async function setupVideoLinks("):landing.index("/* --- menu:")]
+    assert 'for (const id of ["video-link", "hero-video"]) {' in video and "footer" not in video
+    assert video.index('!url.startsWith("https://")) return;') < video.index('$(id).hidden = false;')
+    for video_id in ("video-link", "hero-video"):
+        tag = re.search(rf'<a id="{video_id}"[^>]*>', html).group(0)
+        assert " hidden" in tag and 'target="_blank" rel="noopener noreferrer"' in tag
+    for env in ({}, {"DEMO_VIDEO_URL": "https://example.org/video"}):  # the served page's footer, URL unset and set
+        page = TestClient(create_app(settings=load_settings(env))).get("/").text
+        assert "video" not in page[page.index('<footer class="site-footer">'):].lower(), env

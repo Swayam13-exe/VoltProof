@@ -160,8 +160,8 @@ const landing = block(read("landing.js"), "/* --- pure: begin", "/* --- pure: en
 const app = read("app.js");
 const tryCode = block(app, "function money(", "function status(") + block(app, "function hourText(", "function stat(") + block(app, "function reasonText(", "async function fallBack(");
 const D = new Function(day + "; return { assumptionLines, DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
-const L = new Function(landing + "; return { HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
-const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine, billRows, billTariff, billRowFlags, billBars, billExample, tariffNote, billRefusalText, billSourceText, COST_NOTE, gateAccepted };")(D);
+const L = new Function(landing + "; return { REVEAL_LINE, revealDecision, HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
+const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine, billRows, billTariff, billRowFlags, billBars, billExample, tariffNote, billRefusalText, billSourceText, billChipNote, liveNote, COST_NOTE, gateAccepted };")(D);
 const dir = process.argv[2];
 const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
 const views = Object.fromEntries(index.chips.map((c) => [c.id, JSON.parse(fs.readFileSync(path.join(dir, c.file), "utf8"))]));
@@ -595,7 +595,7 @@ def test_a_bill_tariff_offers_only_live_runs() -> None:
     assert out["site"] == "recorded"
     assert out["bill"]["mode"] == "live" and "tariff from your bill" in out["bill"]["hint"] and "same tariff" in out["bill"]["hint"]
     assert out["bill_off"]["mode"] == "unavailable" and out["bill_off"]["disabled"] is True
-    assert "the live AI is switched off here" in out["bill_off"]["hint"] and "Use the site's tariff" in out["bill_off"]["hint"]
+    assert out["bill_off"]["hint"] == "Needs a live run."  # the reason is in the note and the status line
     assert "planned live with the tariff from your bill" in out["bill_empty"]
 
 
@@ -695,3 +695,124 @@ def test_the_hero_columns_are_top_aligned_on_their_cap_line() -> None:
     # phones keep the reading order: headline, explanation and buttons, then "Built with" and the links
     assert ".hero-main { display: contents; }" in css and ".hero-head h1 { order: 1; }" in css and ".hero-side { order: 2; }" in css
     assert "order: 3" in css_rule(css, ".hero-meta")
+
+
+# --- Part F2: the reveal decision -------------------------------------------------------------------------
+
+
+def test_reveal_decision_shows_at_88_percent_replays_from_below_and_never_hides_on_screen() -> None:
+    vh = 1000
+    cases = {
+        "below": [1200, 1500, False],        # completely below: hide (it replays when it comes back)
+        "edge": [1000, 1300, False],         # top exactly at the bottom edge: still completely below
+        "band": [900, 1400, False],          # partly on screen, under the 88% line: keep as it is
+        "past": [879, 1300, False],          # top past 88%: show
+        "on": [100, 700, False],             # on screen: show
+        "tall": [-4000, 6000, False],        # taller than the screen, covering it: show
+        "above": [-900, -1, False],          # left through the top: show (stays revealed)
+        "aboveEdge": [-900, 0, False],
+        "pinned": [1500, 2000, True],        # the used Try it frame: never hidden
+    }
+    out = pure(line="L.REVEAL_LINE", **{k: f"L.revealDecision({a}, {b}, {vh}, {str(c).lower()})" for k, (a, b, c) in cases.items()})
+    assert out["line"] == 0.88
+    assert {k: out[k] for k in cases} == {"below": "hide", "edge": "hide", "band": "keep", "past": "show", "on": "show", "tall": "show", "above": "show", "aboveEdge": "show", "pinned": "show"}
+
+
+# --- Part F6: a recorded goal while a bill's tariff is in use ---------------------------------------------
+
+
+def f6_states() -> dict:
+    chip = chips()[0]
+    goal, recorded = json.dumps(chip["goal"]), json.dumps([chip])
+    live, shared = {"live": True, "runs_left_this_hour": 4}, {"live": True, "runs_left_this_hour": 3, "per_visitor_limit": False}
+    off, used_up, budget = {"live": False, "reason": "live_mode_off"}, {"live": True, "runs_left_this_hour": 0}, {"live": False, "reason": "budget"}
+    states = {
+        "site_live": f"T.runButtonState({goal}, {recorded}, {json.dumps(live)}, null, false)",
+        "site_off": f"T.runButtonState({goal}, {recorded}, {json.dumps(off)}, null, false)",
+        "bill_live": f"T.runButtonState({goal}, {recorded}, {json.dumps(live)}, null, true)",
+        "bill_shared": f"T.runButtonState({goal}, {recorded}, {json.dumps(shared)}, null, true)",
+        "bill_typed": f'T.runButtonState("my own goal", {recorded}, {json.dumps(live)}, null, true)',
+        "bill_off": f"T.runButtonState({goal}, {recorded}, {json.dumps(off)}, null, true)",
+        "bill_used_up": f"T.runButtonState({goal}, {recorded}, {json.dumps(used_up)}, null, true)",
+        "bill_budget": f"T.runButtonState({goal}, {recorded}, {json.dumps(budget)}, null, true)",
+        "note_site": f"T.billChipNote(false, {json.dumps(live)})",
+        "note_live": f"T.billChipNote(true, {json.dumps(live)})",
+        "note_off": f"T.billChipNote(true, {json.dumps(off)})",
+        "note_used_up": f"T.billChipNote(true, {json.dumps(used_up)})",
+        "note_budget": f"T.billChipNote(true, {json.dumps(budget)})",
+        "note_none": "T.billChipNote(true, null)",
+    }
+    return {"chip": chip, **pure(**states)}
+
+
+def test_with_the_sites_tariff_a_recorded_goal_still_replays_free() -> None:
+    out = f6_states()
+    assert out["site_live"]["mode"] == "recorded" and out["site_live"]["label"] == "Play recorded run (free)" and out["site_live"]["chip"]["id"] == out["chip"]["id"]
+    assert out["site_off"]["mode"] == "recorded" and out["site_off"]["disabled"] is False  # a replay needs no live AI
+    assert out["note_site"] == {"show": False, "text": "", "offerSiteTariff": False}
+
+
+def test_with_a_bill_tariff_a_recorded_goal_runs_live_and_says_so() -> None:
+    out = f6_states()
+    line = "Recorded runs used the site's own tariff. With your bill's tariff, a recorded goal runs live and uses one of your live runs."
+    for key, left in (("bill_live", 4), ("bill_shared", 3)):
+        s = out[key]
+        assert s["mode"] == "live" and s["disabled"] is False and s["label"] == f"Run live with your bill's tariff ({left} left)"
+        assert "Play recorded run" not in s["label"] and s["chip"]["id"] == out["chip"]["id"]  # the chip stays marked
+    assert out["bill_typed"]["label"] == "Run live with your bill's tariff (4 left)" and out["bill_typed"]["chip"] is None
+    assert out["note_live"] == {"show": True, "text": line, "offerSiteTariff": False}
+
+
+def test_with_a_bill_tariff_and_no_live_runs_the_button_is_disabled_and_the_line_offers_the_sites_tariff() -> None:
+    out = f6_states()
+    line = "Recorded runs used the site's own tariff. With your bill's tariff, a recorded goal runs live and uses one of your live runs."
+    for key, why in (("off", "the live AI is switched off here"), ("used_up", "no live runs are left this hour"), ("budget", "the demo's AI budget is used up")):
+        s = out[f"bill_{key}"]
+        assert s["mode"] == "unavailable" and s["disabled"] is True and "Play recorded run" not in s["label"] and s["hint"] == "Needs a live run.", key
+        note = out[f"note_{key}"]
+        assert note["show"] and note["offerSiteTariff"] and note["text"] == f"{line} Live runs are unavailable right now ({why}).", key
+        assert note["text"].count(why) == 1, key  # the reason once
+    assert out["note_none"]["offerSiteTariff"] and "the live AI is not available here" in out["note_none"]["text"]
+
+
+def test_the_bill_chip_line_sits_under_the_recorded_goals_and_its_button_plays_the_recorded_run() -> None:
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert html.index('<ul id="chips"') < html.index('id="bill-chip-note"') < html.index('class="run-row"')
+    assert '<p id="bill-chip-note" class="bill-chip-note" role="note" hidden>' in html and '<button type="button" id="bill-chip-site" class="link-button" hidden>Use the site\'s tariff</button>' in html
+    assert '$("bill-chip-site").addEventListener("click", () => {\n      useSiteTariff();' in app
+    assert 'const note = billChipNote(Boolean(state.bill), state.live);' in app
+
+
+# --- Part G1: the status line and the note style with a bill's tariff --------------------------------------
+
+
+def test_the_status_line_gives_only_the_reason_with_a_bill_tariff() -> None:
+    off, budget, on = {"live": False, "reason": "live_mode_off"}, {"live": False, "reason": "budget"}, {"live": True, "runs_left_this_hour": 3}
+    out = pure(
+        bill_off=f"T.liveNote({json.dumps(off)}, true)",
+        bill_budget=f"T.liveNote({json.dumps(budget)}, true)",
+        bill_none="T.liveNote(null, true)",
+        bill_on=f"T.liveNote({json.dumps(on)}, true)",
+        site_off=f"T.liveNote({json.dumps(off)})",
+        site_none="T.liveNote(null)",
+    )
+    assert out["bill_off"] == "Live AI unavailable (the live AI is switched off here)."
+    assert out["bill_budget"] == "Live AI unavailable (the demo's AI budget is used up)."
+    assert out["bill_none"] == "Live AI not available here."
+    assert all("recorded" not in out[k] for k in ("bill_off", "bill_budget", "bill_none"))
+    assert out["site_off"] == "Live AI unavailable (the live AI is switched off here): pick a recorded goal above to play a recorded run."  # true there
+    assert out["site_none"].endswith("pick a recorded goal above to play a recorded run.")
+    assert out["bill_on"] == "Live AI on: 3 live runs left for you this hour."
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    update = app[app.index("function updateButton() {"):app.index("function setPipeline(")]
+    assert '$("live-note").textContent = liveNote(state.live, Boolean(state.bill));' in update  # follows the tariff as it changes
+
+
+def test_the_bill_chip_note_is_neutral_not_success_green() -> None:
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    rule = re.search(r"\.bill-chip-note \{([^}]*)\}", css).group(1)
+    summary = re.search(r"\.summary \{([^}]*)\}", css).group(1)
+    assert "battery" not in rule and "good" not in rule
+    assert "background: var(--page)" in rule and "border: 1px solid var(--ring)" in rule
+    assert "background: var(--page)" in summary and "border: 1px solid var(--ring)" in summary  # the same neutral box
