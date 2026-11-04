@@ -25,6 +25,7 @@
   const KIND_TAGS = { english: "EN", hard: "hard", multilingual: null };
 
   const state = { chips: [], sites: [], siteId: null, chipId: null, playToken: 0, live: null, busy: false, bill: null }; // bill: a confirmed tariff from a bill, in use
+  let refreshApproval = null; // the open reject panel's refresh (live runs left, the goal box), or null
 
   /* --- formatting -------------------------------------------------------------------------- */
 
@@ -381,12 +382,54 @@
       .map((e) => (e.kind === "gate" ? { kind: "gate", name: e.name, data: { decision: e.name } } : { kind: e.kind, name: e.name, data: e.data || {} }));
   }
 
-  /* The operator's approval of a result (UI only: nothing is sent anywhere). */
-  function approvalState(view, approved) {
+  /* The operator's decision on a result (UI only: nothing is sent anywhere and nothing is stored).
+     `decision`: false (waiting), true (approved) or "rejected". */
+  function approvalState(view, decision) {
     if (!view || !view.plan) return { show: false };
     if (!view.plan.verified) return { show: true, state: "unverified", text: "Not verified: this plan would not be sent to the battery.", button: null };
-    if (approved) return { show: true, state: "approved", text: "Approved by you. Marked as sent to the battery (demo: no device is controlled).", button: null };
-    return { show: true, state: "waiting", text: "Verified - waiting for your approval", button: "Approve plan" };
+    if (decision === true) return { show: true, state: "approved", text: "Approved. In a real deployment the plan would be sent to the site now; this demo sends nothing.", button: null };
+    if (decision === "rejected") return { show: true, state: "rejected", text: "Plan rejected. Nothing was sent to the site.", button: null };
+    return { show: true, state: "waiting", text: "Verified - waiting for your approval", button: "Approve plan", rejectButton: "Reject plan" };
+  }
+
+  /* Reject plan: the note is added to the goal and the AI plans again (a normal live run). */
+  const GOAL_SUFFIX = "\n\nChange requested after review: ";
+  const NOTE_MAX = 200;
+
+  /* The goal without any earlier "Change requested after review:" suffix, so repeated rejections replace
+     the note instead of piling up. */
+  function baseGoal(text) {
+    return String(text || "").replace(/\s*Change requested after review:[\s\S]*$/, "").trim();
+  }
+
+  /* The text a "Plan again" sends: the base goal (the goal box, or the result's own goal when the box is
+     empty), then the note. An empty note adds nothing. */
+  function composeGoal(goal, note, fallbackGoal = "") {
+    const base = baseGoal(goal) || baseGoal(fallbackGoal);
+    const text = String(note || "").trim();
+    return text ? `${base}${GOAL_SUFFIX}${text}` : base;
+  }
+
+  /* Why a live run cannot start now, in words (null when one can): the main button's own reasons. */
+  function liveBlock(live) {
+    if (live && live.live && Number(live.runs_left_this_hour) > 0) return null;
+    return !live ? "the live AI is not available here" : !live.live ? reasonText(live.reason, null, live) : "no live runs are left this hour";
+  }
+
+  /* The reject panel: the goal that would be sent, and whether "Plan again with this note" may run, with
+     the one reason it may not. Live runs unavailable comes first (typing cannot fix it). */
+  function rejectState(input, live, max = 500) {
+    const note = String(input.note || "").trim();
+    const composed = composeGoal(input.goal, note, input.fallbackGoal);
+    const over = Math.max(0, composed.length - max);
+    const blocked = liveBlock(live);
+    const left = live && live.live ? Number(live.runs_left_this_hour) : 0;
+    const out = { composed, over, noteLength: String(input.note || "").length };
+    if (blocked) return { ...out, disabled: true, label: "Plan again with this note", reason: `Live runs are unavailable (${blocked}).` };
+    const label = `Plan again with this note (uses 1 live run, ${left} left)`;
+    if (!note) return { ...out, disabled: true, label, reason: "Write what should be different, or edit the goal" };
+    if (over) return { ...out, disabled: true, label, reason: `The goal would be ${over} character${over === 1 ? "" : "s"} over the ${max}-character limit. Shorten the note or edit the goal.` };
+    return { ...out, disabled: false, label, reason: "" };
   }
 
   /* Why the explanation's cost and the table's cost differ (voltproof/core): the explanation quotes the
@@ -548,6 +591,7 @@
     button.dataset.mode = s.mode;
     $("run-hint").textContent = s.hint;
     $("live-note").textContent = liveNote(state.live, Boolean(state.bill));
+    if (refreshApproval) refreshApproval();
     const note = billChipNote(Boolean(state.bill), state.live);
     $("bill-chip-note").hidden = !note.show;
     $("bill-chip-text").textContent = note.text;
@@ -720,8 +764,9 @@
     return make("div", { class: "result-actions" }, button, make("p", { class: "hint" }, "Hour by hour as executed on the same-day weather: solar, load, battery power and charge, grid import and export."));
   }
 
-  function renderResult(view, { notice, file } = {}) {
+  function renderResult(view, { notice, file, ctx } = {}) {
     VPCharts.destroyAll();
+    refreshApproval = null;
     const tariff = tariffNote(view);
     const head = make(
       "div",
@@ -739,33 +784,117 @@
       return;
     }
     const player = make("div", { class: "try-player day-panel", "aria-label": "The result, hour by hour", role: "region" });
-    parts.push(player, approvalBlock(view), comparisonPanel(view), rulesSection(view), stepsFold(view), chartsFold(view), csvButton(view));
+    parts.push(player, approvalBlock(view, ctx), comparisonPanel(view), rulesSection(view), stepsFold(view), chartsFold(view), csvButton(view));
     $("conversation").replaceChildren(...parts.filter(Boolean));
     VPDay.mount(player, [{ view, file: file || null, language: view.goal.language || null }], { id: "try", loop: false, showGoal: false, cost: "none", checklistUnderFlow: true, assumptions: true });
   }
 
-  /* "Verified - waiting for your approval", then the operator approves (UI only, SPEC §6.13). */
-  function approvalBlock(view) {
+  /* "Verified - waiting for your approval": the operator approves or rejects (UI only, SPEC §6.13).
+     Approve and Reject send nothing and store nothing. Rejecting opens a note box; "Plan again with this
+     note" puts the base goal plus the note into the goal box and starts a normal live run on the site,
+     day and tariff (`ctx`) this result was made with. */
+  function approvalBlock(view, ctx) {
     const first = approvalState(view, false);
     if (!first.show) return null;
     const text = make("p", { class: "approval-text", role: "status", tabindex: "-1" }, first.text);
     const block = make("div", { class: `approval ${first.state}` }, text);
-    if (first.button) {
-      const button = make("button", { type: "button", class: "button primary" }, first.button);
-      button.addEventListener("click", () => {
-        const done = approvalState(view, true);
-        block.className = `approval ${done.state}`;
-        text.textContent = done.text;
-        button.remove();
-        text.focus(); // keyboard users land on the confirmation
-      });
-      block.append(button);
-    }
+    if (!first.button) return block;
+    const approve = make("button", { type: "button", class: "button primary" }, first.button);
+    const reject = make("button", { type: "button", class: "button secondary" }, first.rejectButton);
+    const waiting = make("div", { class: "approval-actions" }, approve, reject);
+    const note = make("textarea", { id: "reject-note", rows: 3, maxlength: NOTE_MAX, "aria-describedby": "reject-count reject-help" });
+    const count = make("p", { id: "reject-count", class: "count" }, `0 / ${NOTE_MAX}`);
+    const again = make("button", { type: "button", class: "button primary" }, "Plan again with this note");
+    const edit = make("button", { type: "button", class: "button secondary" }, "Edit the goal");
+    const undo = make("button", { type: "button", class: "button secondary" }, "Undo");
+    const reason = make("p", { class: "hint", "aria-live": "polite" });
+    const panel = make(
+      "div",
+      { class: "reject-panel", hidden: true },
+      make("label", { for: "reject-note" }, "What should be different? (optional)"),
+      make("div", { class: "reject-box" }, note, count),
+      make("p", { id: "reject-help", class: "hint" }, "Your note is added to your goal, and the AI plans again."),
+      make("div", { class: "approval-actions" }, again, edit, undo),
+      reason
+    );
+    block.append(waiting, panel);
+
+    const inputs = () => ({ note: note.value, goal: $("goal").value, fallbackGoal: view.goal ? view.goal.text : "" });
+    const refresh = () => {
+      if (!block.isConnected) return;
+      const r = rejectState(inputs(), state.live, MAX_GOAL);
+      again.textContent = r.label;
+      again.disabled = r.disabled || state.busy;
+      reason.textContent = r.reason;
+      count.textContent = `${note.value.length} / ${NOTE_MAX}`;
+    };
+    const show = (decision) => {
+      const s = approvalState(view, decision);
+      block.className = `approval ${s.state}`;
+      text.textContent = s.text;
+      waiting.hidden = decision !== false;
+      panel.hidden = decision !== "rejected";
+    };
+
+    approve.addEventListener("click", () => {
+      show(true);
+      waiting.remove();
+      panel.remove();
+      refreshApproval = null;
+      text.focus(); // keyboard users land on the confirmation
+    });
+    reject.addEventListener("click", () => {
+      show("rejected"); // no request: nothing happens until "Plan again"
+      refresh();
+      note.focus();
+    });
+    undo.addEventListener("click", () => {
+      show(false); // the note stays in the box
+      text.focus();
+    });
+    edit.addEventListener("click", () => scrollToGoal(true));
+    again.addEventListener("click", () => {
+      const r = rejectState(inputs(), state.live, MAX_GOAL);
+      if (r.disabled || state.busy) return;
+      planAgain(r.composed, ctx);
+    });
+    note.addEventListener("input", refresh);
+    refreshApproval = refresh;
     return block;
+  }
+
+  function scrollToGoal(focus = false) {
+    const goal = $("goal");
+    goal.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
+    if (focus) goal.focus({ preventScroll: true });
+  }
+
+  /* The site, day and tariff a result was made with: a rejected plan is planned again on exactly these. */
+  function applyContext(ctx) {
+    if (state.siteId !== ctx.siteId) selectSite(ctx.siteId);
+    const select = $("day");
+    if (![...select.options].some((o) => o.value === ctx.day)) select.append(make("option", { value: ctx.day }, ctx.day));
+    select.value = ctx.day;
+    state.bill = ctx.bill || null;
+    showTariffTags();
+    updateButton();
+  }
+
+  /* "Plan again with this note": the composed goal goes into the goal box (the user sees exactly what is
+     sent), then the normal live run starts: it uses and counts one live run like any other. */
+  async function planAgain(composed, ctx) {
+    if (state.busy) return;
+    if (ctx) applyContext(ctx);
+    $("goal").value = composed;
+    updateCount();
+    updateButton();
+    scrollToGoal();
+    await startRun();
   }
 
   function emptyResult(working = false) {
     // a new run clears the last result, including its approval
+    refreshApproval = null;
     $("conversation").replaceChildren(make("p", { class: "result-empty" }, working ? "Working: the result appears when the run finishes." : "Your result plays here, hour by hour: the energy flows, the rules drawn on the day, and the rules checked."));
   }
 
@@ -799,7 +928,7 @@
       if (!reducedMotion && frame.delayMs) await sleep(frame.delayMs);
     }
     if (token !== state.playToken) return;
-    renderResult(view, { notice, file: `web/replays/${chip.file}` });
+    renderResult(view, { notice, file: `web/replays/${chip.file}`, ctx: { siteId: chip.site_id, day: chip.date, bill: null } }); // recorded runs used the site's own tariff
     setPipeline(frames[frames.length - 1].state);
   }
 
@@ -867,7 +996,7 @@
     return null;
   }
 
-  function streamRun(runId) {
+  function streamRun(runId, ctx) {
     return new Promise((resolve) => {
       const log = make("ol", { class: "live-log", "aria-label": "What the agent is doing" });
       $("conversation").replaceChildren(make("div", { class: "result-head" }, make("div", { class: "badges" }, make("span", { class: "badge" }, "live run")), make("p", { class: "checked-against" }, "The agent is working: it writes rules, the optimizer plans, and the checks run.")), log);
@@ -896,7 +1025,7 @@
         try {
           const result = await (await fetch(`api/plan/${encodeURIComponent(runId)}`)).json();
           status("Live run finished.");
-          renderResult(result.view);
+          renderResult(result.view, { ctx });
           setPipeline(pipelineStep(p, { kind: "replayed", data: { ok: Boolean(result.view && result.view.plan), accepted: gateAccepted(result.view) } }));
         } catch (_err) {
           await fallBack("network", null, true);
@@ -914,9 +1043,10 @@
   }
 
   async function runLive(goal) {
+    const ctx = { siteId: state.siteId, day: $("day").value, bill: state.bill }; // what this result is made with
     let response;
     try {
-      response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: state.siteId, day: $("day").value, goal, tariff: state.bill ? state.bill.tariff : undefined }) });
+      response = await fetch("api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ site: ctx.siteId, day: ctx.day, goal, tariff: ctx.bill ? ctx.bill.tariff : undefined }) });
     } catch (_err) {
       await fallBack("network");
       return;
@@ -928,11 +1058,16 @@
     }
     history.replaceState(null, "", location.pathname);
     status("Running live: the agent is working.");
-    await streamRun(body.run_id);
+    await streamRun(body.run_id, ctx);
   }
 
   async function submitGoal(event) {
     event.preventDefault();
+    await startRun();
+  }
+
+  /* The one main button's action, also used by "Plan again with this note". */
+  async function startRun() {
     const s = currentButtonState();
     if (s.disabled || state.busy) return; // the button says why
     state.busy = true;

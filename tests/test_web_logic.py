@@ -464,12 +464,12 @@ def test_operator_approval_states() -> None:
         unverified='T.approvalState({plan: {verified: false}}, false)',
         none="T.approvalState({plan: null}, false)",
     )
-    assert out["waiting"] == {"show": True, "state": "waiting", "text": "Verified - waiting for your approval", "button": "Approve plan"}
-    assert out["approved"] == {"show": True, "state": "approved", "text": "Approved by you. Marked as sent to the battery (demo: no device is controlled).", "button": None}
+    assert out["waiting"] == {"show": True, "state": "waiting", "text": "Verified - waiting for your approval", "button": "Approve plan", "rejectButton": "Reject plan"}
+    assert out["approved"] == {"show": True, "state": "approved", "text": "Approved. In a real deployment the plan would be sent to the site now; this demo sends nothing.", "button": None}
     assert out["unverified"]["state"] == "unverified" and out["unverified"]["button"] is None
     assert out["none"] == {"show": False}
     app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
-    assert "approvalBlock(view)" in app and "text.focus()" in app  # the confirmation takes keyboard focus
+    assert "approvalBlock(view, ctx)" in app and "text.focus()" in app  # the confirmation takes keyboard focus
     assert 'emptyResult(true);' in app  # a new run clears the last result and its approval
 
 
