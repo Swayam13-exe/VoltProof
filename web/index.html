@@ -81,11 +81,11 @@
     <!-- 2. Problem -->
     <section id="problem" class="section" aria-labelledby="problem-title">
       <div class="section-inner split">
-        <div class="reveal">
+        <div class="reveal" data-reveal-group="problem">
           <h2 id="problem-title">Batteries are easy to buy and hard to run well.</h2>
           <p class="lead">An operator has to plan around grid outages, prices that change by the hour and battery wear, every day. Asking an AI to write the plan sounds easy, but a plan written as text can quietly break physics: charge the battery past full, or count on energy that is not there when the grid goes down.</p>
         </div>
-        <figure id="problem-dots" class="dots-figure">
+        <figure id="problem-dots" class="dots-figure reveal" data-reveal-group="problem">
           <p class="hint">The benchmark numbers load from the app server.</p>
         </figure>
       </div>
@@ -252,7 +252,7 @@
           <p class="hint">The benchmark numbers load from the app server (/api/benchmark).</p>
         </div>
         <p id="evidence-footnote" class="footnote reveal"></p>
-        <figure id="evidence-chart" class="bar-figure" aria-labelledby="evidence-chart-title">
+        <figure id="evidence-chart" class="bar-figure reveal" aria-labelledby="evidence-chart-title">
           <figcaption id="evidence-chart-title" class="chart-heading">Goals met, by approach</figcaption>
         </figure>
         <p class="links reveal">
@@ -278,7 +278,7 @@
   </main>
 
   <footer class="site-footer">
-    <div class="section-inner">
+    <div class="section-inner reveal">
       <p class="footer-built">Built with Muse Spark Open (Meta), served by Baseten. Code and results: <a href="https://github.com/Swayam13-exe/VoltProof" target="_blank" rel="noopener noreferrer">github.com/Swayam13-exe/VoltProof</a></p>
       <p>Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> / DWD ICON. Weather data by Open-Meteo.com, CC BY 4.0.</p>
       <p><a href="https://github.com/Swayam13-exe/VoltProof/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT license</a></p>

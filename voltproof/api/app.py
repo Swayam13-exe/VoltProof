@@ -17,9 +17,11 @@ headers (to choose CLIENT_IP_SOURCE on a new host); otherwise that path is a 404
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
@@ -133,6 +135,25 @@ def split_days(sites: Mapping[str, Site], splits: Mapping[str, Any]) -> dict[str
         days = [(d, split) for split in ("dev", "test") for d in split_dates(splits, split, site_id)]
         out[site_id] = sorted(days)
     return out
+
+
+ASSET_LINK = re.compile(r'(<(?:script|link)\b[^>]*?\b(?:src|href)=")([\w./-]+\.(?:css|js))(")')
+
+
+def with_asset_versions(page: str, web_dir: Path) -> str:
+    """index.html with each same-origin stylesheet and script linked as name?v=<first 10 hex of its
+    sha256>, so a deploy that changes a file changes its URL and no browser keeps the old copy (the
+    static files are served without Cache-Control, which lets browsers reuse them heuristically).
+    External links (the pinned Chart.js) and files that do not exist are left as they are."""
+
+    def versioned(match: re.Match[str]) -> str:
+        path = web_dir / match.group(2)
+        if not path.is_file():
+            return match.group(0)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+        return f"{match.group(1)}{match.group(2)}?v={digest}{match.group(3)}"
+
+    return ASSET_LINK.sub(versioned, page)
 
 
 def with_image_tags(page: str, base_url: str) -> str:
@@ -492,7 +513,7 @@ def create_app(
 
     # The page, with the link-preview image tags added when the public address is known: og:image must be
     # an absolute URL, so without PUBLIC_BASE_URL there are none (never a relative one).
-    page_html = (web_dir / "index.html").read_text(encoding="utf-8") if (web_dir / "index.html").is_file() else None
+    page_html = with_asset_versions((web_dir / "index.html").read_text(encoding="utf-8"), web_dir) if (web_dir / "index.html").is_file() else None  # versions computed once, at startup
 
     @app.get("/", include_in_schema=False)
     @app.get("/index.html", include_in_schema=False)

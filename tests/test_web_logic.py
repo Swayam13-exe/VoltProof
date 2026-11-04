@@ -160,7 +160,7 @@ const landing = block(read("landing.js"), "/* --- pure: begin", "/* --- pure: en
 const app = read("app.js");
 const tryCode = block(app, "function money(", "function status(") + block(app, "function hourText(", "function stat(") + block(app, "function reasonText(", "async function fallBack(");
 const D = new Function(day + "; return { assumptionLines, DAY_MS, HOLD_MS, SITE_MS, playClock, playTime, hourFlows, specCodes, hourWindows, ruleBands, ruleResults, focusHour, shortSiteName, hourText };")();
-const L = new Function(landing + "; return { REVEAL_LINE, revealDecision, HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
+const L = new Function(landing + "; return { REVEAL_MARGIN, revealDecision, HERO_PAIRS, heroPicks, dotCount, sourceLine, leadingNumber, parseShare, parseDelta, rowFor, armNames };")();
 const T = new Function("VPDay", tryCode + "; return { PIPELINE_STAGES, recordedFor, recordedTiming, runButtonState, pipelineStart, pipelineStep, pipelineFrames, traceEvents, approvalState, comparisonRows, csvRows, csvText, costLine, billRows, billTariff, billRowFlags, billBars, billExample, tariffNote, billRefusalText, billSourceText, billChipNote, liveNote, COST_NOTE, gateAccepted };")(D);
 const dir = process.argv[2];
 const index = JSON.parse(fs.readFileSync(path.join(dir, "index.json"), "utf8"));
@@ -700,22 +700,23 @@ def test_the_hero_columns_are_top_aligned_on_their_cap_line() -> None:
 # --- Part F2: the reveal decision -------------------------------------------------------------------------
 
 
-def test_reveal_decision_shows_at_88_percent_replays_from_below_and_never_hides_on_screen() -> None:
-    vh = 1000
+def test_reveal_decision_starts_before_arrival_and_resets_only_below_the_margin() -> None:
+    vh = 1000  # the line is at 1080: the bottom edge plus the 8% margin
     cases = {
-        "below": [1200, 1500, False],        # completely below: hide (it replays when it comes back)
-        "edge": [1000, 1300, False],         # top exactly at the bottom edge: still completely below
-        "band": [900, 1400, False],          # partly on screen, under the 88% line: keep as it is
-        "past": [879, 1300, False],          # top past 88%: show
+        "far": [1500, 1800, False],          # completely below the viewport and the margin: hide (it replays)
+        "line": [1080, 1300, False],         # exactly on the line: still completely below it
+        "margin": [1079, 1300, False],       # inside the margin, not yet on screen: the fade has started
+        "edge": [1000, 1300, False],         # arriving at the bottom edge: show
+        "partly": [990, 1400, False],        # partly on screen: never hidden
         "on": [100, 700, False],             # on screen: show
         "tall": [-4000, 6000, False],        # taller than the screen, covering it: show
         "above": [-900, -1, False],          # left through the top: show (stays revealed)
         "aboveEdge": [-900, 0, False],
         "pinned": [1500, 2000, True],        # the used Try it frame: never hidden
     }
-    out = pure(line="L.REVEAL_LINE", **{k: f"L.revealDecision({a}, {b}, {vh}, {str(c).lower()})" for k, (a, b, c) in cases.items()})
-    assert out["line"] == 0.88
-    assert {k: out[k] for k in cases} == {"below": "hide", "edge": "hide", "band": "keep", "past": "show", "on": "show", "tall": "show", "above": "show", "aboveEdge": "show", "pinned": "show"}
+    out = pure(margin_value="L.REVEAL_MARGIN", **{k: f"L.revealDecision({a}, {b}, {vh}, {str(c).lower()})" for k, (a, b, c) in cases.items()})
+    assert out["margin_value"] == 0.08
+    assert {k: out[k] for k in cases} == {"far": "hide", "line": "hide", "margin": "show", "edge": "show", "partly": "show", "on": "show", "tall": "show", "above": "show", "aboveEdge": "show", "pinned": "show"}
 
 
 # --- Part F6: a recorded goal while a bill's tariff is in use ---------------------------------------------

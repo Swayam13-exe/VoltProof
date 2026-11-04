@@ -10,18 +10,17 @@
 (() => {
   /* --- pure: begin (no DOM; tested in tests/test_web_logic.py) --------------------------------- */
 
-  /* Reveal on scroll: what to do with one block, from where it is (px, viewport coordinates). Its top
-     passing 88% of the viewport shows it; a block that has gone completely below the viewport (the
-     reader scrolled back up past it) is hidden again so it fades in the next time; a block above the
-     viewport (left through the top, or jumped past by a menu link) is shown; a pinned block (the Try it
-     frame once used) always shows. Anything else, partly on screen below the line, stays as it is. */
-  const REVEAL_LINE = 0.88;
+  /* Reveal on scroll: what to do with one block, from where it is (px, viewport coordinates). The fade
+     starts slightly before the block arrives: once its top is within REVEAL_MARGIN of the viewport
+     height below the bottom edge, it shows, so it is (nearly) opaque by the time the reader sees it.
+     It is hidden again only when its top is below that same line (completely below the viewport and
+     the margin: the reader scrolled back up past it), so it fades in the next time and can never be
+     reset while fading or partly visible. Above the viewport, or pinned (the used Try it frame): shown. */
+  const REVEAL_MARGIN = 0.08;
 
   function revealDecision(top, bottom, viewportHeight, pinned) {
     if (pinned || bottom <= 0) return "show";
-    if (top < viewportHeight * REVEAL_LINE) return "show";
-    if (top >= viewportHeight) return "hide";
-    return "keep";
+    return top < viewportHeight * (1 + REVEAL_MARGIN) ? "show" : "hide";
   }
 
   const HERO_PAIRS = [["nairobi_clinic", "en"], ["ahmedabad_cold_store", "hi"], ["munich_home", "es"]];
@@ -196,16 +195,22 @@
 
   /* --- reveal on scroll ------------------------------------------------------------------------- */
 
-  /* The top-level blocks of each section (the .reveal elements in index.html: headings, leads and main
-     content blocks, never charts, tables, results or bill-panel contents) fade in and rise as their top
-     passes 88% of the viewport, and again after the reader has scrolled back up past them (see
-     revealDecision). Content is visible without JavaScript: the hidden state (CSS under .reveal-armed)
-     is applied only here, only with IntersectionObserver and without reduced motion.
-     - two observers (threshold 0): one whose root ends 12% above the viewport bottom (the 88% line), one
-       at the viewport edge (a block leaving below); both just ask revealDecision about the block
-     - a scroll sweep shows blocks above the viewport at once (a smooth menu jump can carry a block from
-       below to above without it ever intersecting), and is the safety net: a block in the viewport still
-       hidden 1 s later is shown; a block below the viewport is never shown by it
+  /* Every fixed top-level block outside the hero (the .reveal elements in index.html: headings, leads,
+     content blocks, the charts with their notes, the footer) fades in and rises as it arrives, and again
+     after the reader has scrolled back up past it (see revealDecision). Never: the hero, the result
+     area and anything a run renders, the bill panel (inside the frame), the pipeline strip, and the Try
+     it frame once used. Content is visible without JavaScript: the hidden state (CSS under
+     .reveal-armed) is applied only here, only with IntersectionObserver and without reduced motion.
+     - one observer, threshold 0, its root the document's own viewport (root: document, so the margin
+       also applies when the page runs in a cross-origin frame, as on huggingface.co) grown by
+       REVEAL_MARGIN at the bottom; it just asks revealDecision about the block
+     - blocks side by side in one group (data-reveal-group: the two Problem columns) are judged by their
+       common row, so both columns start at the same moment; stacked on a phone, each by its own top
+     - a scroll sweep asks revealDecision about every block on every scrolled frame: a jump can carry a
+       block across the whole viewport (below to above, or above to below) with no intersection change,
+       so the observer alone would leave it shown or hidden on the wrong side
+     - the safety net, independent of both: once a second, a block in or above the viewport that is
+       still hidden is shown; a block below the viewport is never shown by it
      - the Try it frame (#setup) is pinned once used (any focus, click or typing in it, or a run in the
        pipeline strip): it never hides again, so nothing a run renders starts at opacity 0 */
   function setupReveal() {
@@ -213,22 +218,37 @@
     const blocks = [...document.querySelectorAll(".reveal")];
     const frame = $("setup");
     const pinned = (node) => node === frame && (frame.dataset.used === "1" || !$("try-pipeline").hidden);
-    const apply = (node) => {
+    const members = (node) => (node.dataset.revealGroup ? blocks.filter((b) => b.dataset.revealGroup === node.dataset.revealGroup) : [node]);
+    const box = (node) => {
       const r = node.getBoundingClientRect();
-      const action = revealDecision(r.top, r.bottom, window.innerHeight, pinned(node));
-      if (action === "show") node.classList.add("in");
-      else if (action === "hide") node.classList.remove("in");
+      let top = r.top;
+      let bottom = r.bottom;
+      for (const other of members(node)) {
+        if (other === node) continue;
+        const o = other.getBoundingClientRect();
+        if (o.top < r.bottom && o.bottom > r.top) {
+          top = Math.min(top, o.top); // side by side: one row, one moment
+          bottom = Math.max(bottom, o.bottom);
+        }
+      }
+      return { top, bottom };
     };
-    const onEntries = (entries) => entries.forEach((entry) => apply(entry.target));
-    const atLine = new IntersectionObserver(onEntries, { threshold: 0, rootMargin: `0px 0px -${Math.round((1 - REVEAL_LINE) * 100)}% 0px` });
-    const atEdge = new IntersectionObserver(onEntries, { threshold: 0 });
-    // at load: whatever is already on screen shows at once (no fade on first paint)
-    for (const node of blocks) if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");
+    const apply = (node) => {
+      for (const member of members(node)) {
+        const r = box(member);
+        const action = revealDecision(r.top, r.bottom, window.innerHeight, pinned(member));
+        member.classList.toggle("in", action === "show");
+      }
+    };
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => apply(entry.target)), {
+      root: document,
+      threshold: 0,
+      rootMargin: `0px 0px ${Math.round(REVEAL_MARGIN * 100)}% 0px`,
+    });
+    // at load: whatever is already on screen, or within the margin, shows at once (no fade on first paint)
+    for (const node of blocks) if (box(node).top < window.innerHeight * (1 + REVEAL_MARGIN)) node.classList.add("in");
     document.documentElement.classList.add("reveal-armed");
-    for (const node of blocks) {
-      atLine.observe(node);
-      atEdge.observe(node);
-    }
+    for (const node of blocks) observer.observe(node);
     if (frame) {
       const use = () => {
         frame.dataset.used = "1";
@@ -239,24 +259,18 @@
     let queued = false;
     const sweep = () => {
       queued = false;
-      for (const node of blocks) {
-        if (node.classList.contains("in")) continue;
-        const r = node.getBoundingClientRect();
-        if (r.bottom <= 0) node.classList.add("in"); // above: show now
-        else if (r.top < window.innerHeight && !node.dataset.revealDue) {
-          node.dataset.revealDue = "1"; // the safety net, for blocks in the viewport only
-          window.setTimeout(() => {
-            delete node.dataset.revealDue;
-            if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");
-          }, 1000);
-        }
-      }
+      blocks.forEach(apply);
     };
-    window.addEventListener("scroll", () => {
+    const queueSweep = () => {
       if (queued) return;
       queued = true;
       window.requestAnimationFrame(sweep);
-    }, { passive: true });
+    };
+    window.addEventListener("scroll", queueSweep, { passive: true });
+    window.addEventListener("resize", queueSweep);
+    window.setInterval(() => {
+      for (const node of blocks) if (!node.classList.contains("in") && node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");
+    }, 1000);
   }
 
   /* --- hero: three recorded days in the shared day player ------------------------------------------ */

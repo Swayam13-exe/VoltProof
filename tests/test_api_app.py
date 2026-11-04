@@ -3,6 +3,7 @@ never inserts HTML (SPEC §6.13). Offline: FastAPI's test client, no network."""
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from fastapi.testclient import TestClient
@@ -84,44 +85,56 @@ def test_content_is_visible_without_javascript() -> None:
     css = re.sub(r"/\*.*?\*/", "", (WEB_DIR / "styles.css").read_text(encoding="utf-8"), flags=re.S)
     hiding = [rule for rule in re.findall(r"([^{}]+)\{([^}]*)\}", css) if "opacity: 0" in rule[1] and ".reveal" in rule[0]]
     assert hiding and all(selector.strip().startswith(".reveal-armed") for selector, _ in hiding)
-    assert re.search(r"\.reveal \{ transition: opacity 0\.5s ease-out, transform 0\.5s ease-out; \}", css)  # one motion for every block
-    assert "translateY(16px)" in css and "height" not in css[css.index(".reveal-armed"):css.index(".reveal-armed") + 120]  # no layout shift
+    assert re.search(r"\.reveal \{ transition: opacity 0\.35s ease-out, transform 0\.35s ease-out; \}", css)  # one motion for every block
+    assert ".reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(12px); }" in css  # transform only: no layout shift
     assert "transition: none !important" in css[css.index("@media (prefers-reduced-motion: reduce)"):]
     landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
     reveal = landing[landing.index("function setupReveal("):landing.index("/* --- hero:")]
     assert 'if (reduceMotion.matches || !("IntersectionObserver" in window)) return;' in reveal
     assert 'document.documentElement.classList.add("reveal-armed");' in reveal
-    # in view at load: shown before arming (no fade on first paint)
-    assert reveal.index("if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add(\"in\")") < reveal.index('classList.add("reveal-armed")')
-    # triggers: threshold 0 with a bottom root margin (the 88% line), and the viewport edge; never an area ratio
-    assert "threshold: 0, rootMargin: `0px 0px -${Math.round((1 - REVEAL_LINE) * 100)}% 0px`" in reveal and "threshold: 0.01" not in reveal
+    # on screen at load, or within the margin: shown before arming (no fade on first paint)
+    assert reveal.index('if (box(node).top < window.innerHeight * (1 + REVEAL_MARGIN)) node.classList.add("in")') < reveal.index('classList.add("reveal-armed")')
+    # the trigger: threshold 0 with a positive bottom margin on the document's own viewport (so it also holds in a frame)
+    assert "root: document," in reveal and "threshold: 0," in reveal and "rootMargin: `0px 0px ${Math.round(REVEAL_MARGIN * 100)}% 0px`" in reveal
     assert "unobserve" not in reveal  # blocks stay observed: they replay
-    # the safety net: only blocks in the viewport, checked again when it fires; blocks above show at once
-    assert "if (r.bottom <= 0) node.classList.add(\"in\"); // above: show now" in reveal
-    assert "if (node.getBoundingClientRect().top < window.innerHeight) node.classList.add(\"in\");" in reveal and ", 1000);" in reveal
+    # every scrolled frame judges every block: a jump can cross the viewport with no intersection change
+    assert "blocks.forEach(apply);" in reveal and 'addEventListener("scroll", queueSweep' in reveal
+    # the safety net: only blocks in or above the viewport, independent of scrolling and of the observer
+    assert 'if (!node.classList.contains("in") && node.getBoundingClientRect().top < window.innerHeight) node.classList.add("in");' in reveal and "}, 1000);" in reveal
     # the Try it frame is pinned once used or once a run has started
     assert 'frame.dataset.used === "1" || !$("try-pipeline").hidden' in reveal
     assert all(f'"{kind}"' in reveal for kind in ("focusin", "pointerdown", "input"))
 
 
-def test_only_top_level_blocks_are_animated() -> None:
-    """Headings, leads and main content blocks fade; charts, tables, results, the hero and anything a run
+def test_every_fixed_block_outside_the_hero_fades_and_run_output_never_does() -> None:
+    """Headings, leads, content blocks, both charts with their notes, the number cards, the Limits list and
+    the footer fade; the hero, the result area, the bill panel, the pipeline strip and anything a run
     renders never do, and there is no per-child stagger (no card is a block of its own)."""
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     blocks = re.findall(r'<(\w+)([^>]*class="[^"]*\breveal\b[^"]*"[^>]*)>', html)
     ids = [re.search(r'id="([^"]+)"', attrs).group(1) if 'id="' in attrs else re.search(r'class="([^"]+)"', attrs).group(1) for _, attrs in blocks]
-    assert ids == ["reveal", "how-title", "lead reveal", "pipeline reveal", "pipe-loop reveal", "pipe-key reveal", "try-title", "lead reveal", "setup",
-                   "evidence-title", "evidence-size", "evidence-numbers", "evidence-footnote", "links reveal", "limits-title", "limits reveal"]
-    for never in ("problem-dots", "evidence-chart", "conversation", "bill-panel", "try-pipeline", "day-panel"):
+    assert ids == ["reveal", "problem-dots", "how-title", "lead reveal", "pipeline reveal", "pipe-loop reveal", "pipe-key reveal", "try-title", "lead reveal", "setup",
+                   "evidence-title", "evidence-size", "evidence-numbers", "evidence-footnote", "evidence-chart", "links reveal", "limits-title", "limits reveal", "section-inner reveal"]
+    for never in ("conversation", "bill-panel", "try-pipeline", "day-panel"):
         tag = re.search(rf'<\w+ id="{never}"[^>]*>', html).group(0)
         assert "reveal" not in tag, never
     hero = html[html.index('<section id="top"'):html.index('<section id="problem"')]
     assert "reveal" not in hero
+    assert 'class="section-inner reveal"' in html[html.index('<footer class="site-footer">'):]
+    # the two Problem columns are one group, so they start at the same moment when side by side
+    problem = html[html.index('<section id="problem"'):html.index('<section id="how"')]
+    assert problem.count('data-reveal-group="problem"') == 2 and html.count("data-reveal-group") == 2
+    landing = (WEB_DIR / "landing.js").read_text(encoding="utf-8")
+    assert "if (o.top < r.bottom && o.bottom > r.top) {" in landing and "top = Math.min(top, o.top);" in landing  # one row, one moment; stacked: its own top
     for path in WEB_DIR.glob("*.js"):
         js = path.read_text(encoding="utf-8")
         assert '"reveal"' not in js and "watchReveal" not in js, path.name  # nothing created at run time is a block
     css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
     assert ".pipe-node.reveal" not in css and "transition-delay" not in css  # no stagger
+    # neither landing-page chart has a drawing animation of its own to double up with the fade
+    assert "new Chart" not in landing
+    for selector in (r"\.bar-fill \{", r"\.dot\.pass \{", r"\.dot-svg \{"):
+        assert "transition" not in re.search(selector + r"([^}]*)\}", css).group(1) and "animation" not in re.search(selector + r"([^}]*)\}", css).group(1), selector
 
 
 def test_no_lines_between_sections_and_one_spacing_token() -> None:
@@ -308,3 +321,43 @@ def test_the_footer_has_no_video_link_and_the_header_and_hero_follow_the_rule() 
     for env in ({}, {"DEMO_VIDEO_URL": "https://example.org/video"}):  # the served page's footer, URL unset and set
         page = TestClient(create_app(settings=load_settings(env))).get("/").text
         assert "video" not in page[page.index('<footer class="site-footer">'):].lower(), env
+
+
+# --- Part H3: a deploy never leaves a visitor on old files --------------------------------------------------
+
+
+def test_the_served_page_has_no_cache_and_versions_its_own_files_only() -> None:
+    from voltproof.config import load_settings
+
+    c = TestClient(create_app(settings=load_settings({})))
+    for path in ("/", "/index.html"):
+        page = c.get(path)
+        assert page.headers["cache-control"] == "no-cache", path
+    links = re.findall(r'<(?:script|link)\b[^>]*?\b(?:src|href)="([^"]+)"', page.text)
+    own = [link for link in links if link.endswith(tuple("0123456789abcdef")) and "?v=" in link]
+    assert sorted(link.split("?")[0] for link in own) == ["app.js", "charts.js", "dayplayer.js", "landing.js", "styles.css", "theme.js"]
+    for link in own:
+        name, version = link.split("?v=")
+        assert version == hashlib.sha256((WEB_DIR / name).read_bytes()).hexdigest()[:10], name
+        served = c.get(f"/{link}")  # the static route ignores the query
+        assert served.status_code == 200 and served.content == (WEB_DIR / name).read_bytes(), name
+        assert served.headers["content-security-policy"] == CONTENT_SECURITY_POLICY
+    assert not any("?v=" in link for link in links if link.startswith("http"))  # the pinned Chart.js keeps its integrity-checked URL
+    assert "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js\"" in page.text
+    assert CONTENT_SECURITY_POLICY == page.headers["content-security-policy"]  # 'self' covers a query string: the policy is unchanged
+
+
+def test_the_version_changes_when_the_file_changes(tmp_path) -> None:
+    from voltproof.api.app import with_asset_versions
+
+    (tmp_path / "styles.css").write_text("a { color: red; }", encoding="utf-8")
+    (tmp_path / "app.js").write_text("let a = 1;", encoding="utf-8")
+    page = '<link rel="stylesheet" href="styles.css"><script defer src="app.js"></script><script src="gone.js"></script><script src="https://x.example/lib.js"></script><a href="other.js">not an asset</a>'
+    first = with_asset_versions(page, tmp_path)
+    assert first == with_asset_versions(page, tmp_path)  # stable while nothing changes
+    (tmp_path / "styles.css").write_text("a { color: blue; }", encoding="utf-8")
+    second = with_asset_versions(page, tmp_path)
+    css = lambda text: re.search(r'href="(styles\.css\?v=[0-9a-f]{10})"', text).group(1)
+    js = lambda text: re.search(r'src="(app\.js\?v=[0-9a-f]{10})"', text).group(1)
+    assert css(first) != css(second) and js(first) == js(second)  # only the changed file gets a new URL
+    assert 'src="gone.js"' in second and 'src="https://x.example/lib.js"' in second and 'href="other.js"' in second  # missing, external and non-asset links are left alone

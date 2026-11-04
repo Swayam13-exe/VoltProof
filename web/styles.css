@@ -221,8 +221,8 @@ h2 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); max-width: 24ch; margin-bottom: 18
 
 /* reveal on scroll: visible by default; hidden only once landing.js arms it (IntersectionObserver
    present, no reduced motion); see setupReveal for the safety net */
-.reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(16px); }
-.reveal { transition: opacity 0.5s ease-out, transform 0.5s ease-out; } /* the same for every block; transform only: no layout shift */
+.reveal-armed .reveal:not(.in) { opacity: 0; transform: translateY(12px); }
+.reveal { transition: opacity 0.35s ease-out, transform 0.35s ease-out; } /* the same for every block; transform only: no layout shift */
 
 /* --- 1. hero ---------------------------------------------------------------------------------- */
 
