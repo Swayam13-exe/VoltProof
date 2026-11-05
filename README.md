@@ -9,7 +9,7 @@
 [![Built with Muse Spark Open](https://img.shields.io/badge/Built%20with-Muse%20Spark%20Open-0866FF)](#models-data-and-credits)
 [![Tests](https://img.shields.io/badge/tests-640%20passing-brightgreen)](#run-it-yourself)
 
-**[Try the live demo](https://huggingface.co/spaces/Swayam14/voltproof)** · **[Watch the 3-minute video]({{VIDEO_URL}})** · **[Results](#results-voltproof-bench)** · **[Run it yourself](#run-it-yourself)**
+**[Try the live demo](https://huggingface.co/spaces/Swayam14/voltproof)** · **[Watch the demo video](https://www.youtube.com/watch?v=yxoXfdpyZfo)** · **[Results](#results-voltproof-bench)** · **[Run it yourself](#run-it-yourself)**
 
 ![VoltProof AI demo: the page's headline above a recorded run for a clinic near Nairobi, replayed hour by hour on the same-day weather](docs/img/hero.png)
 
@@ -209,7 +209,7 @@ python -m voltproof.bench.report --run runs/frozen --out runs/frozen-report
 
 The tables go to `runs/frozen-report/report/` and the figures to `runs/frozen-report/figures/` (`runs/` is ignored by git). They match [`results/report/`](results/report/), apart from the run name and the generation time.
 
-**Re-run the 260 episodes against the model.** `python -m voltproof.bench.runner --split test --plan-only` writes the episode plan with no model call; it is the same plan as the frozen run. `python -m voltproof.bench.runner --split test --force` runs it, with a key set as in live mode. It costs about $22 at listed prices ($21.50 for the frozen run). `--force` is needed on a fresh clone, which has no pilot run to project the cost from.
+**Re-run the 260 episodes against the model.** `python -m voltproof.bench.runner --split test --plan-only` writes the episode plan with no model call; it is the same plan as the frozen run. `python -m voltproof.bench.runner --split test --force` runs it, with a key set as in live mode. It costs about $21.50 at listed prices, the same as the frozen run. `--force` is needed on a fresh clone, which has no pilot run to project the cost from.
 
 **The demo's safety:** the model key lives only on the server; every model-written string is rendered as text, never as HTML; a strict content-security policy applies; typed goals are limited to 500 characters and the page asks users not to enter personal information; live runs are limited per visitor, per hour and per day, with a hard spending cap.
 
